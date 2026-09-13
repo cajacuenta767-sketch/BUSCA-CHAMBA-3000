@@ -112,6 +112,15 @@ go build -o gms .
 
 ---
 
+## Anti-baneo (Modo seguro)
+
+Activado por defecto en **⚙️ Ajustes**. Para que Google no bloquee tu IP al escanear:
+
+- **Pausas aleatorias entre celdas** (3–8 s, configurables) + concurrencia baja (`-c 1`), para no martillar.
+- **Rotación de proxies**: pon varios en Ajustes (uno por línea o separados por coma) y el scraper los rota.
+- **Detección de bloqueos** (ERR_TUNNEL, 429, 403, captcha) con **backoff exponencial** y **auto-pausa**: si varias celdas seguidas salen bloqueadas, el escaneo se **pausa solo** y te avisa. Configura proxies o espera un rato y pulsa **Reanudar**.
+- **Empieza suave**: celdas de 2–3 km y modo "Por rubro" generan menos búsquedas y menos bloqueos que "Todo el área".
+
 ## Uso responsable
 
 - Extraer datos de Google Maps va **contra los Términos de Servicio de Google**. El riesgo aquí no es tu cuenta (no usas login), sino bloqueos de IP: úsalo con mesura y con proxies si haces volumen.

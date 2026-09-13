@@ -203,6 +203,8 @@
           <div class="fld"><label>Telegram — chat_id</label><input class="field" id="cfgChat" placeholder="Tu chat_id"></div>
           <div class="fld"><label>Proxies (opcional, para volumen)</label><input class="field" id="cfgProxies" placeholder="http://user:pass@host:puerto"></div>
           <div class="fld"><label>Webhook (opcional, https)</label><input class="field" id="cfgWebhook" placeholder="https://..."></div>
+          <div class="fld"><label>🛡️ Anti-baneo</label><label class="chk" style="padding:8px 0"><input type="checkbox" id="cfgSafe" checked> Modo seguro (pausas + auto-pausa al detectar bloqueo)</label></div>
+          <div class="fld"><label>Pausa entre celdas (seg, mín–máx)</label><div style="display:flex;gap:6px"><input class="field num" id="cfgPmin" type="number" min="0" value="3"><input class="field num" id="cfgPmax" type="number" min="0" value="8"></div></div>
         </div>
         <div class="play-row" style="justify-content:flex-start;margin-top:12px">
           <label class="chk"><input type="checkbox" id="cfgNotify"> Avisarme cada lead nuevo a Telegram</label>
@@ -483,6 +485,7 @@ function connectSSE(){try{es=new EventSource("/api/stream");}catch(e){return;}
   es.addEventListener("update",e=>{const d=JSON.parse(e.data);meta[d.id]=d.meta;});
   es.addEventListener("reset",()=>{LEADS=[];byId={};render();if(pinLayer)pinLayer.clearLayers();if(gridLayer)gridLayer.clearLayers();});
   es.addEventListener("log",()=>{scanWarn++;});
+  es.addEventListener("blocked",e=>{let d={};try{d=JSON.parse(e.data);}catch(x){}toast("🛡️ Auto-pausado: posible bloqueo de Google tras "+(d.consec||"varias")+" celdas. Configura proxies (⚙️ Ajustes) o espera un rato y pulsa Reanudar.");});
 }
 function onStatus(st){const run=!!st.running,pau=!!st.paused;
   $("#playBtn").hidden=run;$("#demoBtn").hidden=run;
@@ -492,7 +495,7 @@ function onStatus(st){const run=!!st.running,pau=!!st.paused;
 function setProg(done,total,found,run,pau){const pct=total?Math.round(done/total*100):0;$("#progFill").style.width=pct+"%";$("#progTxt").textContent=(total?`Celdas ${done}/${total} (${pct}%) · `:"")+`${found||LEADS.length} negocios`+(pau?" · ⏸️ en pausa":run?" · escaneando…":total&&done>=total?" · ✅ listo":"")+(scanWarn?` · ⚠️ ${scanWarn} avisos`:"");}
 function detectServer(){fetch("/api/status").then(r=>r.ok?r.json():Promise.reject()).then(()=>{SERVER=true;setMode(true);
   fetch("/api/leads").then(r=>r.json()).then(d=>{(d.leads||[]).forEach(l=>{if(l._meta)meta[idOf(l)]=l._meta;});loadAll(d.leads||[]);if(d.cells&&d.cells.length)drawServerCells(d.cells);if(d.history)renderHistory(d.history);onStatus(d.status||{});});
-  fetch("/api/config").then(r=>r.json()).then(c=>{$("#cfgChat").value=c.telegramChat||"";$("#cfgProxies").value=c.proxies||"";$("#cfgWebhook").value=c.webhookUrl||"";$("#cfgNotify").checked=!!c.notify;if(c.hasToken)$("#cfgToken").placeholder="(token guardado)";}).catch(()=>{});
+  fetch("/api/config").then(r=>r.json()).then(c=>{$("#cfgChat").value=c.telegramChat||"";$("#cfgProxies").value=c.proxies||"";$("#cfgWebhook").value=c.webhookUrl||"";$("#cfgNotify").checked=!!c.notify;$("#cfgSafe").checked=c.safeMode!==false;if(c.pauseMin!=null)$("#cfgPmin").value=c.pauseMin;if(c.pauseMax!=null)$("#cfgPmax").value=c.pauseMax;if(c.hasToken)$("#cfgToken").placeholder="(token guardado)";}).catch(()=>{});
   connectSSE();}).catch(()=>{SERVER=false;setMode(false);meta=store.get("bc3k_meta",{});render();});}
 
 // ---- Escaneo ----
@@ -508,7 +511,7 @@ const post=u=>fetch(u,{method:"POST"}).catch(()=>{});
 function estimate(){if(!map){$("#estTxt").textContent="";return;}const b=map.getBounds(),km=cellKm(),latC=(b.getSouth()+b.getNorth())/2,dLat=km/111,dLon=km/(111*Math.cos(latC*Math.PI/180));const n=Math.max(1,Math.ceil((b.getNorth()-b.getSouth())/dLat)*Math.ceil((b.getEast()-b.getWest())/dLon));const min=Math.ceil(n*(($('input[name=scanmode]:checked')||{}).value==="rubros"?selectedRubros().length||1:8)*0.3);$("#estTxt").textContent=`≈ ${n} celdas · tiempo aprox. ${min<60?min+" min":(Math.round(min/6)/10)+" h"} (depende de proxies/conexión)`;}
 
 // ---- Config ----
-function saveCfg(){const b={telegramChat:$("#cfgChat").value.trim(),proxies:$("#cfgProxies").value.trim(),webhookUrl:$("#cfgWebhook").value.trim(),notify:$("#cfgNotify").checked};const tok=$("#cfgToken").value.trim();if(tok)b.telegramToken=tok;fetch("/api/config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}).then(()=>toast("Ajustes guardados ✓")).catch(()=>toast("No se pudo guardar"));}
+function saveCfg(){const b={telegramChat:$("#cfgChat").value.trim(),proxies:$("#cfgProxies").value.trim(),webhookUrl:$("#cfgWebhook").value.trim(),notify:$("#cfgNotify").checked,safeMode:$("#cfgSafe").checked,pauseMin:+$("#cfgPmin").value||0,pauseMax:+$("#cfgPmax").value||0};const tok=$("#cfgToken").value.trim();if(tok)b.telegramToken=tok;fetch("/api/config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}).then(()=>toast("Ajustes guardados ✓")).catch(()=>toast("No se pudo guardar"));}
 function testTg(){fetch("/api/test-telegram",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({telegramToken:$("#cfgToken").value.trim(),telegramChat:$("#cfgChat").value.trim()})}).then(r=>r.json()).then(j=>{toast(j.status===200?"✅ Mensaje enviado a Telegram":"❌ "+((j.body||j.error||"").slice(0,60)));}).catch(()=>toast("Error de conexión"));}
 
 // ---- Herramientas ----
