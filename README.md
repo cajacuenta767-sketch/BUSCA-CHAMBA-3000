@@ -22,7 +22,7 @@ Panel visual para trabajar los leads. Funciona de **dos formas**:
 node server.js      # abre http://localhost:8090
 ```
 
-En la pantalla de **Inicio** eliges la zona (selector **departamento/ciudad** del Perú) y pulsas **▶️ Iniciar**. Por defecto **barre TODOS los negocios del área, cuadrícula por cuadrícula** (o marca "Por rubro" para acotar). El **mapa se pinta en vivo** celda por celda (⬜ pendiente → 🟡 escaneando → 🟢 con negocios) y **los leads aparecen al instante**; puedes **pausar/reanudar**. El servidor **guarda todo** (leads, estados, notas) aunque cierres. Para escanear necesita el binario `gms` (o `SCRAPER_MODE=docker`). Botón **Demo** para verlo funcionar sin escanear.
+En la pantalla de **Inicio**, ordenada en **3 pasos** (zona → qué buscar → iniciar), eliges la zona (selector **departamento/ciudad** del Perú) y pulsas **▶️ Iniciar**. Por defecto **barre TODOS los negocios del área, cuadrícula por cuadrícula**; o marca **Por rubro** y eliges **grupos de rubros** (Comida y bebida, Salud, Belleza, Tiendas, Servicios técnicos, Profesionales, Hospedaje) — un clic en el título del grupo marca todo el grupo. El **mapa se pinta en vivo** celda por celda (⬜ pendiente → 🟡 escaneando → 🟢 con negocios) y **los leads aparecen al instante**; puedes **pausar/reanudar**. El servidor **guarda todo** (leads, estados, notas) aunque cierres. Para escanear necesita el binario `gms` (o `SCRAPER_MODE=docker`). Botón **Demo** para verlo funcionar sin escanear.
 
 **B) Modo archivo** — abres `dashboard.html` con doble clic y cargas un `resultados.csv` a mano (sin escaneo en vivo).
 
@@ -117,7 +117,7 @@ go build -o gms .
 Activado por defecto en **⚙️ Ajustes**. Para que Google no bloquee tu IP al escanear:
 
 - **Pausas aleatorias entre celdas** (3–8 s, configurables) + concurrencia baja (`-c 1`), para no martillar.
-- **Rotación de proxies**: pon varios en Ajustes (uno por línea) y el scraper los rota, **cambiando de proxy al detectar bloqueo**. El botón **🌐 Proxies gratis** trae listas públicas y **prueba cuáles funcionan** (las guarda y las usa el escáner). ⚠️ Las proxies gratis son poco confiables y de terceros que podrían ver tu tráfico; para volumen serio usa **residenciales de pago**.
+- **Rotación de proxies (round-robin)**: pon varias en **⚙️ Ajustes → Proxies** (una por línea; acepta `ip:puerto:usuario:clave` o `http://usuario:clave@ip:puerto`). El escáner las **baraja y usa una distinta por celda**, dando la vuelta a toda la lista antes de repetir (así **no quema ninguna**) y **cambia de proxy si detecta bloqueo**. Los logs enmascaran el usuario/clave. El botón **🌐 Traer proxies gratis** trae listas públicas y **prueba cuáles funcionan** (las guarda y las usa el escáner). ⚠️ Las proxies gratis son poco confiables y de terceros que podrían ver tu tráfico; para volumen serio usa **residenciales de pago**. Tus credenciales quedan solo en `data/` (no se versiona).
 - **Detección de bloqueos** (ERR_TUNNEL, 429, 403, captcha) con **backoff exponencial** y **auto-pausa**: si varias celdas seguidas salen bloqueadas, el escaneo se **pausa solo** y te avisa. Configura proxies o espera un rato y pulsa **Reanudar**.
 - **Empieza suave**: celdas de 2–3 km y modo "Por rubro" generan menos búsquedas y menos bloqueos que "Todo el área".
 

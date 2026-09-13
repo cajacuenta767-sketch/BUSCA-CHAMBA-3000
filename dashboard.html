@@ -68,7 +68,29 @@
   .seg input:checked+span{background:var(--accent);color:#fff}
   .rubros{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin:8px 0 2px}
   .rub{border:1px solid var(--border);background:var(--surface);color:var(--muted);border-radius:20px;padding:7px 13px;font:600 12.5px var(--font-b);cursor:pointer;transition:.12s}
+  .rub:hover{border-color:var(--accent);color:var(--accent)}
   .rub.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  /* Secciones ordenadas tipo "pasos" (Inicio) */
+  .section{padding:20px 0;border-top:1px solid var(--border)}
+  .section.first{border-top:none;padding-top:2px}
+  .section-head{display:flex;gap:12px;align-items:flex-start;margin-bottom:15px}
+  .step-num{flex:none;width:28px;height:28px;border-radius:9px;background:var(--accent-weak);color:var(--accent);display:grid;place-items:center;font:800 14px var(--font-d)}
+  .section-head h3{margin:0;font-size:15.5px;font-weight:700;font-family:var(--font-d);letter-spacing:-.2px}
+  .section-head p{margin:3px 0 0;font-size:12.5px;color:var(--muted)}
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;align-items:end}
+  .form-grid.tight{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+  /* Rubros por grupos selectos */
+  .rub-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(258px,1fr));gap:12px;margin-top:4px}
+  .rub-group{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 12px}
+  .rub-group-label{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;background:none;border:none;cursor:pointer;font:700 12.5px var(--font-d);color:var(--text);padding:0 0 10px;text-align:left}
+  .rub-group-label:hover{color:var(--accent)}
+  .rgl-count{font:700 10.5px var(--font-b);color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:1px 8px;font-variant-numeric:tabular-nums}
+  .rub-group-label.on .rgl-count{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .rub-wrap{display:flex;flex-wrap:wrap;gap:6px}
+  /* Sub-encabezados dentro de Ajustes */
+  .subhead{font:700 11px var(--font-b);letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin:18px 0 11px;display:flex;align-items:center;gap:8px}
+  .subhead::after{content:"";flex:1;height:1px;background:var(--border)}
+  .subhead.first{margin-top:6px}
   .play-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px}
   .chk{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none}.chk input{width:16px;height:16px;accent-color:var(--accent)}
   .progress{height:12px;background:var(--surface-2);border-radius:20px;overflow:hidden;margin:16px 0 6px;border:1px solid var(--border)}
@@ -184,54 +206,80 @@
         <p>Por defecto barre <b>TODOS los negocios</b> del área, cuadrícula por cuadrícula. Elige la zona, dale a Iniciar, y míralos aparecer en vivo.</p>
       </div>
       <div id="serverWarn" class="help" hidden>⚠️ Sin servidor: para escanear en vivo corre <code>node server.js</code> y abre <code>http://localhost:8090</code>. Aquí (archivo suelto) puedes cargar un CSV o pulsar <b>Ejemplo</b>.</div>
-      <div class="cfg">
-        <div class="fld"><label>Zona (departamento / ciudad)</label><select class="field" id="zoneSel" style="min-width:220px"></select></div>
-        <div class="fld"><label>¿Qué buscar?</label>
-          <div class="seg">
-            <label><input type="radio" name="scanmode" value="all" checked><span>Todo el área</span></label>
-            <label><input type="radio" name="scanmode" value="rubros"><span>Por rubro</span></label>
-          </div>
+      <div class="section first">
+        <div class="section-head"><span class="step-num">1</span><div><h3>Elige la zona</h3><p>Departamento y ciudad del Perú, y qué tan fino barrer el mapa.</p></div></div>
+        <div class="form-grid">
+          <div class="fld"><label>Zona (departamento / ciudad)</label><select class="field" id="zoneSel"></select></div>
+          <div class="fld"><label>Tamaño de celda (km)</label><input class="field" id="cellKm" type="number" min="0.2" step="0.1" value="1"></div>
+          <div class="fld"><label>Correos</label><label class="chk" style="padding:9px 0"><input type="checkbox" id="scanEmail" checked> Extraer de las webs</label></div>
+          <div class="fld"><label>Cobertura</label><label class="chk" style="padding:9px 0"><input type="checkbox" id="skipScanned"> Solo lo nuevo</label></div>
         </div>
-        <div class="fld"><label>Celda (km)</label><input class="field num" id="cellKm" type="number" min="0.2" step="0.1" value="1"></div>
-        <div class="fld"><label>Correos</label><label class="chk" style="padding:9px 0"><input type="checkbox" id="scanEmail" checked> Extraer</label></div>
-        <div class="fld"><label>Cobertura</label><label class="chk" style="padding:9px 0"><input type="checkbox" id="skipScanned"> Solo lo nuevo</label></div>
       </div>
-      <div class="rubros" id="rubros" hidden></div>
-      <div class="play-row">
-        <button class="btn primary big" id="playBtn">▶️ Iniciar escaneo</button>
-        <button class="btn amber" id="pauseBtn" hidden>⏸️ Pausar</button>
-        <button class="btn primary" id="resumeBtn" hidden>▶️ Reanudar</button>
-        <button class="btn danger" id="stopBtn" hidden>⏹️ Detener</button>
-        <button class="btn ghost" id="demoBtn">Demo</button>
+
+      <div class="section">
+        <div class="section-head"><span class="step-num">2</span><div><h3>¿Qué buscar?</h3><p>Todo el área, o elige rubros por grupos. Clic en el título de un grupo para marcarlo entero.</p></div></div>
+        <div class="seg">
+          <label><input type="radio" name="scanmode" value="all" checked><span>🌎 Todo el área</span></label>
+          <label><input type="radio" name="scanmode" value="rubros"><span>🎯 Por rubro</span></label>
+        </div>
+        <div class="rub-groups" id="rubros" hidden></div>
       </div>
-      <div class="progress"><div id="progFill"></div></div>
-      <div class="prog-txt" id="progTxt">Listo para escanear.</div>
-      <div class="est" id="estTxt"></div>
-      <div class="est" id="scanMsg" style="margin-top:6px"></div>
+
+      <div class="section">
+        <div class="section-head"><span class="step-num">3</span><div><h3>Inicia el escaneo</h3><p>El mapa se pinta celda por celda y los leads aparecen al instante.</p></div></div>
+        <div class="play-row" style="justify-content:flex-start">
+          <button class="btn primary big" id="playBtn">▶️ Iniciar escaneo</button>
+          <button class="btn amber" id="pauseBtn" hidden>⏸️ Pausar</button>
+          <button class="btn primary" id="resumeBtn" hidden>▶️ Reanudar</button>
+          <button class="btn danger" id="stopBtn" hidden>⏹️ Detener</button>
+          <button class="btn ghost" id="demoBtn">Ver demo</button>
+        </div>
+        <div class="progress"><div id="progFill"></div></div>
+        <div class="prog-txt" id="progTxt">Listo para escanear.</div>
+        <div class="est" id="estTxt"></div>
+        <div class="est" id="scanMsg" style="margin-top:6px"></div>
+      </div>
 
       <details class="adv">
-        <summary>⚙️ Ajustes: Telegram, proxies, guardar zona</summary>
-        <div class="adv-grid">
-          <div class="fld"><label>Telegram — token del bot</label><input class="field" id="cfgToken" placeholder="123456:ABC-..." autocomplete="off"></div>
-          <div class="fld"><label>Telegram — chat_id</label><input class="field" id="cfgChat" placeholder="Tu chat_id"></div>
-          <div class="fld"><label>Proxies (uno por línea; residenciales de pago = mejor)</label><input class="field" id="cfgProxies" placeholder="http://user:pass@host:puerto"></div>
-          <div class="fld"><label>Webhook (opcional, https)</label><input class="field" id="cfgWebhook" placeholder="https://..."></div>
-          <div class="fld"><label>🛡️ Anti-baneo</label><label class="chk" style="padding:8px 0"><input type="checkbox" id="cfgSafe" checked> Modo seguro (pausas + auto-pausa al detectar bloqueo)</label></div>
+        <summary>⚙️ Ajustes avanzados — proxies, anti-baneo, Telegram y filtros</summary>
+
+        <div class="subhead first">🛡️ Anti-baneo y proxies</div>
+        <div class="fld"><label>Proxies — uno por línea (rota entre todos, celda por celda)</label><textarea class="field" id="cfgProxies" rows="5" spellcheck="false" autocomplete="off" style="resize:vertical;line-height:1.6" placeholder="ip:puerto:usuario:clave&#10;o  http://usuario:clave@ip:puerto&#10;(residenciales de pago = mejor)"></textarea></div>
+        <div class="form-grid tight" style="margin-top:12px">
+          <div class="fld"><label>Modo seguro</label><label class="chk" style="padding:8px 0"><input type="checkbox" id="cfgSafe" checked> Pausas + auto-pausa al detectar bloqueo</label></div>
           <div class="fld"><label>Pausa entre celdas (seg, mín–máx)</label><div style="display:flex;gap:6px"><input class="field num" id="cfgPmin" type="number" min="0" value="3"><input class="field num" id="cfgPmax" type="number" min="0" value="8"></div></div>
-          <div class="fld"><label>Excluir cadenas/palabras (coma)</label><input class="field" id="cfgExclude" placeholder="tambo, oxxo, mass, franquicia"></div>
-          <div class="fld"><label>Tope de leads por escaneo (0 = sin tope)</label><input class="field" id="cfgMaxLeads" type="number" min="0" value="0"></div>
           <div class="fld"><label>Reintentos</label><label class="chk" style="padding:8px 0"><input type="checkbox" id="cfgRetry" checked> Reintentar celdas con error</label></div>
         </div>
-        <div class="play-row" style="justify-content:flex-start;margin-top:12px">
-          <label class="chk"><input type="checkbox" id="cfgNotify"> Avisarme cada lead nuevo a Telegram</label>
-          <button class="btn" id="cfgSave">Guardar ajustes</button>
-          <button class="btn" id="cfgTest">Probar Telegram</button>
-          <button class="btn" id="proxFetch">🌐 Proxies gratis</button>
+        <div class="play-row" style="justify-content:flex-start;margin-top:10px">
+          <button class="btn" id="proxFetch">🌐 Traer proxies gratis</button>
           <button class="btn ghost" id="profSafe">🐢 Sigiloso</button>
           <button class="btn ghost" id="profNorm">Normal</button>
           <button class="btn ghost" id="profTurbo">⚡ Turbo</button>
+        </div>
+
+        <div class="subhead">🎯 Filtros de calidad</div>
+        <div class="form-grid tight">
+          <div class="fld"><label>Excluir cadenas / palabras (coma)</label><input class="field" id="cfgExclude" placeholder="tambo, oxxo, mass, franquicia"></div>
+          <div class="fld"><label>Tope de leads por escaneo (0 = sin tope)</label><input class="field" id="cfgMaxLeads" type="number" min="0" value="0"></div>
+        </div>
+
+        <div class="subhead">🔔 Telegram y avisos</div>
+        <div class="form-grid tight">
+          <div class="fld"><label>Token del bot</label><input class="field" id="cfgToken" placeholder="123456:ABC-..." autocomplete="off"></div>
+          <div class="fld"><label>chat_id</label><input class="field" id="cfgChat" placeholder="Tu chat_id"></div>
+          <div class="fld"><label>Webhook (opcional, https)</label><input class="field" id="cfgWebhook" placeholder="https://..."></div>
+        </div>
+        <label class="chk" style="margin-top:12px"><input type="checkbox" id="cfgNotify"> Avisarme cada lead nuevo a Telegram</label>
+
+        <div class="subhead">📍 Mis zonas guardadas</div>
+        <div class="play-row" style="justify-content:flex-start">
           <button class="btn ghost" id="saveZone">📍 Guardar esta zona</button>
-          <select class="field" id="myZones" style="max-width:180px"><option value="">Mis zonas…</option></select>
+          <select class="field" id="myZones" style="max-width:200px"><option value="">Mis zonas…</option></select>
+        </div>
+
+        <div class="play-row" style="justify-content:flex-start;margin-top:16px;border-top:1px solid var(--border);padding-top:15px">
+          <button class="btn primary" id="cfgSave">💾 Guardar ajustes</button>
+          <button class="btn" id="cfgTest">Probar Telegram</button>
         </div>
       </details>
     </div>
@@ -382,7 +430,16 @@ const FOLLOWUP=(n,g)=>`Hola de nuevo 👋, le escribí hace unos días por ${g}.
 const VR=[[/farmac|botica/,"farmacia"],[/celular|reparaci|t[eé]cnico|phone|electr[oó]nic/,"taller_celulares"],[/restaur|comida|cevich|poller|caf[eé]|pizzer|chifa|men[uú]|parrill/,"restaurante"],[/dental|dentist|odont/,"dental"],[/inmobili|bienes ra|propiedad/,"inmobiliaria"],[/gimnas|gym|fitness|crossfit/,"gimnasio"],[/bodega|minimarket|abarrote|market|licorer/,"bodega"],[/ferret/,"ferreteria"],[/hotel|hostal|hosped|lodge/,"hotel"],[/peluquer|sal[oó]n|barber|belleza|spa|est[eé]tica|u[nñ]as/,"belleza"],[/veterin|mascota/,"veterinaria"],[/contab|contador/,"contable"],[/abogad|jur[ií]dic|legal|notari/,"juridico"]];
 const detectV=c=>{c=(c||"").toLowerCase();for(const[re,k]of VR)if(re.test(c))return k;return null;};
 const pitchBy=v=>{const g=v.slice(0,1),k=v.slice(2);return(g==="v"?PITCHES.verticals:PITCHES.servicios)[k];};
-const RUBROS=["farmacia","restaurante","bodega","ferretería","gimnasio","clínica dental","peluquería","barbería","hotel","veterinaria","taller de celulares","estudio contable","estudio jurídico","inmobiliaria","cevichería","pollería","tienda de ropa","cafetería","óptica","minimarket"];
+const RUBRO_GROUPS=[
+  {name:"Comida y bebida",icon:"🍽️",items:["restaurante","pollería","chifa","cevichería","cafetería","juguería","panadería","pizzería"]},
+  {name:"Salud",icon:"💊",items:["farmacia","botica","clínica dental","consultorio médico","veterinaria","óptica"]},
+  {name:"Belleza y cuidado",icon:"💇",items:["peluquería","barbería","spa","gimnasio"]},
+  {name:"Tiendas y comercio",icon:"🛍️",items:["bodega","minimarket","tienda de ropa","zapatería","librería","ferretería","florería","juguetería"]},
+  {name:"Servicios técnicos",icon:"🔧",items:["taller de celulares","cerrajería","lavandería","imprenta","taller mecánico"]},
+  {name:"Profesionales",icon:"💼",items:["estudio contable","estudio jurídico","inmobiliaria","agencia de viajes"]},
+  {name:"Hospedaje",icon:"🏨",items:["hotel","hostal"]}
+];
+const RUBROS=RUBRO_GROUPS.flatMap(g=>g.items);
 const ZONES={"Lima":[["Lima (metropolitana)",-12.20,-77.15,-11.90,-76.90],["Miraflores",-12.14,-77.05,-12.10,-77.01],["San Isidro",-12.11,-77.06,-12.08,-77.02],["Surco",-12.16,-77.02,-12.10,-76.96],["San Juan de Lurigancho",-12.02,-77.02,-11.95,-76.96]],"Arequipa":[["Arequipa (centro)",-16.44,-71.58,-16.36,-71.50]],"La Libertad":[["Trujillo",-8.15,-79.06,-8.07,-78.98]],"Lambayeque":[["Chiclayo",-6.81,-79.88,-6.73,-79.80]],"Piura":[["Piura",-5.22,-80.66,-5.15,-80.59]],"Cusco":[["Cusco",-13.54,-72.00,-13.49,-71.93]],"Junín":[["Huancayo",-12.09,-75.24,-12.02,-75.18]],"Loreto":[["Iquitos",-3.78,-73.28,-3.72,-73.22]],"Ica":[["Ica",-14.09,-75.75,-14.03,-75.69]],"Puno":[["Puno",-15.86,-70.04,-15.81,-69.98]],"Áncash":[["Chimbote",-9.10,-78.60,-9.03,-78.54]],"Tacna":[["Tacna",-18.03,-70.27,-17.98,-70.22]]};
 
 let SERVER=false,es=null,LEADS=[],byId={},meta={},current=null,filter="all",kanbanOn=false,scanWarn=0,scanStart=0;
@@ -622,8 +679,10 @@ const SAMPLE=[
  {title:"Bodega Doña Rosa",category:"Bodega",address:"Av. Brasil 1200, Lima",phone:"",website:"",emails:[],rating:4.0,reviews:23,lat:-12.072,lon:-77.053,link:"m/6",thumb:"",about:"Bodega de barrio.",images:[]}
 ];
 $("#sampleBtn").onclick=()=>{loadAll(SAMPLE);toast("Datos de ejemplo cargados");document.querySelector('.tab[data-tab="resultados"]').click();};
-$("#rubros").innerHTML=RUBROS.map(r=>`<button class="rub" data-r="${r}">${r}</button>`).join("");
-document.querySelectorAll(".rub").forEach(b=>b.onclick=()=>{b.classList.toggle("on");estimate();});
+$("#rubros").innerHTML=RUBRO_GROUPS.map(g=>`<div class="rub-group"><button type="button" class="rub-group-label" title="Marcar/desmarcar todo el grupo"><span>${g.icon} ${g.name}</span><span class="rgl-count">${g.items.length}</span></button><div class="rub-wrap">${g.items.map(r=>`<button type="button" class="rub" data-r="${esc(r)}">${esc(r)}</button>`).join("")}</div></div>`).join("");
+function syncGroupLabels(){document.querySelectorAll("#rubros .rub-group").forEach(gr=>{const chips=[...gr.querySelectorAll(".rub")];const lab=gr.querySelector(".rub-group-label");lab.classList.toggle("on",chips.length>0&&chips.every(c=>c.classList.contains("on")));});}
+document.querySelectorAll("#rubros .rub").forEach(b=>b.onclick=()=>{b.classList.toggle("on");syncGroupLabels();estimate();});
+document.querySelectorAll("#rubros .rub-group-label").forEach(lab=>lab.onclick=()=>{const chips=[...lab.parentElement.querySelectorAll(".rub")];const allOn=chips.every(c=>c.classList.contains("on"));chips.forEach(c=>c.classList.toggle("on",!allOn));syncGroupLabels();estimate();});
 fillZones();loadMyZones();renderChips();render();initMap();detectServer();
 </script>
 </body>
