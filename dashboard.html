@@ -214,7 +214,7 @@
         <div class="adv-grid">
           <div class="fld"><label>Telegram — token del bot</label><input class="field" id="cfgToken" placeholder="123456:ABC-..." autocomplete="off"></div>
           <div class="fld"><label>Telegram — chat_id</label><input class="field" id="cfgChat" placeholder="Tu chat_id"></div>
-          <div class="fld"><label>Proxies (opcional, para volumen)</label><input class="field" id="cfgProxies" placeholder="http://user:pass@host:puerto"></div>
+          <div class="fld"><label>Proxies (uno por línea; residenciales de pago = mejor)</label><input class="field" id="cfgProxies" placeholder="http://user:pass@host:puerto"></div>
           <div class="fld"><label>Webhook (opcional, https)</label><input class="field" id="cfgWebhook" placeholder="https://..."></div>
           <div class="fld"><label>🛡️ Anti-baneo</label><label class="chk" style="padding:8px 0"><input type="checkbox" id="cfgSafe" checked> Modo seguro (pausas + auto-pausa al detectar bloqueo)</label></div>
           <div class="fld"><label>Pausa entre celdas (seg, mín–máx)</label><div style="display:flex;gap:6px"><input class="field num" id="cfgPmin" type="number" min="0" value="3"><input class="field num" id="cfgPmax" type="number" min="0" value="8"></div></div>
@@ -226,6 +226,7 @@
           <label class="chk"><input type="checkbox" id="cfgNotify"> Avisarme cada lead nuevo a Telegram</label>
           <button class="btn" id="cfgSave">Guardar ajustes</button>
           <button class="btn" id="cfgTest">Probar Telegram</button>
+          <button class="btn" id="proxFetch">🌐 Proxies gratis</button>
           <button class="btn ghost" id="profSafe">🐢 Sigiloso</button>
           <button class="btn ghost" id="profNorm">Normal</button>
           <button class="btn ghost" id="profTurbo">⚡ Turbo</button>
@@ -599,6 +600,7 @@ $("#cfgSave").onclick=saveCfg;$("#cfgTest").onclick=testTg;
 $("#profSafe").onclick=()=>{$("#cfgPmin").value=6;$("#cfgPmax").value=12;$("#cfgSafe").checked=true;saveCfg();toast("Perfil Sigiloso");};
 $("#profNorm").onclick=()=>{$("#cfgPmin").value=3;$("#cfgPmax").value=8;$("#cfgSafe").checked=true;saveCfg();toast("Perfil Normal");};
 $("#profTurbo").onclick=()=>{$("#cfgPmin").value=1;$("#cfgPmax").value=3;saveCfg();toast("Perfil Turbo (más rápido, más riesgo)");};
+$("#proxFetch").onclick=()=>{if(!confirm("Traer proxies públicas GRATIS y probar cuáles funcionan.\n\nOjo: son de terceros, poco confiables y pueden ver tu tráfico. Para volumen serio usa residenciales de pago.\n\n¿Continuar?"))return;const b=$("#proxFetch");b.disabled=true;b.textContent="Buscando…";toast("Buscando proxies vivas… puede tardar ~30s");fetch("/api/proxies/fetch",{method:"POST"}).then(r=>r.json()).then(j=>{$("#cfgProxies").value=j.proxies||"";toast(j.working?(j.working+" proxies vivas de "+j.total+" · guardadas y listas para el escaneo"):("0 vivas de "+j.total+" — reintenta o usa proxies de pago"));}).catch(()=>toast("No se pudo (¿sin internet o servidor?)")).finally(()=>{b.disabled=false;b.textContent="🌐 Proxies gratis";});};
 $("#viewBtn").onclick=()=>setView(!kanbanOn);
 $("#mService").onchange=buildMsg;$("#mFollow").onchange=buildMsg;$("#mClose").onclick=closeModal;$("#modalBg").onclick=e=>{if(e.target===$("#modalBg"))closeModal();};
 $("#mCopy").onclick=()=>{if(current)setMeta(idOf(current),{lastContact:Date.now(),state:getMeta(idOf(current)).state==="nuevo"?"contactado":getMeta(idOf(current)).state});saveModal();copyTxt($("#mText").value,"Mensaje copiado ✓");};

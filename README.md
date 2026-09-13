@@ -117,7 +117,7 @@ go build -o gms .
 Activado por defecto en **⚙️ Ajustes**. Para que Google no bloquee tu IP al escanear:
 
 - **Pausas aleatorias entre celdas** (3–8 s, configurables) + concurrencia baja (`-c 1`), para no martillar.
-- **Rotación de proxies**: pon varios en Ajustes (uno por línea o separados por coma) y el scraper los rota.
+- **Rotación de proxies**: pon varios en Ajustes (uno por línea) y el scraper los rota, **cambiando de proxy al detectar bloqueo**. El botón **🌐 Proxies gratis** trae listas públicas y **prueba cuáles funcionan** (las guarda y las usa el escáner). ⚠️ Las proxies gratis son poco confiables y de terceros que podrían ver tu tráfico; para volumen serio usa **residenciales de pago**.
 - **Detección de bloqueos** (ERR_TUNNEL, 429, 403, captcha) con **backoff exponencial** y **auto-pausa**: si varias celdas seguidas salen bloqueadas, el escaneo se **pausa solo** y te avisa. Configura proxies o espera un rato y pulsa **Reanudar**.
 - **Empieza suave**: celdas de 2–3 km y modo "Por rubro" generan menos búsquedas y menos bloqueos que "Todo el área".
 

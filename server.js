@@ -72,6 +72,26 @@ function pumpTg() {
   tgSend(txt).then(() => setTimeout(() => { tgBusy = false; pumpTg(); }, 1300));
 }
 
+// ---------- Proxies públicas (opcional; ver riesgos en README) ----------
+const PROXY_SOURCES = [
+  "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt",
+  "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks5.txt",
+  "https://raw.githubusercontent.com/clarketm/proxy-list/master/proxy-list-raw.txt",
+  "https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/http.txt",
+  "https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/socks5.txt",
+  "https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/http.txt",
+  "https://raw.githubusercontent.com/mmpx12/proxy-list/master/http.txt",
+  "https://raw.githubusercontent.com/hookzof/socks5_list/master/proxy.txt",
+  "https://raw.githubusercontent.com/proxifly/free-proxy-list/main/proxies/protocols/http/data.txt",
+  "https://api.proxyscrape.com/v2/?request=getproxies&protocol=http&timeout=8000&country=all&ssl=all&anonymity=all",
+  "https://www.proxy-list.download/api/v1/get?type=http",
+  "https://openproxylist.xyz/http.txt"
+];
+function httpGet(url) { return new Promise(res => { try { const u = new URL(url); const lib = u.protocol === "http:" ? http : https; const req = lib.request({ hostname: u.hostname, port: u.port || (u.protocol === "http:" ? 80 : 443), path: u.pathname + u.search, method: "GET", timeout: 12000, headers: { "User-Agent": "Mozilla/5.0" } }, r => { let b = ""; r.on("data", d => b += d); r.on("end", () => res(b)); }); req.on("error", () => res("")); req.on("timeout", () => { req.destroy(); res(""); }); req.end(); } catch (e) { res(""); } }); }
+async function fetchProxyList() { const set = new Set(); await Promise.all(PROXY_SOURCES.map(async s => { const t = await httpGet(s); (t.match(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d{2,5}\b/g) || []).forEach(p => set.add(p)); })); return [...set].slice(0, 12000); }
+function testProxy(pxy) { return new Promise(res => { const m = pxy.replace(/^https?:\/\//, "").split(":"), host = m[0], port = +m[1] || 8080; let done = false; const fin = ok => { if (!done) { done = true; res(ok); } }; try { const req = http.request({ host, port, method: "GET", path: "http://www.google.com/generate_204", headers: { Host: "www.google.com" }, timeout: 5000 }, r => { r.destroy(); fin(true); }); req.on("error", () => fin(false)); req.on("timeout", () => { req.destroy(); fin(false); }); req.end(); } catch (e) { fin(false); } }); }
+async function fetchAndTestProxies() { const list = await fetchProxyList(); const working = []; const batch = 50; const deadline = Date.now() + 75000; for (let i = 0; i < list.length && working.length < 250 && Date.now() < deadline; i += batch) { const chunk = list.slice(i, i + batch); const ok = await Promise.all(chunk.map(testProxy)); chunk.forEach((p, j) => { if (ok[j]) working.push("http://" + p); }); } log(`Proxies: ${working.length} vivas de ${list.length} candidatas`); return { total: list.length, working }; }
+
 // ---------- CSV ----------
 function parseCSV(t) { const rows = []; let row = [], f = "", q = false; for (let i = 0; i < t.length; i++) { const c = t[i]; if (q) { if (c === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; } else { if (c === '"') q = true; else if (c === ",") { row.push(f); f = ""; } else if (c === "\n") { row.push(f); rows.push(row); row = []; f = ""; } else if (c !== "\r") f += c; } } if (f.length || row.length) { row.push(f); rows.push(row); } return rows; }
 function emails(s) { if (!s) return []; const m = ("" + s).match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || []; return [...new Set(m.map(x => x.toLowerCase()))]; }
@@ -121,6 +141,13 @@ function scheduleNext() { if (!scan || !scan.running || scan.paused) return; let
 function advance() { if (!scan) return; scan.idx++; broadcast("progress", { cellsDone: scan.idx, cellsTotal: scan.cells.length, found: scan.found }); scheduleNext(); }
 function nextCell() { advance(); }
 function finishCell(cell) {
+  // Iterar entre proxies: si una celda se bloquea, reintentar con otra proxy (no perder la celda)
+  if (cell._blocked && scan.proxyList && scan.proxyList.length > 0 && (cell._tries || 0) < 3 && !scan.paused && !scan.demo) {
+    cell._tries = (cell._tries || 0) + 1; scan.proxyIdx++; cell._blocked = false; cell.found = 0;
+    log("Reintento de celda con otra proxy (intento " + cell._tries + ")");
+    broadcast("cell", { key: cell.key, state: "scanning" });
+    nextT = setTimeout(() => runCell(cell), 800); return;
+  }
   cell.state = cell.found > 0 ? "done" : (cell._blocked ? "error" : "empty");
   broadcast("cell", { key: cell.key, state: cell.state, found: cell.found });
   if (cell._blocked) { scan.consecBlocks = (scan.consecBlocks || 0) + 1; if (scan.proxyList && scan.proxyList.length > 1) { scan.proxyIdx++; log("Cambio de proxy tras bloqueo"); } } else if (cell.found > 0) scan.consecBlocks = 0;
@@ -202,7 +229,8 @@ const server = http.createServer(async (req, res) => {
   if (p === "/api/config" && req.method === "POST") { const b = await body(req); ["telegramToken", "telegramChat", "webhookUrl", "proxies", "leadsdbKey", "exclude"].forEach(k => { if (typeof b[k] === "string") cfg[k] = b[k]; }); ["pauseMin", "pauseMax", "depth", "maxBlocks", "subdivideAt", "maxLeads"].forEach(k => { if (typeof b[k] === "number" && b[k] >= 0) cfg[k] = b[k]; }); if (b.notify !== undefined) cfg.notify = !!b.notify; if (b.safeMode !== undefined) cfg.safeMode = !!b.safeMode; if (b.subdivide !== undefined) cfg.subdivide = !!b.subdivide; if (b.retryFailed !== undefined) cfg.retryFailed = !!b.retryFailed; saveCfg(); return json(res, { ok: true }); }
   if (p === "/api/test-telegram" && req.method === "POST") { const b = await body(req); if (b && typeof b.telegramToken === "string" && b.telegramToken) { cfg.telegramToken = b.telegramToken; cfg.telegramChat = b.telegramChat || cfg.telegramChat; saveCfg(); } return json(res, await tgSend("✅ BUSCA-CHAMBA-3000 conectado. Aquí te llegarán los leads nuevos.")); }
   if (p === "/api/logs") { res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8", "Access-Control-Allow-Origin": "*" }); return res.end(logs.join("\n") || "(sin logs)"); }
-  if (p === "/api/reset" && req.method === "POST") { db = { leads: {}, order: [], history: db.history || [] }; scan = null; save(); broadcast("reset", {}); return json(res, { ok: true }); }
+  if (p === "/api/proxies/fetch" && req.method === "POST") { const r = await fetchAndTestProxies(); if (r.working.length) { cfg.proxies = r.working.join("\n"); saveCfg(); } return json(res, { total: r.total, working: r.working.length, proxies: r.working.join("\n") }); }
+  if (p === "/api/reset" && req.method === "POST") { db = { leads: {}, order: [], history: db.history || [], scanned: db.scanned || [] }; scan = null; save(); broadcast("reset", {}); return json(res, { ok: true }); }
   res.writeHead(404, { "Access-Control-Allow-Origin": "*" }); res.end("not found");
 });
 server.listen(PORT, () => console.log(`BUSCA-CHAMBA-3000 → http://localhost:${PORT}  (${db.order.length} leads${AUTH ? ", con login" : ""})`));
