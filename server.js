@@ -39,7 +39,7 @@ const CATEGORIES = [...new Set(CATEGORY_GROUPS.flatMap(g => g.items))];
 
 // ---------- DB & Config ----------
 let db = load(DB_FILE, { leads: {}, order: [], history: [], scanned: [] });
-let cfg = load(CFG_FILE, { telegramToken: "", telegramChat: "", webhookUrl: "", proxies: "", leadsdbKey: "", notify: false, safeMode: true, pauseMin: 3, pauseMax: 8, depth: 0, maxBlocks: 4, subdivide: true, subdivideAt: 90, exclude: "", maxLeads: 0, retryFailed: true });
+let cfg = load(CFG_FILE, { telegramToken: "", telegramChat: "", webhookUrl: "", proxies: "", leadsdbKey: "", notify: false, safeMode: true, pauseMin: 3, pauseMax: 8, depth: 0, maxBlocks: 4, subdivide: true, subdivideAt: 90, exclude: "", maxLeads: 0, retryFailed: true, cellMax: 6 });
 function load(f, d) { try { return Object.assign({}, d, JSON.parse(fs.readFileSync(f, "utf8"))); } catch (e) { return d; } }
 let saveT = null;
 function save() { clearTimeout(saveT); saveT = setTimeout(() => { try { fs.writeFileSync(DB_FILE, JSON.stringify(db)); } catch (e) {} }, 250); }
@@ -141,9 +141,9 @@ function addLead(l) {
 }
 
 // ---------- Escaneo por cuadrícula ----------
-let scan = null, child = null, pollT = null, demoT = null, nextT = null, curCell = null, curEmitted = 0, lastLogB = 0;
+let scan = null, child = null, pollT = null, demoT = null, nextT = null, curCell = null, curEmitted = 0, lastLogB = 0, cellTimer = null, cellStart = 0;
 const BLOCK_RE = /ERR_TUNNEL|\b429\b|\b403\b|captcha|unusual traffic|too many requests|rate.?limit|sorry\/index/i;
-function statusObj() { if (!scan) return { running: false }; const done = scan.cells.filter(c => ["done", "empty", "error"].includes(c.state)).length; return { running: scan.running, paused: scan.paused, mode: scan.mode, cellsTotal: scan.cells.length, cellsDone: done, found: scan.found }; }
+function statusObj() { if (!scan) return { running: false }; const done = scan.cells.filter(c => ["done", "empty", "error"].includes(c.state)).length; return { running: scan.running, paused: scan.paused, mode: scan.mode, cellsTotal: scan.cells.length, cellsDone: done, found: scan.found, cellIdx: Math.min(scan.idx + 1, scan.cells.length), cellFound: curCell ? (curCell.found || 0) : 0, cellSecs: (scan.running && !scan.paused && cellStart) ? Math.round((Date.now() - cellStart) / 1000) : 0, queries: (scan.queries || []).length }; }
 function computeCells(area, cellKm) { const [s, w, n, e] = area, latC = (s + n) / 2, dLat = cellKm / 111, dLon = cellKm / (111 * Math.cos(latC * Math.PI / 180)), cells = []; for (let lat = s; lat < n; lat += dLat) for (let lon = w; lon < e; lon += dLon) { const top = Math.min(lat + dLat, n), right = Math.min(lon + dLon, e); cells.push({ key: lat.toFixed(4) + "_" + lon.toFixed(4), bbox: [lat, lon, top, right], state: "pending", found: 0, km: cellKm, depth: 0 }); } return cells; }
 function splitCell(c) { const [s, w, n, e] = c.bbox, mLat = (s + n) / 2, mLon = (w + e) / 2, km = (c.km || 1) / 2, d = (c.depth || 0) + 1; return [[s, w, mLat, mLon], [s, mLon, mLat, e], [mLat, w, n, mLon], [mLat, mLon, n, e]].map((bb, i) => ({ key: c.key + "s" + i, bbox: bb, state: "pending", found: 0, km, depth: d })); }
 function startScan(cfgIn) {
@@ -194,7 +194,7 @@ function finishCell(cell) {
 function runCell(cell) {
   if (scan.proxyList && scan.proxyList.length) { if (scan.proxyIdx >= scan.proxyList.length) { shuffle(scan.proxyList); scan.proxyIdx = 0; } scan.curProxy = scan.proxyList[scan.proxyIdx]; scan.proxyIdx++; log("Celda " + cell.key + " → proxy " + scan.curProxy.replace(/\/\/.*@/, "//***@")); }
   fs.writeFileSync(Q_FILE, scan.queries.join("\n") + "\n"); try { fs.writeFileSync(CELL_CSV, ""); } catch (e) {}
-  curCell = cell; curEmitted = 0;
+  curCell = cell; curEmitted = 0; cellStart = Date.now();
   const bb = cell.bbox.map(x => x.toFixed(5)).join(",");
   const cmd = buildCmd(bb);
   if (cmd.error) { log("ERROR: " + cmd.error); broadcast("error", { message: cmd.error }); scan.running = false; broadcast("status", statusObj()); return; }
@@ -202,7 +202,10 @@ function runCell(cell) {
   catch (e) { cell.state = "error"; broadcast("cell", { key: cell.key, state: "error" }); return nextCell(); }
   child.stderr.on("data", d => { const s = d.toString().trim(); if (!s) return; log(s.slice(0, 200)); if (BLOCK_RE.test(s)) cell._blocked = true; const now = Date.now(); if (/panic|cannot|refused|no such|not found|forbidden|blocked|denied|ERR_/i.test(s) && now - lastLogB > 4000) { lastLogB = now; broadcast("log", { line: s.slice(0, 150) }); } });
   pollT = setInterval(() => ingestCell(), 700);
-  child.on("exit", () => { clearInterval(pollT); ingestCell(); child = null; finishCell(cell); });
+  const maxMin = Math.max(1, +cfg.cellMax || 6);
+  clearTimeout(cellTimer);
+  cellTimer = setTimeout(() => { if (child) { log("Celda " + cell.key + " pasó de " + maxMin + " min; la cierro y sigo con la siguiente"); cell._timedout = true; try { child.kill("SIGKILL"); } catch (e) {} } }, maxMin * 60000);
+  child.on("exit", () => { clearTimeout(cellTimer); clearInterval(pollT); ingestCell(); child = null; finishCell(cell); });
   child.on("error", () => { clearInterval(pollT); child = null; cell.state = "error"; broadcast("cell", { key: cell.key, state: "error" }); nextCell(); });
 }
 function ingestCell() { let text; try { text = fs.readFileSync(CELL_CSV, "utf8"); } catch (e) { return; } if (!text) return; const endsNL = /\n$/.test(text); let rows = parseCSV(text); if (!endsNL && rows.length) rows = rows.slice(0, -1); if (rows.length < 2) return; const H = rows[0].map(h => h.trim().toLowerCase()); for (let i = 1 + curEmitted; i < rows.length; i++) { const l = rowToLead(H, rows[i]); if (l) addLead(l); } curEmitted = rows.length - 1; }
@@ -229,6 +232,7 @@ function finish() {
 }
 function pause() { if (scan) { scan.paused = true; broadcast("status", statusObj()); } return { ok: true }; }
 function resume() { if (scan) { scan.paused = false; scan.consecBlocks = 0; broadcast("status", statusObj()); processNext(); } return { ok: true }; }
+function _stopTimers(){ clearTimeout(cellTimer); }
 function stop() { if (demoT) { clearTimeout(demoT); demoT = null; } if (nextT) { clearTimeout(nextT); nextT = null; } if (pollT) { clearInterval(pollT); pollT = null; } if (child) { try { child.kill("SIGTERM"); } catch (e) {} child = null; } if (scan) { scan.running = false; broadcast("status", statusObj()); broadcast("done", { found: scan.found, cells: scan.cells.length }); } return { ok: true }; }
 
 const DNAMES = [["Botica ", "Farmacia", 0], ["Restaurante ", "Restaurante", 1], ["Barbería ", "Barbería", 0], ["Ferretería ", "Ferretería", 0], ["Gimnasio ", "Gimnasio", 1], ["Bodega ", "Bodega", 0], ["Dental ", "Clínica dental", 1], ["TecniCell ", "Taller de celulares", 0]];
@@ -263,7 +267,7 @@ const server = http.createServer(async (req, res) => {
   if (p === "/api/scan/stop" && req.method === "POST") return json(res, stop());
   if (p === "/api/lead/update" && req.method === "POST") { const b = await body(req); return json(res, updateLead(b.id, b.patch || {})); }
   if (p === "/api/config" && req.method === "GET") return json(res, { telegramChat: cfg.telegramChat, hasToken: !!cfg.telegramToken, webhookUrl: cfg.webhookUrl, proxies: cfg.proxies, notify: !!cfg.notify, leadsdb: !!cfg.leadsdbKey, safeMode: cfg.safeMode !== false, pauseMin: cfg.pauseMin, pauseMax: cfg.pauseMax, exclude: cfg.exclude || "", maxLeads: cfg.maxLeads || 0, retryFailed: cfg.retryFailed !== false });
-  if (p === "/api/config" && req.method === "POST") { const b = await body(req); ["telegramToken", "telegramChat", "webhookUrl", "proxies", "leadsdbKey", "exclude"].forEach(k => { if (typeof b[k] === "string") cfg[k] = b[k]; }); ["pauseMin", "pauseMax", "depth", "maxBlocks", "subdivideAt", "maxLeads"].forEach(k => { if (typeof b[k] === "number" && b[k] >= 0) cfg[k] = b[k]; }); if (b.notify !== undefined) cfg.notify = !!b.notify; if (b.safeMode !== undefined) cfg.safeMode = !!b.safeMode; if (b.subdivide !== undefined) cfg.subdivide = !!b.subdivide; if (b.retryFailed !== undefined) cfg.retryFailed = !!b.retryFailed; saveCfg(); return json(res, { ok: true }); }
+  if (p === "/api/config" && req.method === "POST") { const b = await body(req); ["telegramToken", "telegramChat", "webhookUrl", "proxies", "leadsdbKey", "exclude"].forEach(k => { if (typeof b[k] === "string") cfg[k] = b[k]; }); ["pauseMin", "pauseMax", "depth", "maxBlocks", "subdivideAt", "maxLeads", "cellMax"].forEach(k => { if (typeof b[k] === "number" && b[k] >= 0) cfg[k] = b[k]; }); if (b.notify !== undefined) cfg.notify = !!b.notify; if (b.safeMode !== undefined) cfg.safeMode = !!b.safeMode; if (b.subdivide !== undefined) cfg.subdivide = !!b.subdivide; if (b.retryFailed !== undefined) cfg.retryFailed = !!b.retryFailed; saveCfg(); return json(res, { ok: true }); }
   if (p === "/api/test-telegram" && req.method === "POST") { const b = await body(req); if (b && typeof b.telegramToken === "string" && b.telegramToken) { cfg.telegramToken = b.telegramToken; cfg.telegramChat = b.telegramChat || cfg.telegramChat; saveCfg(); } return json(res, await tgSend("✅ BUSCA-CHAMBA-3000 conectado. Aquí te llegarán los leads nuevos.")); }
   if (p === "/api/logs") { res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8", "Access-Control-Allow-Origin": "*" }); return res.end(logs.join("\n") || "(sin logs)"); }
   if (p === "/api/proxies/fetch" && req.method === "POST") { const r = await fetchAndTestProxies(); if (r.working.length) { cfg.proxies = r.working.join("\n"); saveCfg(); } return json(res, { total: r.total, working: r.working.length, proxies: r.working.join("\n") }); }

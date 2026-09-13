@@ -751,12 +751,17 @@ function connectSSE(){try{es=new EventSource("/api/stream");}catch(e){return;}
   es.addEventListener("log",()=>{scanWarn++;});
   es.addEventListener("blocked",e=>{let d={};try{d=JSON.parse(e.data);}catch(x){}toast("🛡️ Auto-pausado: posible bloqueo de Google tras "+(d.consec||"varias")+" celdas.");$("#scanMsg").innerHTML='🛡️ <b>Pausado por posible bloqueo de Google.</b> Configura proxies en ⚙️ Ajustes o espera un rato y pulsa <b>Reanudar</b>. <a href="/api/logs" target="_blank">Ver logs</a>';});
 }
-function onStatus(st){const run=!!st.running,pau=!!st.paused;
+let LASTST={};
+function onStatus(st){LASTST=st||{};const run=!!st.running,pau=!!st.paused;
   $("#playBtn").hidden=run;
   $("#stopBtn").hidden=!run;$("#pauseBtn").hidden=!run||pau;$("#resumeBtn").hidden=!run||!pau;
   $("#modeDot").className="dot"+(SERVER?(run?" live":" on"):"");
   if(st.cellsTotal)setProg(st.cellsDone||0,st.cellsTotal,st.found||0,run,pau);}
-function setProg(done,total,found,run,pau){const pct=total?Math.round(done/total*100):0;$("#progFill").style.width=pct+"%";let eta="";if(run&&!pau&&done>0&&total>done&&scanStart){const rem=Math.round((Date.now()-scanStart)/done*(total-done)/1000);eta=" · ETA ~"+(rem<60?rem+"s":Math.round(rem/60)+"min");}$("#progTxt").textContent=(total?`Celdas ${done}/${total} (${pct}%) · `:"")+`${found||LEADS.length} negocios`+(pau?" · ⏸️ en pausa":run?" · escaneando…"+eta:total&&done>=total?" · ✅ listo":"")+(scanWarn?` · ⚠️ ${scanWarn} avisos`:"");const pg=document.querySelector(".progress");if(pg)pg.classList.toggle("live",!!run&&!pau);}
+function setProg(done,total,found,run,pau){const pct=total?Math.round(done/total*100):0;$("#progFill").style.width=pct+"%";let eta="";if(run&&!pau&&done>0&&total>done&&scanStart){const rem=Math.round((Date.now()-scanStart)/done*(total-done)/1000);eta=" · ETA ~"+(rem<60?rem+"s":Math.round(rem/60)+"min");}$("#progTxt").textContent=(total?`Celdas ${done}/${total} (${pct}%) · `:"")+`${found||LEADS.length} negocios`+(pau?" · ⏸️ en pausa":run?" · escaneando…"+eta:total&&done>=total?" · ✅ listo":"")+(scanWarn?` · ⚠️ ${scanWarn} avisos`:"");
+  const secs=LASTST.cellSecs||0,mm=Math.floor(secs/60),ss=secs%60;
+  $("#estTxt").textContent=(run&&!pau&&LASTST.cellIdx)
+    ? `Celda ${LASTST.cellIdx} en curso · ${mm?mm+"m ":""}${ss}s · ${LASTST.cellFound||0} negocios en esta celda · ${LASTST.queries||0} búsquedas por celda`
+    : $("#estTxt").textContent;const pg=document.querySelector(".progress");if(pg)pg.classList.toggle("live",!!run&&!pau);}
 function detectServer(){fetch("/api/status").then(r=>r.ok?r.json():Promise.reject()).then(()=>{SERVER=true;setMode(true);
   fetch("/api/leads").then(r=>r.json()).then(d=>{(d.leads||[]).forEach(l=>{if(l._meta)meta[idOf(l)]=l._meta;});loadAll(d.leads||[]);if(d.cells&&d.cells.length)drawServerCells(d.cells);if(d.history)renderHistory(d.history);onStatus(d.status||{});});
   fetch("/api/config").then(r=>r.json()).then(c=>{$("#cfgChat").value=c.telegramChat||"";$("#cfgProxies").value=c.proxies||"";$("#cfgWebhook").value=c.webhookUrl||"";$("#cfgNotify").checked=!!c.notify;$("#cfgSafe").checked=c.safeMode!==false;if(c.pauseMin!=null)$("#cfgPmin").value=c.pauseMin;if(c.pauseMax!=null)$("#cfgPmax").value=c.pauseMax;$("#cfgExclude").value=c.exclude||"";if(c.maxLeads!=null)$("#cfgMaxLeads").value=c.maxLeads;$("#cfgRetry").checked=c.retryFailed!==false;if(c.hasToken)$("#cfgToken").placeholder="(token guardado)";}).catch(()=>{});
