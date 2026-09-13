@@ -1,0 +1,10 @@
+services:
+  gmaps-scraper:
+    image: gosom/google-maps-scraper:latest
+    container_name: gmaps-scraper
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./gmapsdata:/gmapsdata
+    command: ["-data-folder", "/gmapsdata"]

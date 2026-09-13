@@ -1,0 +1,17 @@
+# Salidas del scraper (no versionar datos scrapeados)
+salidas/
+gmapsdata/
+webdata/
+*.csv
+*.json
+
+# Binarios compilados
+gms
+google-maps-scraper
+
+# Credenciales / config local
+.env
+proxies.txt
+
+# Sistema
+.DS_Store
