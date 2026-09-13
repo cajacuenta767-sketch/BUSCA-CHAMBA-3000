@@ -326,6 +326,7 @@ const esc=s=>(""+(s==null?"":s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;","
 const waN=p=>{let d=(p||"").replace(/\D/g,"");if(!d)return"";if(d.length===9&&d[0]==="9")d="51"+d;return d;};
 const isMobile=p=>{const d=(p||"").replace(/\D/g,"");return d.length===9&&d[0]==="9"||/^519\d{8}$/.test(d);};
 const emailsOf=s=>{if(Array.isArray(s))return s;if(!s)return[];const m=(""+s).match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g)||[];return[...new Set(m.map(x=>x.toLowerCase()))];};
+const cleanDesc=s=>{s=(""+(s==null?"":s)).trim();return /^[\[{]/.test(s)?"":s;};
 const idOf=l=>{const ph=(l.phone||"").replace(/\D/g,"");return l.link||(ph?"tel:"+ph:(l.title+"|"+l.address));};
 const cityOf=l=>{const p=(l.address||"").split(",");return (p[p.length-1]||"").trim();};
 const todayStr=()=>new Date().toISOString().slice(0,10);
@@ -360,13 +361,13 @@ const pitchBy=v=>{const g=v.slice(0,1),k=v.slice(2);return(g==="v"?PITCHES.verti
 const RUBROS=["farmacia","restaurante","bodega","ferretería","gimnasio","clínica dental","peluquería","barbería","hotel","veterinaria","taller de celulares","estudio contable","estudio jurídico","inmobiliaria","cevichería","pollería","tienda de ropa","cafetería","óptica","minimarket"];
 const ZONES={"Lima":[["Lima (metropolitana)",-12.20,-77.15,-11.90,-76.90],["Miraflores",-12.14,-77.05,-12.10,-77.01],["San Isidro",-12.11,-77.06,-12.08,-77.02],["Surco",-12.16,-77.02,-12.10,-76.96],["San Juan de Lurigancho",-12.02,-77.02,-11.95,-76.96]],"Arequipa":[["Arequipa (centro)",-16.44,-71.58,-16.36,-71.50]],"La Libertad":[["Trujillo",-8.15,-79.06,-8.07,-78.98]],"Lambayeque":[["Chiclayo",-6.81,-79.88,-6.73,-79.80]],"Piura":[["Piura",-5.22,-80.66,-5.15,-80.59]],"Cusco":[["Cusco",-13.54,-72.00,-13.49,-71.93]],"Junín":[["Huancayo",-12.09,-75.24,-12.02,-75.18]],"Loreto":[["Iquitos",-3.78,-73.28,-3.72,-73.22]],"Ica":[["Ica",-14.09,-75.75,-14.03,-75.69]],"Puno":[["Puno",-15.86,-70.04,-15.81,-69.98]],"Áncash":[["Chimbote",-9.10,-78.60,-9.03,-78.54]],"Tacna":[["Tacna",-18.03,-70.27,-17.98,-70.22]]};
 
-let SERVER=false,es=null,LEADS=[],byId={},meta={},current=null,filter="all",kanbanOn=false;
+let SERVER=false,es=null,LEADS=[],byId={},meta={},current=null,filter="all",kanbanOn=false,scanWarn=0;
 function getMeta(id){return meta[id]||{state:"nuevo",notes:""};}
 function setMeta(id,patch){meta[id]=Object.assign(getMeta(id),patch);if(SERVER)fetch("/api/lead/update",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,patch:meta[id]})}).catch(()=>{});else store.set("bc3k_meta",meta);}
 
 // ---- CSV (archivo) ----
 function parseCSV(t){const rows=[];let row=[],f="",q=false;for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++;}else q=false;}else f+=c;}else{if(c==='"')q=true;else if(c===","){row.push(f);f="";}else if(c==="\n"){row.push(f);rows.push(row);row=[];f="";}else if(c!=="\r")f+=c;}}if(f.length||row.length){row.push(f);rows.push(row);}return rows;}
-function rowsToLeads(rows){if(!rows.length)return[];const H=rows[0].map(h=>h.trim().toLowerCase());const gi=n=>H.indexOf(n),g=(r,n)=>{const i=gi(n);return i>=0?(r[i]||"").trim():"";};const out=[];for(let k=1;k<rows.length;k++){const r=rows[k];if(r.length===1&&r[0]==="")continue;const t=g(r,"title");if(!t)continue;out.push({title:t,category:g(r,"category"),address:g(r,"complete_address")||g(r,"address"),phone:g(r,"phone"),website:g(r,"website"),emails:emailsOf(g(r,"emails")),rating:parseFloat(g(r,"review_rating"))||0,reviews:parseInt(g(r,"review_count").replace(/\D/g,""))||0,lat:parseFloat(g(r,"latitude"))||0,lon:parseFloat(g(r,"longitude"))||0,link:g(r,"link"),thumb:g(r,"thumbnail"),about:g(r,"about")||g(r,"descriptions"),images:(g(r,"images")||"").split(/[|;,\s]+/).filter(u=>/^https?:/.test(u)).slice(0,6)});}return out;}
+function rowsToLeads(rows){if(!rows.length)return[];const H=rows[0].map(h=>h.trim().toLowerCase());const gi=n=>H.indexOf(n),g=(r,n)=>{const i=gi(n);return i>=0?(r[i]||"").trim():"";};const out=[];for(let k=1;k<rows.length;k++){const r=rows[k];if(r.length===1&&r[0]==="")continue;const t=g(r,"title");if(!t)continue;out.push({title:t,category:g(r,"category"),address:g(r,"complete_address")||g(r,"address"),phone:g(r,"phone"),website:g(r,"website"),emails:emailsOf(g(r,"emails")),rating:parseFloat(g(r,"review_rating"))||0,reviews:parseInt(g(r,"review_count").replace(/\D/g,""))||0,lat:parseFloat(g(r,"latitude"))||0,lon:parseFloat(g(r,"longitude"))||0,link:g(r,"link"),thumb:g(r,"thumbnail"),about:cleanDesc(g(r,"descriptions")||g(r,"about")),images:(g(r,"images")||"").split(/[|;,\s]+/).filter(u=>/^https?:/.test(u)).slice(0,6)});}return out;}
 
 // ---- Filtros / render ----
 const CHIPS=[["all","Todos",""],["today","📅 Para hoy",""],["noweb","🔥 Sin web","warn"],["wa","WhatsApp",""],["mail","Con correo",""],["web","Con web",""]];
@@ -474,21 +475,21 @@ function loadAll(arr){LEADS=[];byId={};$("#grid").innerHTML="";arr.forEach(l=>ad
 function setMode(on){$("#modeDot").className="dot"+(on?" on":"");$("#modeTxt").textContent=on?"En vivo (servidor)":"Modo archivo";$("#serverWarn").hidden=on;["playBtn","pauseBtn","resumeBtn","stopBtn","demoBtn"].forEach(id=>$("#"+id).disabled=!on);}
 function connectSSE(){try{es=new EventSource("/api/stream");}catch(e){return;}
   es.addEventListener("lead",e=>addLead(JSON.parse(e.data),true));
-  es.addEventListener("cells",e=>{const d=JSON.parse(e.data);drawServerCells(d.cells,d.area);setProg(0,d.total,0,true);});
+  es.addEventListener("cells",e=>{const d=JSON.parse(e.data);scanWarn=0;drawServerCells(d.cells,d.area);setProg(0,d.total,0,true);});
   es.addEventListener("cell",e=>{const d=JSON.parse(e.data);updateCell(d.key,d.state);});
   es.addEventListener("progress",e=>{const d=JSON.parse(e.data);setProg(d.cellsDone,d.cellsTotal,d.found,true);});
   es.addEventListener("status",e=>onStatus(JSON.parse(e.data)));
-  es.addEventListener("done",e=>{const d=JSON.parse(e.data);onStatus({running:false});toast("Escaneo terminado: "+(d.found||0)+" negocios");});
+  es.addEventListener("done",e=>{const d=JSON.parse(e.data);onStatus({running:false});toast((d.found||0)>0?("Escaneo terminado: "+d.found+" negocios"):("Terminó sin resultados"+(scanWarn?" · revisa Herramientas ▸ Ver logs":"")));});
   es.addEventListener("update",e=>{const d=JSON.parse(e.data);meta[d.id]=d.meta;});
   es.addEventListener("reset",()=>{LEADS=[];byId={};render();if(pinLayer)pinLayer.clearLayers();if(gridLayer)gridLayer.clearLayers();});
-  es.addEventListener("log",e=>{try{toast("⚠️ "+JSON.parse(e.data).line.slice(0,70));}catch(x){}});
+  es.addEventListener("log",()=>{scanWarn++;});
 }
 function onStatus(st){const run=!!st.running,pau=!!st.paused;
   $("#playBtn").hidden=run;$("#demoBtn").hidden=run;
   $("#stopBtn").hidden=!run;$("#pauseBtn").hidden=!run||pau;$("#resumeBtn").hidden=!run||!pau;
   $("#modeDot").className="dot"+(SERVER?(run?" live":" on"):"");
   if(st.cellsTotal)setProg(st.cellsDone||0,st.cellsTotal,st.found||0,run,pau);}
-function setProg(done,total,found,run,pau){const pct=total?Math.round(done/total*100):0;$("#progFill").style.width=pct+"%";$("#progTxt").textContent=(total?`Celdas ${done}/${total} (${pct}%) · `:"")+`${found||LEADS.length} negocios`+(pau?" · ⏸️ en pausa":run?" · escaneando…":total&&done>=total?" · ✅ listo":"");}
+function setProg(done,total,found,run,pau){const pct=total?Math.round(done/total*100):0;$("#progFill").style.width=pct+"%";$("#progTxt").textContent=(total?`Celdas ${done}/${total} (${pct}%) · `:"")+`${found||LEADS.length} negocios`+(pau?" · ⏸️ en pausa":run?" · escaneando…":total&&done>=total?" · ✅ listo":"")+(scanWarn?` · ⚠️ ${scanWarn} avisos`:"");}
 function detectServer(){fetch("/api/status").then(r=>r.ok?r.json():Promise.reject()).then(()=>{SERVER=true;setMode(true);
   fetch("/api/leads").then(r=>r.json()).then(d=>{(d.leads||[]).forEach(l=>{if(l._meta)meta[idOf(l)]=l._meta;});loadAll(d.leads||[]);if(d.cells&&d.cells.length)drawServerCells(d.cells);if(d.history)renderHistory(d.history);onStatus(d.status||{});});
   fetch("/api/config").then(r=>r.json()).then(c=>{$("#cfgChat").value=c.telegramChat||"";$("#cfgProxies").value=c.proxies||"";$("#cfgWebhook").value=c.webhookUrl||"";$("#cfgNotify").checked=!!c.notify;if(c.hasToken)$("#cfgToken").placeholder="(token guardado)";}).catch(()=>{});

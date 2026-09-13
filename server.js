@@ -75,12 +75,13 @@ function pumpTg() {
 // ---------- CSV ----------
 function parseCSV(t) { const rows = []; let row = [], f = "", q = false; for (let i = 0; i < t.length; i++) { const c = t[i]; if (q) { if (c === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; } else { if (c === '"') q = true; else if (c === ",") { row.push(f); f = ""; } else if (c === "\n") { row.push(f); rows.push(row); row = []; f = ""; } else if (c !== "\r") f += c; } } if (f.length || row.length) { row.push(f); rows.push(row); } return rows; }
 function emails(s) { if (!s) return []; const m = ("" + s).match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || []; return [...new Set(m.map(x => x.toLowerCase()))]; }
-function rowToLead(H, r) { const gi = n => H.indexOf(n), g = n => { const i = gi(n); return i >= 0 ? (r[i] || "").trim() : ""; }; const t = g("title"); if (!t) return null; return { title: t, category: g("category"), address: g("complete_address") || g("address"), phone: g("phone"), website: g("website"), emails: emails(g("emails")), rating: parseFloat(g("review_rating")) || 0, reviews: parseInt((g("review_count") || "").replace(/\D/g, "")) || 0, lat: parseFloat(g("latitude")) || 0, lon: parseFloat(g("longitude")) || 0, link: g("link"), thumb: g("thumbnail"), about: g("about") || g("descriptions"), images: (g("images") || "").split(/[|;,\s]+/).filter(u => /^https?:/.test(u)).slice(0, 6) }; }
+function cleanDesc(s) { s = ("" + (s || "")).trim(); return /^[\[{]/.test(s) ? "" : s; } // descarta about en JSON
+function rowToLead(H, r) { const gi = n => H.indexOf(n), g = n => { const i = gi(n); return i >= 0 ? (r[i] || "").trim() : ""; }; const t = g("title"); if (!t) return null; return { title: t, category: g("category"), address: g("complete_address") || g("address"), phone: g("phone"), website: g("website"), emails: emails(g("emails")), rating: parseFloat(g("review_rating")) || 0, reviews: parseInt((g("review_count") || "").replace(/\D/g, "")) || 0, lat: parseFloat(g("latitude")) || 0, lon: parseFloat(g("longitude")) || 0, link: g("link"), thumb: g("thumbnail"), about: cleanDesc(g("descriptions") || g("about")), images: (g("images") || "").split(/[|;,\s]+/).filter(u => /^https?:/.test(u)).slice(0, 6) }; }
 function idOf(l) { const ph = (l.phone || "").replace(/\D/g, ""); return l.link || (ph ? "tel:" + ph : (l.title + "|" + l.address)); }
 function addLead(l) { const id = idOf(l); if (!db.leads[id]) { db.leads[id] = l; db.order.push(id); if (scan) scan.found++; if (curCell) curCell.found++; broadcast("lead", l); notifyLead(l); save(); return true; } else { const meta = db.leads[id]._meta; db.leads[id] = Object.assign(l, { _meta: meta }); return false; } }
 
 // ---------- Escaneo por cuadrícula ----------
-let scan = null, child = null, pollT = null, demoT = null, curCell = null, curEmitted = 0;
+let scan = null, child = null, pollT = null, demoT = null, curCell = null, curEmitted = 0, lastLogB = 0;
 function statusObj() { if (!scan) return { running: false }; const done = scan.cells.filter(c => ["done", "empty", "error"].includes(c.state)).length; return { running: scan.running, paused: scan.paused, mode: scan.mode, cellsTotal: scan.cells.length, cellsDone: done, found: scan.found }; }
 function computeCells(area, cellKm) { const [s, w, n, e] = area, latC = (s + n) / 2, dLat = cellKm / 111, dLon = cellKm / (111 * Math.cos(latC * Math.PI / 180)), cells = []; for (let lat = s; lat < n; lat += dLat) for (let lon = w; lon < e; lon += dLon) { const top = Math.min(lat + dLat, n), right = Math.min(lon + dLon, e); cells.push({ key: lat.toFixed(4) + "_" + lon.toFixed(4), bbox: [lat, lon, top, right], state: "pending", found: 0 }); } return cells; }
 function startScan(cfgIn) {
@@ -109,7 +110,7 @@ function runCell(cell) {
   if (cmd.error) { log("ERROR: " + cmd.error); broadcast("error", { message: cmd.error }); scan.running = false; broadcast("status", statusObj()); return; }
   try { child = spawn(cmd.cmd, cmd.args, { cwd: ROOT }); }
   catch (e) { cell.state = "error"; broadcast("cell", { key: cell.key, state: "error" }); return nextCell(); }
-  child.stderr.on("data", d => { const s = d.toString().trim(); if (s && /error|blocked|denied|forbidden|fail/i.test(s)) { log(s.slice(0, 200)); broadcast("log", { line: s.slice(0, 160) }); } });
+  child.stderr.on("data", d => { const s = d.toString().trim(); if (!s) return; log(s.slice(0, 200)); const now = Date.now(); if (/panic|cannot|refused|no such|not found|forbidden|blocked|denied|ERR_/i.test(s) && now - lastLogB > 4000) { lastLogB = now; broadcast("log", { line: s.slice(0, 150) }); } });
   pollT = setInterval(() => ingestCell(), 700);
   child.on("exit", () => { clearInterval(pollT); ingestCell(); child = null; finishCell(cell); });
   child.on("error", () => { clearInterval(pollT); child = null; cell.state = "error"; broadcast("cell", { key: cell.key, state: "error" }); nextCell(); });
