@@ -32,7 +32,7 @@ const CATEGORIES = ["farmacia", "restaurante", "bodega", "ferretería", "gimnasi
 
 // ---------- DB & Config ----------
 let db = load(DB_FILE, { leads: {}, order: [], history: [] });
-let cfg = load(CFG_FILE, { telegramToken: "", telegramChat: "", webhookUrl: "", proxies: "", leadsdbKey: "", notify: false, safeMode: true, pauseMin: 3, pauseMax: 8, depth: 0, maxBlocks: 4 });
+let cfg = load(CFG_FILE, { telegramToken: "", telegramChat: "", webhookUrl: "", proxies: "", leadsdbKey: "", notify: false, safeMode: true, pauseMin: 3, pauseMax: 8, depth: 0, maxBlocks: 4, subdivide: true, subdivideAt: 90 });
 function load(f, d) { try { return Object.assign({}, d, JSON.parse(fs.readFileSync(f, "utf8"))); } catch (e) { return d; } }
 let saveT = null;
 function save() { clearTimeout(saveT); saveT = setTimeout(() => { try { fs.writeFileSync(DB_FILE, JSON.stringify(db)); } catch (e) {} }, 250); }
@@ -84,7 +84,8 @@ function addLead(l) { const id = idOf(l); if (!db.leads[id]) { db.leads[id] = l;
 let scan = null, child = null, pollT = null, demoT = null, nextT = null, curCell = null, curEmitted = 0, lastLogB = 0;
 const BLOCK_RE = /ERR_TUNNEL|\b429\b|\b403\b|captcha|unusual traffic|too many requests|rate.?limit|sorry\/index/i;
 function statusObj() { if (!scan) return { running: false }; const done = scan.cells.filter(c => ["done", "empty", "error"].includes(c.state)).length; return { running: scan.running, paused: scan.paused, mode: scan.mode, cellsTotal: scan.cells.length, cellsDone: done, found: scan.found }; }
-function computeCells(area, cellKm) { const [s, w, n, e] = area, latC = (s + n) / 2, dLat = cellKm / 111, dLon = cellKm / (111 * Math.cos(latC * Math.PI / 180)), cells = []; for (let lat = s; lat < n; lat += dLat) for (let lon = w; lon < e; lon += dLon) { const top = Math.min(lat + dLat, n), right = Math.min(lon + dLon, e); cells.push({ key: lat.toFixed(4) + "_" + lon.toFixed(4), bbox: [lat, lon, top, right], state: "pending", found: 0 }); } return cells; }
+function computeCells(area, cellKm) { const [s, w, n, e] = area, latC = (s + n) / 2, dLat = cellKm / 111, dLon = cellKm / (111 * Math.cos(latC * Math.PI / 180)), cells = []; for (let lat = s; lat < n; lat += dLat) for (let lon = w; lon < e; lon += dLon) { const top = Math.min(lat + dLat, n), right = Math.min(lon + dLon, e); cells.push({ key: lat.toFixed(4) + "_" + lon.toFixed(4), bbox: [lat, lon, top, right], state: "pending", found: 0, km: cellKm, depth: 0 }); } return cells; }
+function splitCell(c) { const [s, w, n, e] = c.bbox, mLat = (s + n) / 2, mLon = (w + e) / 2, km = (c.km || 1) / 2, d = (c.depth || 0) + 1; return [[s, w, mLat, mLon], [s, mLon, mLat, e], [mLat, w, n, mLon], [mLat, mLon, n, e]].map((bb, i) => ({ key: c.key + "s" + i, bbox: bb, state: "pending", found: 0, km, depth: d })); }
 function startScan(cfgIn) {
   if (scan && scan.running) return { error: "Ya hay un escaneo en curso." };
   const area = cfgIn.area; if (!area || area.length !== 4) return { error: "Falta el área a escanear." };
@@ -109,6 +110,7 @@ function finishCell(cell) {
   broadcast("cell", { key: cell.key, state: cell.state, found: cell.found });
   if (cell._blocked) scan.consecBlocks = (scan.consecBlocks || 0) + 1; else if (cell.found > 0) scan.consecBlocks = 0;
   if (cfg.safeMode && scan.consecBlocks >= (cfg.maxBlocks || 4)) { log("Auto-pausa anti-baneo tras " + scan.consecBlocks + " celdas con posible bloqueo"); broadcast("blocked", { consec: scan.consecBlocks }); scan.paused = true; scan.idx++; broadcast("progress", { cellsDone: scan.idx, cellsTotal: scan.cells.length, found: scan.found }); broadcast("status", statusObj()); return; }
+  if (!scan.demo && cfg.subdivide !== false && cell.found >= (cfg.subdivideAt || 90) && ((cell.km || scan.cellKm) > 0.35) && (cell.depth || 0) < 2) { const subs = splitCell(cell); scan.cells.splice(scan.idx + 1, 0, ...subs); broadcast("cellsadd", { cells: subs.map(c => ({ key: c.key, bbox: c.bbox, state: "pending" })) }); log("Celda densa subdividida en 4 (" + cell.found + " negocios)"); }
   advance();
 }
 function runCell(cell) {
@@ -127,7 +129,7 @@ function runCell(cell) {
 function ingestCell() { let text; try { text = fs.readFileSync(CELL_CSV, "utf8"); } catch (e) { return; } if (!text) return; const endsNL = /\n$/.test(text); let rows = parseCSV(text); if (!endsNL && rows.length) rows = rows.slice(0, -1); if (rows.length < 2) return; const H = rows[0].map(h => h.trim().toLowerCase()); for (let i = 1 + curEmitted; i < rows.length; i++) { const l = rowToLead(H, rows[i]); if (l) addLead(l); } curEmitted = rows.length - 1; }
 function findBin() { if (process.env.SCRAPER_BIN && fs.existsSync(process.env.SCRAPER_BIN)) return process.env.SCRAPER_BIN; for (const p of [path.join(ROOT, "gms"), path.join(ROOT, "..", "google-maps-scraper", "gms")]) if (fs.existsSync(p)) return p; return null; }
 function buildCmd(bb) {
-  const grid = ["-grid-bbox", bb, "-grid-cell", String(scan.cellKm), "-zoom", "15"];
+  const grid = ["-grid-bbox", bb, "-grid-cell", String((curCell && curCell.km) || scan.cellKm), "-zoom", "15"];
   const extra = ["-c", "1"]; if (scan.email) extra.push("-email"); const px = (scan.proxies || "").split(/[\n,]+/).map(s => s.trim()).filter(Boolean); if (px.length) extra.push("-proxies", px.join(",")); if (cfg.leadsdbKey) extra.push("-leadsdb-api-key", cfg.leadsdbKey); if (cfg.depth > 0) extra.push("-depth", String(cfg.depth));
   if (process.env.SCRAPER_MODE === "docker") {
     const a = ["run", "--rm", "-v", `${DATA}:/out`, "-v", `${Q_FILE}:/queries.txt:ro`, "gosom/google-maps-scraper", "-input", "/queries.txt", "-results", "/out/cell.csv", "-lang", "es", "-exit-on-inactivity", "20s", ...extra, ...grid];
@@ -173,7 +175,7 @@ const server = http.createServer(async (req, res) => {
   if (p === "/api/scan/stop" && req.method === "POST") return json(res, stop());
   if (p === "/api/lead/update" && req.method === "POST") { const b = await body(req); return json(res, updateLead(b.id, b.patch || {})); }
   if (p === "/api/config" && req.method === "GET") return json(res, { telegramChat: cfg.telegramChat, hasToken: !!cfg.telegramToken, webhookUrl: cfg.webhookUrl, proxies: cfg.proxies, notify: !!cfg.notify, leadsdb: !!cfg.leadsdbKey, safeMode: cfg.safeMode !== false, pauseMin: cfg.pauseMin, pauseMax: cfg.pauseMax });
-  if (p === "/api/config" && req.method === "POST") { const b = await body(req); ["telegramToken", "telegramChat", "webhookUrl", "proxies", "leadsdbKey"].forEach(k => { if (typeof b[k] === "string") cfg[k] = b[k]; }); ["pauseMin", "pauseMax", "depth", "maxBlocks"].forEach(k => { if (typeof b[k] === "number" && b[k] >= 0) cfg[k] = b[k]; }); if (b.notify !== undefined) cfg.notify = !!b.notify; if (b.safeMode !== undefined) cfg.safeMode = !!b.safeMode; saveCfg(); return json(res, { ok: true }); }
+  if (p === "/api/config" && req.method === "POST") { const b = await body(req); ["telegramToken", "telegramChat", "webhookUrl", "proxies", "leadsdbKey"].forEach(k => { if (typeof b[k] === "string") cfg[k] = b[k]; }); ["pauseMin", "pauseMax", "depth", "maxBlocks", "subdivideAt"].forEach(k => { if (typeof b[k] === "number" && b[k] >= 0) cfg[k] = b[k]; }); if (b.notify !== undefined) cfg.notify = !!b.notify; if (b.safeMode !== undefined) cfg.safeMode = !!b.safeMode; if (b.subdivide !== undefined) cfg.subdivide = !!b.subdivide; saveCfg(); return json(res, { ok: true }); }
   if (p === "/api/test-telegram" && req.method === "POST") { const b = await body(req); if (b && typeof b.telegramToken === "string" && b.telegramToken) { cfg.telegramToken = b.telegramToken; cfg.telegramChat = b.telegramChat || cfg.telegramChat; saveCfg(); } return json(res, await tgSend("✅ BUSCA-CHAMBA-3000 conectado. Aquí te llegarán los leads nuevos.")); }
   if (p === "/api/logs") { res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8", "Access-Control-Allow-Origin": "*" }); return res.end(logs.join("\n") || "(sin logs)"); }
   if (p === "/api/reset" && req.method === "POST") { db = { leads: {}, order: [], history: db.history || [] }; scan = null; save(); broadcast("reset", {}); return json(res, { ok: true }); }
