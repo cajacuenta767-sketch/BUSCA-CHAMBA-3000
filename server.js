@@ -201,7 +201,7 @@ function runCell(cell) {
   try { child = spawn(cmd.cmd, cmd.args, { cwd: ROOT }); }
   catch (e) { cell.state = "error"; broadcast("cell", { key: cell.key, state: "error" }); return nextCell(); }
   child.stderr.on("data", d => { const s = d.toString().trim(); if (!s) return; log(s.slice(0, 200)); if (BLOCK_RE.test(s)) cell._blocked = true; const now = Date.now(); if (/panic|cannot|refused|no such|not found|forbidden|blocked|denied|ERR_/i.test(s) && now - lastLogB > 4000) { lastLogB = now; broadcast("log", { line: s.slice(0, 150) }); } });
-  pollT = setInterval(() => ingestCell(), 700);
+  pollT = setInterval(() => ingestCell(), 400);
   const maxMin = Math.max(1, +cfg.cellMax || 6);
   clearTimeout(cellTimer);
   cellTimer = setTimeout(() => { if (child) { log("Celda " + cell.key + " pasó de " + maxMin + " min; la cierro y sigo con la siguiente"); cell._timedout = true; try { child.kill("SIGKILL"); } catch (e) {} } }, maxMin * 60000);

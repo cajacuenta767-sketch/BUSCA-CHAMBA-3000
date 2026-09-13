@@ -140,6 +140,11 @@
   .b2.yes{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,transparent);background:var(--ok-weak)}.b2.no{opacity:.65}
   .addr{font-size:12.5px;color:var(--muted)}
   .desc{font-size:12.5px;color:var(--muted);line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .lcat{display:inline-flex;align-items:center;gap:6px;font:600 12px var(--font-b);background:var(--surface-2);border:1px solid var(--border);border-radius:20px;padding:5px 11px}
+  .lcat b{font-variant-numeric:tabular-nums;color:var(--accent)}
+  .live-feed{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)}
+  .live-feed div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .live-feed b{color:var(--text);font-weight:600}
   .clsrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
   .clsb{font:700 11px var(--font-b);padding:3px 9px;border-radius:7px;background:var(--accent-weak);color:var(--accent)}
   .clsb.sistema{background:var(--ok-weak);color:var(--ok)}
@@ -235,6 +240,12 @@
         <div class="prog-txt" id="progTxt">Listo para escanear.</div>
         <div class="est" id="estTxt"></div>
         <div class="est" id="scanMsg" style="margin-top:6px"></div>
+        <div id="liveWrap" hidden>
+          <div class="subhead">📊 Encontrados por categoría (en vivo)</div>
+          <div class="chips" id="liveCats"></div>
+          <div class="subhead">🆕 Últimos encontrados</div>
+          <div class="live-feed" id="liveFeed"></div>
+        </div>
       </div>
 
       <details class="adv">
@@ -731,14 +742,25 @@ function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");se
 
 // ---- Ingesta ----
 function addLead(l,live){l=fixLead(l);l.emails=emailsOf(l.emails);const id=idOf(l);if(!byId[id]){byId[id]=l;LEADS.push(l);if(l._meta&&!meta[id])meta[id]=l._meta;if(live){appendCardLive(l);updateStats();catsSoon();}addPin(l);}else Object.assign(byId[id],l);}
+let FEED=[],liveT=null;
+function renderLive(){
+  const w=$("#liveWrap");if(!w)return;
+  if(!LEADS.length){w.hidden=true;return;}
+  w.hidden=false;
+  const cnt={};LEADS.forEach(l=>{const c=normCat(l.category)||"Otros";cnt[c]=(cnt[c]||0)+1;});
+  const ord=Object.entries(cnt).sort((a,b)=>b[1]-a[1]);
+  $("#liveCats").innerHTML=ord.map(([c,n])=>`<span class="lcat">${esc(c)} <b>${n}</b></span>`).join("");
+  $("#liveFeed").innerHTML=FEED.slice(0,6).map(l=>`<div><b>${esc(l.title)}</b> · ${esc(normCat(l.category)||"—")}${l.address?" · "+esc(l.address):""}</div>`).join("")||'<div>Esperando negocios…</div>';
+}
+function liveSoon(){clearTimeout(liveT);liveT=setTimeout(renderLive,250);}
 let catsT=null;function catsSoon(){clearTimeout(catsT);catsT=setTimeout(()=>{refreshCats();refreshCities();renderMetrics();},600);}
-function loadAll(arr){LEADS=[];byId={};$("#grid").innerHTML="";arr.forEach(l=>addLead(l,false));render();if(pinLayer){pinLayer.clearLayers();LEADS.forEach(addPin);}}
+function loadAll(arr){LEADS=[];byId={};$("#grid").innerHTML="";arr.forEach(l=>addLead(l,false));render();renderLive();if(pinLayer){pinLayer.clearLayers();LEADS.forEach(addPin);}}
 function importCSV(text){const before=LEADS.length;rowsToLeads(parseCSV(text)).forEach(l=>addLead(l,false));render();if(pinLayer){pinLayer.clearLayers();LEADS.forEach(addPin);}toast((LEADS.length-before)+" nuevos · "+LEADS.length+" en total (fusionado)");}
 
 // ---- Servidor / SSE ----
 function setMode(on){$("#modeDot").className="dot"+(on?" on":"");$("#modeTxt").textContent=on?"En vivo (servidor)":"Modo archivo";$("#serverWarn").hidden=on;["playBtn","pauseBtn","resumeBtn","stopBtn"].forEach(id=>{const el=$("#"+id);if(el)el.disabled=!on;});}
 function connectSSE(){try{es=new EventSource("/api/stream");}catch(e){return;}
-  es.addEventListener("lead",e=>addLead(JSON.parse(e.data),true));
+  es.addEventListener("lead",e=>{const l=JSON.parse(e.data);addLead(l,true);FEED.unshift(l);if(FEED.length>12)FEED.pop();liveSoon();});
   es.addEventListener("cells",e=>{const d=JSON.parse(e.data);scanWarn=0;scanStart=Date.now();$("#scanMsg").innerHTML="";drawServerCells(d.cells,d.area);setProg(0,d.total,0,true);});
   es.addEventListener("notice",e=>{try{const m=JSON.parse(e.data).msg;toast(m);$("#scanMsg").textContent=m;}catch(x){}});
   es.addEventListener("cell",e=>{const d=JSON.parse(e.data);updateCell(d.key,d.state);});
@@ -747,20 +769,21 @@ function connectSSE(){try{es=new EventSource("/api/stream");}catch(e){return;}
   es.addEventListener("status",e=>onStatus(JSON.parse(e.data)));
   es.addEventListener("done",e=>{const d=JSON.parse(e.data);onStatus({running:false});toast((d.found||0)>0?("Escaneo terminado: "+d.found+" negocios"):("Terminó sin resultados"+(scanWarn?" · revisa Herramientas ▸ Ver logs":"")));$("#scanMsg").innerHTML=scanWarn?('⚠️ Terminó con '+scanWarn+' avisos del scraper. <a href="/api/logs" target="_blank">Ver logs</a>'):((d.found||0)===0?'Sin resultados: probable bloqueo de IP. Usa proxies (⚙️ Ajustes). <a href="/api/logs" target="_blank">Ver logs</a>':'✅ Escaneo terminado.');});
   es.addEventListener("update",e=>{const d=JSON.parse(e.data);meta[d.id]=d.meta;});
-  es.addEventListener("reset",()=>{LEADS=[];byId={};render();if(pinLayer)pinLayer.clearLayers();if(gridLayer)gridLayer.clearLayers();});
+  es.addEventListener("reset",()=>{LEADS=[];byId={};FEED=[];renderLive();render();if(pinLayer)pinLayer.clearLayers();if(gridLayer)gridLayer.clearLayers();});
   es.addEventListener("log",()=>{scanWarn++;});
   es.addEventListener("blocked",e=>{let d={};try{d=JSON.parse(e.data);}catch(x){}toast("🛡️ Auto-pausado: posible bloqueo de Google tras "+(d.consec||"varias")+" celdas.");$("#scanMsg").innerHTML='🛡️ <b>Pausado por posible bloqueo de Google.</b> Configura proxies en ⚙️ Ajustes o espera un rato y pulsa <b>Reanudar</b>. <a href="/api/logs" target="_blank">Ver logs</a>';});
 }
-let LASTST={};
-function onStatus(st){LASTST=st||{};const run=!!st.running,pau=!!st.paused;
+let LASTST={},LASTST_AT=0,progTick=null;
+function startTick(){clearInterval(progTick);progTick=setInterval(()=>{if(LASTST.running&&!LASTST.paused)setProg(LASTST.cellsDone||0,LASTST.cellsTotal||0,LEADS.length,true,false);else clearInterval(progTick);},1000);}
+function onStatus(st){LASTST=st||{};LASTST_AT=Date.now();const run=!!st.running,pau=!!st.paused;if(run&&!pau)startTick();
   $("#playBtn").hidden=run;
   $("#stopBtn").hidden=!run;$("#pauseBtn").hidden=!run||pau;$("#resumeBtn").hidden=!run||!pau;
   $("#modeDot").className="dot"+(SERVER?(run?" live":" on"):"");
   if(st.cellsTotal)setProg(st.cellsDone||0,st.cellsTotal,st.found||0,run,pau);}
-function setProg(done,total,found,run,pau){const pct=total?Math.round(done/total*100):0;$("#progFill").style.width=pct+"%";let eta="";if(run&&!pau&&done>0&&total>done&&scanStart){const rem=Math.round((Date.now()-scanStart)/done*(total-done)/1000);eta=" · ETA ~"+(rem<60?rem+"s":Math.round(rem/60)+"min");}$("#progTxt").textContent=(total?`Celdas ${done}/${total} (${pct}%) · `:"")+`${found||LEADS.length} negocios`+(pau?" · ⏸️ en pausa":run?" · escaneando…"+eta:total&&done>=total?" · ✅ listo":"")+(scanWarn?` · ⚠️ ${scanWarn} avisos`:"");
-  const secs=LASTST.cellSecs||0,mm=Math.floor(secs/60),ss=secs%60;
+function setProg(done,total,found,run,pau){found=Math.max(found||0,LEADS.length);const pct=total?Math.round(done/total*100):0;$("#progFill").style.width=pct+"%";let eta="";if(run&&!pau&&done>0&&total>done&&scanStart){const rem=Math.round((Date.now()-scanStart)/done*(total-done)/1000);eta=" · ETA ~"+(rem<60?rem+"s":Math.round(rem/60)+"min");}$("#progTxt").textContent=(total?`Celdas ${done}/${total} (${pct}%) · `:"")+`${found||LEADS.length} negocios`+(pau?" · ⏸️ en pausa":run?" · escaneando…"+eta:total&&done>=total?" · ✅ listo":"")+(scanWarn?` · ⚠️ ${scanWarn} avisos`:"");
+  const secs=(LASTST.cellSecs||0)+((run&&!pau&&LASTST_AT)?Math.round((Date.now()-LASTST_AT)/1000):0),mm=Math.floor(secs/60),ss=secs%60;
   $("#estTxt").textContent=(run&&!pau&&LASTST.cellIdx)
-    ? `Celda ${LASTST.cellIdx} en curso · ${mm?mm+"m ":""}${ss}s · ${LASTST.cellFound||0} negocios en esta celda · ${LASTST.queries||0} búsquedas por celda`
+    ? `Celda ${LASTST.cellIdx} en curso · ${mm?mm+"m ":""}${ss}s · ${LASTST.queries||0} búsquedas por celda`
     : $("#estTxt").textContent;const pg=document.querySelector(".progress");if(pg)pg.classList.toggle("live",!!run&&!pau);}
 function detectServer(){fetch("/api/status").then(r=>r.ok?r.json():Promise.reject()).then(()=>{SERVER=true;setMode(true);
   fetch("/api/leads").then(r=>r.json()).then(d=>{(d.leads||[]).forEach(l=>{if(l._meta)meta[idOf(l)]=l._meta;});loadAll(d.leads||[]);if(d.cells&&d.cells.length)drawServerCells(d.cells);if(d.history)renderHistory(d.history);onStatus(d.status||{});});
