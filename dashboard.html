@@ -337,6 +337,7 @@
     </div>
     <p class="count-note" id="countNote" hidden></p>
     <div class="grid" id="grid"></div>
+    <div id="moreWrap" hidden style="display:flex;justify-content:center;margin-top:16px"><button class="btn" id="moreBtn">Ver más</button></div>
     <div class="kanban" id="kanban" hidden></div>
     <div class="empty" id="empty"><div class="big">🧲</div><h2>Sin negocios todavía</h2><p>Ve a <b>▶️ Inicio</b> y pulsa <b>Iniciar escaneo</b>, o carga un <code>CSV</code> ya escaneado.</p></div>
   </section>
@@ -637,11 +638,17 @@ function getFiltered(){
   list.sort((a,b)=>sort==="rating"?b.rating-a.rating:sort==="reviews"?b.reviews-a.reviews:sort==="name"?a.title.localeCompare(b.title):scoreOf(b)-scoreOf(a));
   return list;
 }
+const PAGE=300;let shownN=0,lastList=[];
+function appendChunk(from,to){const fr=document.createDocumentFragment();for(let i=from;i<to;i++)if(lastList[i])fr.appendChild(card(lastList[i]));$("#grid").appendChild(fr);}
+function updateNote(){const note=$("#countNote"),mw=$("#moreWrap");if(!LEADS.length){note.hidden=true;if(mw)mw.hidden=true;return;}
+  note.hidden=false;const rest=Math.max(0,lastList.length-shownN);
+  note.textContent=`Mostrando ${shownN} de ${lastList.length}`+(rest?` · faltan ${rest}`:" (todos)")+`. Total escaneados: ${LEADS.length}.`;
+  if(mw){mw.hidden=rest<=0;const b=$("#moreBtn");if(b)b.textContent=`Ver más (${rest} restantes)`;}}
+function showMore(){const from=shownN,to=Math.min(shownN+PAGE,lastList.length);if(to<=from)return;appendChunk(from,to);shownN=to;updateNote();}
 function render(){
   if(kanbanOn){renderKanban();return;}
-  const list=getFiltered(),LIMIT=500,shown=list.slice(0,LIMIT),grid=$("#grid");grid.innerHTML="";
-  const note=$("#countNote");if(LEADS.length){note.hidden=false;note.textContent=`Mostrando ${shown.length} de ${list.length}${list.length>LIMIT?" (limitado a "+LIMIT+")":""}.`;}else note.hidden=true;
-  const fr=document.createDocumentFragment();for(const l of shown)fr.appendChild(card(l));grid.appendChild(fr);
+  lastList=getFiltered();shownN=Math.min(PAGE,lastList.length);
+  const grid=$("#grid");grid.innerHTML="";appendChunk(0,shownN);updateNote();
   $("#empty").hidden=LEADS.length>0;updateStats();refreshCats();refreshStates();refreshCities();renderMetrics();
 }
 function card(l){
@@ -675,7 +682,7 @@ function card(l){
   const sel=el.querySelector("[data-state]");sel.onchange=e=>{setMeta(id,{state:e.target.value});el.className="card st-"+e.target.value;sel.style.color=STATES[e.target.value].c;updateStats();renderMetrics();};
   return el;
 }
-function appendCardLive(l){if(kanbanOn){renderKanban();return;}if(!passesChip(l))return;const q=($("#searchInput").value||"").toLowerCase().trim();if(q&&!(l.title+" "+l.category).toLowerCase().includes(q))return;$("#empty").hidden=true;const el=card(l);el.classList.add("new");$("#grid").appendChild(el);}
+function appendCardLive(l){if(kanbanOn){renderKanban();return;}if(!passesChip(l))return;const q=($("#searchInput").value||"").toLowerCase().trim();if(q&&!(l.title+" "+l.category).toLowerCase().includes(q))return;$("#empty").hidden=true;const el=card(l);el.classList.add("new");$("#grid").appendChild(el);lastList.push(l);shownN++;updateNote();}
 function animateNum(el,to){if(!el)return;const from=+el.dataset.v||0;el.dataset.v=to;if(from===to||matchMedia("(prefers-reduced-motion:reduce)").matches){el.textContent=to;return;}const t0=performance.now();function step(t){const k=Math.min(1,(t-t0)/500);el.textContent=Math.round(from+(to-from)*(1-Math.pow(1-k,3)));if(k<1)requestAnimationFrame(step);}requestAnimationFrame(step);}
 function updateStats(){animateNum($("#sTotal"),LEADS.length);animateNum($("#sNoWeb"),LEADS.filter(l=>!realWeb(l)).length);animateNum($("#sPhone"),LEADS.filter(l=>l.phone).length);animateNum($("#sMail"),LEADS.filter(l=>l.emails.length).length);animateNum($("#sDone"),LEADS.filter(l=>{const s=getMeta(idOf(l)).state;return s&&s!=="nuevo";}).length);const pc=$("#pillCount");pc.hidden=!LEADS.length;pc.textContent=LEADS.length;}
 function refreshCats(){const cnt={};LEADS.forEach(l=>{const c=normCat(l.category);if(c)cnt[c]=(cnt[c]||0)+1;});const c=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]||a.localeCompare(b)),s=$("#catFilter"),cur=s.value;s.innerHTML='<option value="">Todos los rubros</option>'+c.map(x=>`<option value="${esc(x)}">${esc(x)} (${cnt[x]})</option>`).join("");s.value=cur;}
@@ -887,6 +894,8 @@ $("#themeBtn").onclick=()=>applyTheme(document.documentElement.getAttribute("dat
 const th=store.get("bc3k_theme",null);if(th)applyTheme(th);else $("#themeBtn").textContent=matchMedia("(prefers-color-scheme:dark)").matches?"☀️":"🌙";
 document.addEventListener("dragover",e=>{if(!e.target.closest(".kcol"))e.preventDefault();});document.addEventListener("drop",e=>{if(e.target.closest(".kcol"))return;e.preventDefault();const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f){const fr=new FileReader();fr.onload=ev=>importCSV(ev.target.result);fr.readAsText(f);}});
 
+$("#moreBtn").onclick=showMore;
+try{new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting))showMore();},{rootMargin:"600px"}).observe($("#moreWrap"));}catch(e){}
 fillCountries();fillZones();loadMyZones();renderChips();render();initMap();detectServer();
 </script>
 </body>
