@@ -105,10 +105,30 @@ function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.fl
 // ---------- CSV ----------
 function parseCSV(t) { const rows = []; let row = [], f = "", q = false; for (let i = 0; i < t.length; i++) { const c = t[i]; if (q) { if (c === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; } else { if (c === '"') q = true; else if (c === ",") { row.push(f); f = ""; } else if (c === "\n") { row.push(f); rows.push(row); row = []; f = ""; } else if (c !== "\r") f += c; } } if (f.length || row.length) { row.push(f); rows.push(row); } return rows; }
 function emails(s) { if (!s) return []; const m = ("" + s).match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || []; return [...new Set(m.map(x => x.toLowerCase()))]; }
-function cleanDesc(s) { s = ("" + (s || "")).trim(); return /^[\[{]/.test(s) ? "" : s; } // descarta about en JSON
+// Descripción: si es texto, se deja; si es el JSON de atributos de Google
+// (lo que ofrece el negocio), se convierte en texto legible en vez de descartarlo.
+function descFrom(s) {
+  s = ("" + (s == null ? "" : s)).trim();
+  if (!s) return "";
+  if (!/^[\[{]/.test(s)) return s;
+  try {
+    const o = JSON.parse(s), arr = Array.isArray(o) ? o : [o], out = [];
+    for (const gg of arr) {
+      if (gg == null) continue;
+      if (typeof gg === "string") { out.push(gg); continue; }
+      const opts = gg.options || gg.Options;
+      if (Array.isArray(opts)) for (const op of opts) {
+        if (typeof op === "string") out.push(op);
+        else if (op && typeof op === "object") { if (op.enabled === false || op.Enabled === false) continue; const nm = op.name || op.Name; if (nm) out.push(nm); }
+      }
+    }
+    const uniq = [...new Set(out.map(x => ("" + x).trim()).filter(x => x.length > 1 && !/^\d+$/.test(x)))];
+    return uniq.slice(0, 14).join(" · ").slice(0, 240);
+  } catch (e) { return ""; }
+}
 function jsonAddr(str) { try { let o = JSON.parse(str); if (Array.isArray(o)) o = o[0] || {}; if (!o || typeof o !== "object") return null; const street = ("" + (o.street || "")).replace(/^[A-Z0-9]{4,}\+[A-Z0-9]+,?\s*/, "").trim(); const a = [street, o.borough, o.city, o.state, o.country].map(x => ("" + (x || "")).trim()).filter(Boolean).join(", "); return { address: a, city: ("" + (o.city || "")).trim() }; } catch (e) { return null; } }
 function parseAddr(g) { const plain = (g("address") || "").trim(), comp = (g("complete_address") || "").trim(); const j = /^[\[{]/.test(comp) ? comp : (/^[\[{]/.test(plain) ? plain : ""); if (j) { const r = jsonAddr(j); if (r) return r; } const a = plain && !/^[\[{]/.test(plain) ? plain : (comp && !/^[\[{]/.test(comp) ? comp : ""); const p = a.split(",").map(s => s.trim()).filter(Boolean); return { address: a, city: p[p.length - 1] || "" }; }
-function rowToLead(H, r) { const gi = n => H.indexOf(n), g = n => { const i = gi(n); return i >= 0 ? (r[i] || "").trim() : ""; }; const t = g("title"); if (!t) return null; const pa = parseAddr(g); return { title: t, category: g("category"), address: pa.address, city: pa.city, phone: g("phone"), website: g("website"), emails: emails(g("emails")), rating: parseFloat(g("review_rating")) || 0, reviews: parseInt((g("review_count") || "").replace(/\D/g, "")) || 0, lat: parseFloat(g("latitude")) || 0, lon: parseFloat(g("longitude")) || 0, link: g("link"), place_id: g("place_id") || g("cid"), thumb: g("thumbnail"), about: cleanDesc(g("descriptions") || g("about")), images: (g("images") || "").split(/[|;,\s]+/).filter(u => /^https?:/.test(u)).slice(0, 6) }; }
+function rowToLead(H, r) { const gi = n => H.indexOf(n), g = n => { const i = gi(n); return i >= 0 ? (r[i] || "").trim() : ""; }; const t = g("title"); if (!t) return null; const pa = parseAddr(g); return { title: t, category: g("category"), address: pa.address, city: pa.city, phone: g("phone"), website: g("website"), emails: emails(g("emails")), rating: parseFloat(g("review_rating")) || 0, reviews: parseInt((g("review_count") || "").replace(/\D/g, "")) || 0, lat: parseFloat(g("latitude")) || 0, lon: parseFloat(g("longitude")) || 0, link: g("link"), place_id: g("place_id") || g("cid"), thumb: g("thumbnail"), about: descFrom(g("descriptions") || g("about")), images: (g("images") || "").split(/[|;,\s]+/).filter(u => /^https?:/.test(u)).slice(0, 6) }; }
 function idOf(l) { const ph = (l.phone || "").replace(/\D/g, ""); return l.place_id || l.link || (ph ? "tel:" + ph : (l.title + "|" + l.address)); }
 function addLead(l) {
   if (scan && scan.exclude && scan.exclude.length) { const t = (l.title || "").toLowerCase(); if (scan.exclude.some(x => t.includes(x))) return false; }
