@@ -283,7 +283,8 @@
           <div class="fld"><label>Link de tu demo — Web</label><input class="field" id="cfgDemoWeb" placeholder="https://tu-demo-web.com"></div>
           <div class="fld"><label>Link de tu demo — Sistema</label><input class="field" id="cfgDemoSist" placeholder="https://tu-demo-sistema.com"></div>
         </div>
-        <p class="help" style="margin-top:8px">El contacto y el <b>link de demo</b> se agregan al <b>mensaje de WhatsApp</b> y al <b>PDF</b>, para que el cliente entre y pruebe. Se elige el link según la clasificación del lead (Web o Sistema). Tu nombre sale del campo <b>“Tu nombre”</b> de arriba.</p>
+        <div class="fld" style="margin-top:12px"><label>Mensaje base para WhatsApp (opcional) — usa {negocio}, {nombre}, {demo}</label><textarea class="field" id="cfgTpl" rows="3" style="resize:vertical;line-height:1.5" placeholder="Déjalo vacío para el mensaje inteligente por rubro. Ej: Hola {negocio} 👋, soy {nombre}. Te muestro cómo vender más: {demo}"></textarea></div>
+        <p class="help" style="margin-top:8px">El contacto y el <b>link de demo</b> se agregan al <b>mensaje de WhatsApp</b>, al <b>correo</b> y al <b>PDF</b>, para que el cliente entre y pruebe. Se elige el link según la clasificación del lead (Web o Sistema). Si escribes un <b>mensaje base</b>, se usa ese (con {negocio}/{nombre}/{demo}); si lo dejas vacío, se arma el mensaje ideal por rubro. Tu nombre sale del campo <b>“Tu nombre”</b> de arriba.</p>
 
         <div class="subhead">📍 Mis zonas guardadas</div>
         <div class="play-row" style="justify-content:flex-start">
@@ -678,9 +679,10 @@ function renderMetrics(){
 const myName=()=>($("#myName").value||"").trim()||"[tu nombre]";
 function demoLinkFor(l){const sv=$("#mService")?$("#mService").value:"";let off;if(sv)off=(/^v:/.test(sv)||/app/.test(sv))?"sistema":"web";else off=l?classify(l).offer:"web";const web=(store.get("bc3k_demo_web","")||"").trim(),sis=(store.get("bc3k_demo_sist","")||"").trim();return off==="sistema"?(sis||web):(web||sis);}
 function offerService(l){const c=classify(l);return c.offer==="web"?"s:web":(c.vertical?("v:"+c.vertical):"s:app");}
-function cardWaText(l){let t=pitchBy(offerService(l)).build(myName(),l.title);const off=classify(l).offer,web=(store.get("bc3k_demo_web","")||"").trim(),sis=(store.get("bc3k_demo_sist","")||"").trim(),link=off==="sistema"?(sis||web):(web||sis);if(link)t+="\n\n👉 Míralo funcionando (demo): "+link;return t;}
+function applyTpl(tpl,l,demo){let t=(""+tpl).replace(/\{negocio\}/gi,l.title||"tu negocio").replace(/\{nombre\}/gi,myName()).replace(/\{demo\}/gi,demo||"");if(!/\{demo\}/i.test(tpl)&&demo)t+="\n\n👉 Míralo funcionando (demo): "+demo;return t;}
+function cardWaText(l){const off=classify(l).offer,web=(store.get("bc3k_demo_web","")||"").trim(),sis=(store.get("bc3k_demo_sist","")||"").trim(),link=off==="sistema"?(sis||web):(web||sis);const tpl=(store.get("bc3k_tpl","")||"").trim();if(tpl)return applyTpl(tpl,l,link);let t=pitchBy(offerService(l)).build(myName(),l.title);if(link)t+="\n\n👉 Míralo funcionando (demo): "+link;return t;}
 function cardMailHref(l){const email=(l.emails&&l.emails[0])||"";if(!email)return"";const subj="Propuesta para "+(l.title||"tu negocio");return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(cardWaText(l))}`;}
-function buildMsg(){let t=$("#mFollow").checked?FOLLOWUP(myName(),current.title):pitchBy($("#mService").value).build(myName(),current.title);const link=demoLinkFor(current);if(link)t+="\n\n👉 Míralo funcionando (demo): "+link;$("#mText").value=t;}
+function buildMsg(){const link=demoLinkFor(current);let t;if($("#mFollow").checked){t=FOLLOWUP(myName(),current.title);if(link)t+="\n\n👉 Míralo funcionando (demo): "+link;}else{const tpl=(store.get("bc3k_tpl","")||"").trim();if(tpl)t=applyTpl(tpl,current,link);else{t=pitchBy($("#mService").value).build(myName(),current.title);if(link)t+="\n\n👉 Míralo funcionando (demo): "+link;}}$("#mText").value=t;}
 function openModal(l){current=l;const id=idOf(l),m=getMeta(id);
   $("#mTitle").textContent=l.title;$("#mSub").textContent=((l.phone?("📞 "+l.phone):"")+(l.emails[0]?("   ✉️ "+l.emails[0]):""))||"Sin contacto directo";$("#mFollow").checked=false;
   const G=[["Vender un sistema (por rubro)","v",PITCHES.verticals],["Servicio general","s",PITCHES.servicios]];
@@ -822,6 +824,7 @@ $("#myName").value=store.get("bc3k_name","");$("#myName").oninput=e=>store.set("
 if($("#cfgContact")){$("#cfgContact").value=store.get("bc3k_contact","");$("#cfgContact").oninput=e=>store.set("bc3k_contact",e.target.value);}
 if($("#cfgDemoWeb")){$("#cfgDemoWeb").value=store.get("bc3k_demo_web","");$("#cfgDemoWeb").oninput=e=>store.set("bc3k_demo_web",e.target.value);}
 if($("#cfgDemoSist")){$("#cfgDemoSist").value=store.get("bc3k_demo_sist","");$("#cfgDemoSist").oninput=e=>store.set("bc3k_demo_sist",e.target.value);}
+if($("#cfgTpl")){$("#cfgTpl").value=store.get("bc3k_tpl","");$("#cfgTpl").oninput=e=>store.set("bc3k_tpl",e.target.value);}
 function applyTheme(t){document.documentElement.setAttribute("data-theme",t);$("#themeBtn").textContent=t==="dark"?"☀️":"🌙";store.set("bc3k_theme",t);if(map){setTimeout(()=>map.invalidateSize(),60);}}
 $("#themeBtn").onclick=()=>applyTheme(document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark");
 const th=store.get("bc3k_theme",null);if(th)applyTheme(th);else $("#themeBtn").textContent=matchMedia("(prefers-color-scheme:dark)").matches?"☀️":"🌙";
