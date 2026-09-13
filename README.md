@@ -18,7 +18,7 @@ Después de scrapear, abre **`dashboard.html`** en tu navegador (doble clic) y c
 
 - Buscador, filtros por rubro y orden por rating / número de reseñas.
 - Botones directos de **WhatsApp**, **correo**, **llamar** y **web** por cada negocio.
-- **Mensaje de oferta listo para copiar** — eliges el servicio (web, e-commerce, app, ciberseguridad, automatización) y lo arma personalizado con el nombre del negocio.
+- **Mensaje de venta listo para copiar** — **por rubro** (farmacia, taller de celulares, restaurante, dental, gimnasio, bodega, etc., cada uno con el sistema ideal para venderle) o por servicio general. Detecta el rubro automáticamente y arma el mensaje con el nombre del negocio; botón directo para abrir **WhatsApp** con el texto puesto.
 - Marca de "contactado" que se recuerda entre sesiones, tema claro/oscuro y exportación a CSV.
 
 No instala nada: es un solo archivo HTML. Ábrelo con **Datos de ejemplo** para ver cómo se ve sin datos propios.

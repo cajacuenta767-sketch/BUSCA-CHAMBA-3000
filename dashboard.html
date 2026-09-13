@@ -211,19 +211,70 @@ const store = {
   set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 };
 
-// ---- Plantillas de oferta ----
-const SERVICIOS = {
-  web:{label:"Página web / landing", build:(n,neg)=>
+// ---- Pitches: sistemas por rubro + servicios generales ----
+const PITCHES = {
+  verticals: {
+    farmacia:{label:"Farmacia / botica", build:(n,neg)=>
+`Hola 👋, encontré ${neg} en Google Maps. Soy ${n}, desarrollo software para boticas: sistema de ventas rápido, control de stock con alertas de vencimiento y bajo inventario, y recordatorios a clientes. Vende más y evita pérdidas por vencidos. ¿Le muestro una demo corta por aquí? Gracias.`},
+    taller_celulares:{label:"Taller de celulares / reparación", build:(n,neg)=>
+`Hola 👋, vi ${neg} en Google Maps. Soy ${n}, desarrollador. Hago un sistema para talleres: órdenes de reparación con ticket, aviso automático por WhatsApp al cliente ("su equipo está listo") e inventario de repuestos. Da orden y buena imagen. ¿Le interesa una demo? Saludos.`},
+    restaurante:{label:"Restaurante / comida", build:(n,neg)=>
+`Hola 👋, encontré ${neg} en Google Maps. Soy ${n}, desarrollador. Puedo armarles carta digital con código QR y pedidos/reservas por WhatsApp, sin comisiones de apps de delivery. Más pedidos directos. ¿Le muestro cómo quedaría? Gracias.`},
+    dental:{label:"Clínica / consultorio dental", build:(n,neg)=>
+`Hola 👋, vi ${neg} en Google Maps. Soy ${n}, desarrollador. Hago un sistema de citas con recordatorios automáticos por WhatsApp (reduce inasistencias) y ficha de pacientes. ¿Le interesaría verlo en una demo rápida? Saludos.`},
+    inmobiliaria:{label:"Inmobiliaria", build:(n,neg)=>
+`Hola 👋, encontré ${neg} en Google Maps. Soy ${n}, desarrollador. Puedo hacerles una web con catálogo de propiedades y formularios que llegan directo a su WhatsApp. Más consultas de compradores reales. ¿Le muestro un ejemplo? Gracias.`},
+    gimnasio:{label:"Gimnasio / fitness", build:(n,neg)=>
+`Hola 👋, vi ${neg} en Google Maps. Soy ${n}, desarrollador. Hago un sistema de membresías: control de asistencia, avisos de vencimiento de pago por WhatsApp y cobros. Menos morosidad y menos papeleo. ¿Le interesa una demo? Saludos.`},
+    bodega:{label:"Bodega / minimarket", build:(n,neg)=>
+`Hola 👋, encontré ${neg} en Google Maps. Soy ${n}, desarrollador. Puedo darles un sistema de ventas (POS) con control de inventario y registro de fiados. Sabe qué se vende, qué falta y quién le debe. ¿Le muestro cómo funciona? Gracias.`},
+    ferreteria:{label:"Ferretería", build:(n,neg)=>
+`Hola 👋, vi ${neg} en Google Maps. Soy ${n}, desarrollador. Hago catálogo online con cotizaciones rápidas y control de stock para ferreterías. Cotiza en segundos y no pierde ventas por falta de stock. ¿Le interesa verlo? Saludos.`},
+    hotel:{label:"Hotel / hospedaje", build:(n,neg)=>
+`Hola 👋, encontré ${neg} en Google Maps. Soy ${n}, desarrollador. Puedo hacerles web con motor de reservas y confirmaciones por WhatsApp, sin comisiones de terceros. Más reservas directas. ¿Le muestro un ejemplo? Gracias.`},
+    belleza:{label:"Salón / barbería / belleza", build:(n,neg)=>
+`Hola 👋, vi ${neg} en Google Maps. Soy ${n}, desarrollador. Hago un sistema de reservas online con recordatorios por WhatsApp para salones y barberías. Llena la agenda y reduce plantones. ¿Le interesa una demo? Saludos.`},
+    veterinaria:{label:"Veterinaria", build:(n,neg)=>
+`Hola 👋, encontré ${neg} en Google Maps. Soy ${n}, desarrollador. Puedo hacerles citas online, carnet de vacunas digital y recordatorios por WhatsApp para los dueños. Fideliza clientes y ordena la atención. ¿Le muestro? Gracias.`},
+    contable:{label:"Estudio contable", build:(n,neg)=>
+`Hola 👋, vi ${neg} en Google Maps. Soy ${n}, desarrollador. Puedo hacerles web profesional, agenda de citas y un portal para que sus clientes suban documentos. Más imagen y menos idas y venidas. ¿Le interesa verlo? Saludos.`},
+    juridico:{label:"Estudio jurídico / abogados", build:(n,neg)=>
+`Hola 👋, encontré ${neg} en Google Maps. Soy ${n}, desarrollador. Hago webs profesionales y agenda de consultas para estudios de abogados, con formularios que llegan a su WhatsApp. Más clientes y mejor imagen. ¿Le muestro un ejemplo? Gracias.`}
+  },
+  servicios: {
+    web:{label:"Página web / landing", build:(n,neg)=>
 `Hola 👋, encontré ${neg} en Google Maps y me gustó lo que hacen. Soy ${n}, desarrollo páginas web para negocios. Una web profesional puede darles más clientes y confianza. ¿Le interesaría ver una propuesta rápida, sin compromiso? Saludos.`},
-  ecommerce:{label:"Tienda online (e-commerce)", build:(n,neg)=>
-`Hola 👋, vi ${neg} en Google Maps. Soy ${n}, desarrollador. Ayudo a negocios a vender por internet con una tienda online propia (pagos, catálogo, delivery). ¿Le gustaría que le explique cómo podría funcionar para ustedes? Gracias.`},
-  app:{label:"App o sistema a medida", build:(n,neg)=>
-`Hola 👋, encontré ${neg} en Google Maps. Soy ${n}, desarrollo software a medida (apps y sistemas para gestión, citas, inventario, etc.). Si tienen algún proceso manual que les quita tiempo, puedo automatizarlo. ¿Conversamos? Saludos.`},
-  seguridad:{label:"Ciberseguridad / auditoría", build:(n,neg)=>
+    ecommerce:{label:"Tienda online (e-commerce)", build:(n,neg)=>
+`Hola 👋, vi ${neg} en Google Maps. Soy ${n}, desarrollador. Ayudo a negocios a vender por internet con una tienda online propia (pagos, catálogo, delivery). ¿Le explico cómo podría funcionar para ustedes? Gracias.`},
+    app:{label:"App o sistema a medida", build:(n,neg)=>
+`Hola 👋, encontré ${neg} en Google Maps. Soy ${n}, desarrollo software a medida (apps y sistemas de gestión, citas, inventario). Si tienen un proceso manual que les quita tiempo, lo automatizo. ¿Conversamos? Saludos.`},
+    seguridad:{label:"Ciberseguridad / auditoría", build:(n,neg)=>
 `Hola 👋, vi ${neg} en Google Maps. Soy ${n}, especialista en ciberseguridad. Reviso páginas y sistemas de negocios para detectar fallas antes de que las aprovechen. Puedo hacerles un diagnóstico inicial sin costo. ¿Le interesa? Gracias.`},
-  automatizacion:{label:"Automatización / bots", build:(n,neg)=>
-`Hola 👋, encontré ${neg} en Google Maps. Soy ${n}, desarrollador. Creo automatizaciones y bots (WhatsApp, reservas, respuestas automáticas) para ahorrar tiempo y no perder clientes. ¿Le muestro un ejemplo aplicado a su rubro? Saludos.`}
+    automatizacion:{label:"Automatización / bots", build:(n,neg)=>
+`Hola 👋, encontré ${neg} en Google Maps. Soy ${n}, desarrollador. Creo automatizaciones y bots (WhatsApp, reservas, respuestas automáticas) para ahorrar tiempo y no perder clientes. ¿Le muestro un ejemplo de su rubro? Saludos.`}
+  }
 };
+const VERT_RULES = [
+  [/farmac|botica/,"farmacia"],
+  [/celular|reparaci|t[eé]cnico|phone|electr[oó]nic/,"taller_celulares"],
+  [/restaur|comida|cevich|poller|caf[eé]|pizzer|chifa|men[uú]|parrill|jugu/,"restaurante"],
+  [/dental|dentist|odont/,"dental"],
+  [/inmobili|bienes ra|propiedad/,"inmobiliaria"],
+  [/gimnas|gym|fitness|crossfit/,"gimnasio"],
+  [/bodega|minimarket|abarrote|market|licorer/,"bodega"],
+  [/ferret/,"ferreteria"],
+  [/hotel|hostal|hosped|lodge/,"hotel"],
+  [/peluquer|sal[oó]n|barber|belleza|spa|est[eé]tica|u[nñ]as/,"belleza"],
+  [/veterin|mascota/,"veterinaria"],
+  [/contab|contador/,"contable"],
+  [/abogad|jur[ií]dic|legal|notari/,"juridico"]
+];
+function detectVertical(cat){
+  const c=(cat||"").toLowerCase();
+  for(const [re,key] of VERT_RULES) if(re.test(c)) return key;
+  return null;
+}
+function pitchByValue(v){ const g=v.slice(0,1), k=v.slice(2); return (g==="v"?PITCHES.verticals:PITCHES.servicios)[k]; }
 
 let LEADS = [];
 let contacted = new Set(store.get("bc3k_contacted", []));
@@ -331,6 +382,8 @@ function card(l){
   html+=`<div style="min-width:0"><h3>${esc(l.title)}</h3>`;
   if(l.category) html+=`<span class="badge">${esc(l.category)}</span>`;
   if(l.rating) html+=`<div class="rating"><b>★ ${l.rating.toFixed(1)}</b> · ${l.reviews} reseñas</div>`;
+  const vsug=detectVertical(l.category);
+  if(vsug) html+=`<div class="rating" style="color:var(--accent);font-weight:600">💡 Sistema ideal: ${esc(PITCHES.verticals[vsug].label)}</div>`;
   html+=`</div></div>`;
   if(l.address) html+=`<div class="addr">📍 ${esc(l.address)}</div>`;
 
@@ -375,15 +428,17 @@ function refreshCats(){
 // ---- Modal ----
 function myName(){ return ($("#myName").value||"").trim() || "[tu nombre]"; }
 function buildMsg(){
-  const key=$("#mService").value;
-  $("#mText").value = SERVICIOS[key].build(myName(), current.title);
+  $("#mText").value = pitchByValue($("#mService").value).build(myName(), current.title);
 }
 function openModal(l){
   current=l;
   $("#mTitle").textContent=l.title;
-  $("#mSub").textContent=(l.phone?("📞 "+l.phone):"")+(l.emails[0]?("   ✉️ "+l.emails[0]):"") || "Sin contacto directo";
-  const sel=$("#mService");
-  sel.innerHTML=Object.entries(SERVICIOS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join("");
+  $("#mSub").textContent=((l.phone?("📞 "+l.phone):"")+(l.emails[0]?("   ✉️ "+l.emails[0]):"")) || "Sin contacto directo";
+  const groups=[["Vender un sistema (por rubro)","v",PITCHES.verticals],["Servicio general","s",PITCHES.servicios]];
+  $("#mService").innerHTML=groups.map(([label,g,obj])=>
+    `<optgroup label="${label}">`+Object.entries(obj).map(([k,v])=>`<option value="${g}:${k}">${v.label}</option>`).join("")+`</optgroup>`).join("");
+  const vk=detectVertical(l.category);
+  $("#mService").value = vk ? ("v:"+vk) : "s:web";
   buildMsg();
   $("#modalBg").classList.add("open");
 }
