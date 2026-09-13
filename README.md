@@ -12,6 +12,17 @@ Nombre del negocio, categoría, dirección, teléfono, sitio web, horario, ratin
 
 ---
 
+## Panel de Leads (`dashboard.html`)
+
+Después de scrapear, abre **`dashboard.html`** en tu navegador (doble clic) y carga el `salidas/resultados.csv`. Es un panel visual, **100% local** (tus datos no se suben a ningún lado), con:
+
+- Buscador, filtros por rubro y orden por rating / número de reseñas.
+- Botones directos de **WhatsApp**, **correo**, **llamar** y **web** por cada negocio.
+- **Mensaje de oferta listo para copiar** — eliges el servicio (web, e-commerce, app, ciberseguridad, automatización) y lo arma personalizado con el nombre del negocio.
+- Marca de "contactado" que se recuerda entre sesiones, tema claro/oscuro y exportación a CSV.
+
+No instala nada: es un solo archivo HTML. Ábrelo con **Datos de ejemplo** para ver cómo se ve sin datos propios.
+
 ## Requisitos
 
 - **Docker** (recomendado) — la imagen ya trae el navegador incluido, no instalas nada más.

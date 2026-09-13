@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel de Leads — BUSCA-CHAMBA-3000</title>
+<style>
+  :root{
+    --bg:#f5f7fa; --surface:#ffffff; --surface-2:#eef1f6;
+    --text:#161a22; --muted:#5c6675; --border:#e2e6ee;
+    --accent:#4f46e5; --accent-weak:#ecebfd;
+    --wa:#25d366; --mail:#0ea5e9; --ok:#16a34a; --ok-weak:#e7f6ec;
+    --star:#f59e0b; --shadow:0 1px 2px rgba(16,24,40,.06),0 4px 16px rgba(16,24,40,.05);
+    --radius:14px;
+  }
+  :root[data-theme="dark"]{
+    --bg:#0e1320; --surface:#161d2c; --surface-2:#1d2637;
+    --text:#e8ecf4; --muted:#9aa4b8; --border:#28324a;
+    --accent:#7c83ff; --accent-weak:#20233f;
+    --wa:#25d366; --mail:#38bdf8; --ok:#34d399; --ok-weak:#173026;
+    --star:#fbbf24; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#0e1320; --surface:#161d2c; --surface-2:#1d2637;
+      --text:#e8ecf4; --muted:#9aa4b8; --border:#28324a;
+      --accent:#7c83ff; --accent-weak:#20233f;
+      --wa:#25d366; --mail:#38bdf8; --ok:#34d399; --ok-weak:#173026;
+      --star:#fbbf24; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg); color:var(--text);
+    font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit}
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 16px 64px}
+
+  /* Header */
+  header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:20px}
+  .brand{display:flex;align-items:center;gap:11px;margin-right:auto}
+  .logo{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,var(--accent),#22d3ee);
+    display:grid;place-items:center;font-size:21px;box-shadow:var(--shadow)}
+  .brand h1{font-size:18px;margin:0;letter-spacing:-.2px}
+  .brand p{margin:0;font-size:12.5px;color:var(--muted)}
+  .btn{border:1px solid var(--border);background:var(--surface);color:var(--text);
+    padding:9px 13px;border-radius:10px;font-size:13.5px;font-weight:600;cursor:pointer;
+    display:inline-flex;align-items:center;gap:7px;transition:.15s;white-space:nowrap}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.primary:hover{filter:brightness(1.07);color:#fff}
+  .btn.ghost{background:transparent}
+  .name-input{border:1px solid var(--border);background:var(--surface);color:var(--text);
+    border-radius:10px;padding:9px 12px;font-size:13.5px;width:170px}
+  .name-input:focus{outline:none;border-color:var(--accent)}
+
+  /* Stats */
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:14px 16px;box-shadow:var(--shadow)}
+  .stat .n{font-size:26px;font-weight:750;letter-spacing:-.5px}
+  .stat .l{font-size:12px;color:var(--muted);margin-top:2px}
+  .stat.accent .n{color:var(--accent)}
+  .stat.ok .n{color:var(--ok)}
+
+  /* Controls */
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
+  .search{position:relative;flex:1;min-width:220px}
+  .search input{width:100%;border:1px solid var(--border);background:var(--surface);color:var(--text);
+    border-radius:11px;padding:11px 12px 11px 38px;font-size:14px}
+  .search input:focus{outline:none;border-color:var(--accent)}
+  .search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted)}
+  select{border:1px solid var(--border);background:var(--surface);color:var(--text);
+    border-radius:11px;padding:11px 12px;font-size:13.5px;cursor:pointer}
+  .chk{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none}
+  .chk input{width:16px;height:16px;accent-color:var(--accent)}
+
+  /* Grid */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:10px;position:relative;transition:.15s}
+  .card.done{opacity:.62}
+  .card.done::after{content:"✓ contactado";position:absolute;top:12px;right:12px;font-size:10.5px;font-weight:700;
+    color:var(--ok);background:var(--ok-weak);padding:3px 8px;border-radius:20px}
+  .card-top{display:flex;gap:11px}
+  .thumb{width:46px;height:46px;border-radius:10px;object-fit:cover;background:var(--surface-2);flex:none}
+  .card h3{margin:0;font-size:15.5px;line-height:1.3;padding-right:70px}
+  .badge{display:inline-block;font-size:11px;font-weight:600;color:var(--accent);
+    background:var(--accent-weak);padding:2px 9px;border-radius:20px;margin-top:5px}
+  .rating{font-size:12.5px;color:var(--muted);margin-top:5px}
+  .rating b{color:var(--star)}
+  .addr{font-size:12.5px;color:var(--muted);display:flex;gap:6px}
+  .actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;
+    padding:7px 11px;border-radius:9px;text-decoration:none;border:1px solid var(--border);cursor:pointer;background:var(--surface)}
+  .chip:hover{filter:brightness(.98);transform:translateY(-1px)}
+  .chip.wa{background:var(--wa);border-color:var(--wa);color:#053d1c}
+  .chip.mail{color:var(--mail);border-color:var(--mail)}
+  .chip.msg{background:var(--accent);border-color:var(--accent);color:#fff;margin-left:auto}
+  .card-foot{display:flex;align-items:center;gap:10px;border-top:1px solid var(--border);padding-top:10px;margin-top:auto}
+  .card-foot .chk{font-size:12.5px}
+
+  /* Empty */
+  .empty{text-align:center;padding:60px 20px;color:var(--muted)}
+  .empty .big{font-size:44px;margin-bottom:10px}
+  .empty h2{color:var(--text);font-size:18px;margin:0 0 6px}
+  .empty code{background:var(--surface-2);padding:2px 7px;border-radius:6px;font-size:12.5px}
+  .count-note{font-size:12.5px;color:var(--muted);margin:0 0 12px}
+
+  /* Modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(6,10,20,.55);display:none;place-items:center;padding:16px;z-index:50}
+  .modal-bg.open{display:grid}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);
+    width:100%;max-width:520px;padding:20px;max-height:90vh;overflow:auto}
+  .modal h3{margin:0 0 3px;font-size:17px}
+  .modal .sub{color:var(--muted);font-size:13px;margin:0 0 15px}
+  .modal label{font-size:12.5px;font-weight:600;color:var(--muted);display:block;margin:12px 0 6px}
+  .modal select,.modal textarea{width:100%;border:1px solid var(--border);background:var(--bg);color:var(--text);
+    border-radius:10px;padding:11px 12px;font-size:14px;font-family:inherit}
+  .modal textarea{min-height:135px;resize:vertical;line-height:1.55}
+  .modal-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--text);color:var(--bg);padding:11px 18px;border-radius:11px;font-size:13.5px;font-weight:600;
+    opacity:0;transition:.25s;z-index:60;pointer-events:none}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  @media (max-width:720px){
+    .stats{grid-template-columns:repeat(2,1fr)}
+    .brand{width:100%}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo">🧲</div>
+      <div>
+        <h1>Panel de Leads</h1>
+        <p>BUSCA-CHAMBA-3000 · tus datos no salen de este navegador</p>
+      </div>
+    </div>
+    <input class="name-input" id="myName" placeholder="Tu nombre (para los mensajes)">
+    <button class="btn ghost" id="themeBtn" title="Tema">🌙</button>
+    <button class="btn" id="sampleBtn">Datos de ejemplo</button>
+    <label class="btn primary" for="fileInput">📂 Cargar CSV
+      <input type="file" id="fileInput" accept=".csv,text/csv" hidden></label>
+  </header>
+
+  <section class="stats">
+    <div class="stat"><div class="n" id="sTotal">0</div><div class="l">Negocios</div></div>
+    <div class="stat accent"><div class="n" id="sPhone">0</div><div class="l">Con teléfono</div></div>
+    <div class="stat accent"><div class="n" id="sMail">0</div><div class="l">Con correo</div></div>
+    <div class="stat"><div class="n" id="sWeb">0</div><div class="l">Con web</div></div>
+    <div class="stat ok"><div class="n" id="sDone">0</div><div class="l">Contactados</div></div>
+  </section>
+
+  <section class="controls">
+    <div class="search">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="searchInput" placeholder="Buscar por nombre, rubro, dirección…">
+    </div>
+    <select id="catFilter"><option value="">Todos los rubros</option></select>
+    <select id="sortSel">
+      <option value="name">Orden: nombre</option>
+      <option value="rating">Orden: mejor rating</option>
+      <option value="reviews">Orden: más reseñas</option>
+    </select>
+    <label class="chk"><input type="checkbox" id="onlyContactable"> Solo con contacto</label>
+    <label class="chk"><input type="checkbox" id="hideDone"> Ocultar contactados</label>
+    <button class="btn ghost" id="exportBtn">⬇️ Exportar</button>
+  </section>
+
+  <p class="count-note" id="countNote" hidden></p>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty">
+    <div class="big">🧲</div>
+    <h2>Carga tus leads para empezar</h2>
+    <p>Haz clic en <b>Cargar CSV</b> y elige el archivo <code>salidas/resultados.csv</code> que genera el scraper.<br>
+    ¿Solo quieres ver cómo se ve? Pulsa <b>Datos de ejemplo</b>.</p>
+  </div>
+</div>
+
+<!-- Modal de mensaje -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3 id="mTitle">Mensaje</h3>
+    <p class="sub" id="mSub"></p>
+    <label>Servicio a ofrecer</label>
+    <select id="mService"></select>
+    <label>Mensaje (edítalo si quieres)</label>
+    <textarea id="mText"></textarea>
+    <div class="modal-actions">
+      <button class="btn primary" id="mCopy">📋 Copiar</button>
+      <button class="btn" id="mWa" style="border-color:var(--wa);color:var(--wa)">WhatsApp</button>
+      <button class="btn" id="mMail" style="border-color:var(--mail);color:var(--mail)">Email</button>
+      <button class="btn ghost" id="mClose" style="margin-left:auto">Cerrar</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const store = {
+  get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},
+  set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+};
+
+// ---- Plantillas de oferta ----
+const SERVICIOS = {
+  web:{label:"Página web / landing", build:(n,neg)=>
+`Hola 👋, encontré ${neg} en Google Maps y me gustó lo que hacen. Soy ${n}, desarrollo páginas web para negocios. Una web profesional puede darles más clientes y confianza. ¿Le interesaría ver una propuesta rápida, sin compromiso? Saludos.`},
+  ecommerce:{label:"Tienda online (e-commerce)", build:(n,neg)=>
+`Hola 👋, vi ${neg} en Google Maps. Soy ${n}, desarrollador. Ayudo a negocios a vender por internet con una tienda online propia (pagos, catálogo, delivery). ¿Le gustaría que le explique cómo podría funcionar para ustedes? Gracias.`},
+  app:{label:"App o sistema a medida", build:(n,neg)=>
+`Hola 👋, encontré ${neg} en Google Maps. Soy ${n}, desarrollo software a medida (apps y sistemas para gestión, citas, inventario, etc.). Si tienen algún proceso manual que les quita tiempo, puedo automatizarlo. ¿Conversamos? Saludos.`},
+  seguridad:{label:"Ciberseguridad / auditoría", build:(n,neg)=>
+`Hola 👋, vi ${neg} en Google Maps. Soy ${n}, especialista en ciberseguridad. Reviso páginas y sistemas de negocios para detectar fallas antes de que las aprovechen. Puedo hacerles un diagnóstico inicial sin costo. ¿Le interesa? Gracias.`},
+  automatizacion:{label:"Automatización / bots", build:(n,neg)=>
+`Hola 👋, encontré ${neg} en Google Maps. Soy ${n}, desarrollador. Creo automatizaciones y bots (WhatsApp, reservas, respuestas automáticas) para ahorrar tiempo y no perder clientes. ¿Le muestro un ejemplo aplicado a su rubro? Saludos.`}
+};
+
+let LEADS = [];
+let contacted = new Set(store.get("bc3k_contacted", []));
+let current = null; // lead abierto en modal
+
+// ---- CSV parser (RFC4180) ----
+function parseCSV(text){
+  const rows=[]; let row=[], field="", inQ=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(inQ){
+      if(c==='"'){ if(text[i+1]==='"'){field+='"';i++;} else inQ=false; }
+      else field+=c;
+    }else{
+      if(c==='"') inQ=true;
+      else if(c===',') { row.push(field); field=""; }
+      else if(c==='\n'){ row.push(field); rows.push(row); row=[]; field=""; }
+      else if(c!=='\r') field+=c;
+    }
+  }
+  if(field.length||row.length){ row.push(field); rows.push(row); }
+  return rows;
+}
+function extractEmails(s){
+  if(!s) return [];
+  const m=s.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g)||[];
+  return [...new Set(m.map(x=>x.toLowerCase()))];
+}
+function idOf(l){ return l.link || (l.title+"|"+l.address); }
+
+function rowsToLeads(rows){
+  if(!rows.length) return [];
+  const H = rows[0].map(h=>h.trim().toLowerCase());
+  const gi = n => H.indexOf(n);
+  const g = (r,n)=>{const i=gi(n);return i>=0?(r[i]||"").trim():"";};
+  const out=[];
+  for(let k=1;k<rows.length;k++){
+    const r=rows[k];
+    if(r.length===1 && r[0]==="") continue;
+    const title=g(r,"title");
+    if(!title) continue;
+    out.push({
+      title,
+      category:g(r,"category"),
+      address:g(r,"complete_address")||g(r,"address"),
+      phone:g(r,"phone"),
+      website:g(r,"website"),
+      emails:extractEmails(g(r,"emails")),
+      rating:parseFloat(g(r,"review_rating"))||0,
+      reviews:parseInt(g(r,"review_count").replace(/\D/g,""))||0,
+      link:g(r,"link"),
+      thumb:g(r,"thumbnail")
+    });
+  }
+  return out;
+}
+function waNumber(phone){
+  let d=(phone||"").replace(/\D/g,"");
+  if(!d) return "";
+  if(d.length===9 && d[0]==="9") d="51"+d;      // celular Perú
+  return d;
+}
+
+// ---- Render ----
+function render(){
+  const q=($("#searchInput").value||"").toLowerCase().trim();
+  const cat=$("#catFilter").value;
+  const onlyC=$("#onlyContactable").checked;
+  const hideD=$("#hideDone").checked;
+  const sort=$("#sortSel").value;
+
+  let list=LEADS.filter(l=>{
+    if(cat && l.category!==cat) return false;
+    if(onlyC && !l.phone && !l.emails.length) return false;
+    if(hideD && contacted.has(idOf(l))) return false;
+    if(q){
+      const hay=(l.title+" "+l.category+" "+l.address+" "+l.phone+" "+l.emails.join(" ")).toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  list.sort((a,b)=> sort==="rating"? b.rating-a.rating : sort==="reviews"? b.reviews-a.reviews : a.title.localeCompare(b.title));
+
+  const LIMIT=400, shown=list.slice(0,LIMIT);
+  const grid=$("#grid"); grid.innerHTML="";
+  const note=$("#countNote");
+  if(LEADS.length){ note.hidden=false; note.textContent=`Mostrando ${shown.length} de ${list.length} resultados${list.length>LIMIT?" (limitado a "+LIMIT+")":""}.`; }
+  else note.hidden=true;
+
+  const frag=document.createDocumentFragment();
+  for(const l of shown) frag.appendChild(card(l));
+  grid.appendChild(frag);
+  $("#empty").hidden = LEADS.length>0;
+  updateStats();
+}
+function esc(s){return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+function card(l){
+  const el=document.createElement("div");
+  el.className="card"+(contacted.has(idOf(l))?" done":"");
+  const wa=waNumber(l.phone);
+  const email=l.emails[0]||"";
+  let html=`<div class="card-top">`;
+  if(l.thumb) html+=`<img class="thumb" src="${esc(l.thumb)}" loading="lazy" onerror="this.remove()">`;
+  html+=`<div style="min-width:0"><h3>${esc(l.title)}</h3>`;
+  if(l.category) html+=`<span class="badge">${esc(l.category)}</span>`;
+  if(l.rating) html+=`<div class="rating"><b>★ ${l.rating.toFixed(1)}</b> · ${l.reviews} reseñas</div>`;
+  html+=`</div></div>`;
+  if(l.address) html+=`<div class="addr">📍 ${esc(l.address)}</div>`;
+
+  html+=`<div class="actions">`;
+  if(l.phone) html+=`<a class="chip" href="tel:${esc(l.phone.replace(/\s/g,''))}">📞 ${esc(l.phone)}</a>`;
+  if(wa) html+=`<a class="chip wa" target="_blank" href="https://wa.me/${wa}">WhatsApp</a>`;
+  if(email) html+=`<a class="chip mail" href="mailto:${esc(email)}">✉️ Correo</a>`;
+  if(l.website) html+=`<a class="chip" target="_blank" href="${esc(l.website)}">🌐 Web</a>`;
+  html+=`<button class="chip msg" data-msg>✍️ Mensaje</button>`;
+  html+=`</div>`;
+
+  html+=`<div class="card-foot"><label class="chk"><input type="checkbox" data-done ${contacted.has(idOf(l))?"checked":""}> Marcar como contactado</label>`;
+  if(l.link) html+=`<a class="chip" style="margin-left:auto;border:none" target="_blank" href="${esc(l.link)}">Ver en Maps ↗</a>`;
+  html+=`</div>`;
+  el.innerHTML=html;
+
+  el.querySelector("[data-msg]").onclick=()=>openModal(l);
+  el.querySelector("[data-done]").onchange=e=>{
+    const id=idOf(l);
+    if(e.target.checked) contacted.add(id); else contacted.delete(id);
+    store.set("bc3k_contacted",[...contacted]);
+    el.classList.toggle("done",e.target.checked);
+    updateStats();
+  };
+  return el;
+}
+
+function updateStats(){
+  $("#sTotal").textContent=LEADS.length;
+  $("#sPhone").textContent=LEADS.filter(l=>l.phone).length;
+  $("#sMail").textContent=LEADS.filter(l=>l.emails.length).length;
+  $("#sWeb").textContent=LEADS.filter(l=>l.website).length;
+  $("#sDone").textContent=LEADS.filter(l=>contacted.has(idOf(l))).length;
+}
+function refreshCats(){
+  const cats=[...new Set(LEADS.map(l=>l.category).filter(Boolean))].sort();
+  const sel=$("#catFilter"); const cur=sel.value;
+  sel.innerHTML='<option value="">Todos los rubros</option>'+cats.map(c=>`<option>${esc(c)}</option>`).join("");
+  sel.value=cur;
+}
+
+// ---- Modal ----
+function myName(){ return ($("#myName").value||"").trim() || "[tu nombre]"; }
+function buildMsg(){
+  const key=$("#mService").value;
+  $("#mText").value = SERVICIOS[key].build(myName(), current.title);
+}
+function openModal(l){
+  current=l;
+  $("#mTitle").textContent=l.title;
+  $("#mSub").textContent=(l.phone?("📞 "+l.phone):"")+(l.emails[0]?("   ✉️ "+l.emails[0]):"") || "Sin contacto directo";
+  const sel=$("#mService");
+  sel.innerHTML=Object.entries(SERVICIOS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join("");
+  buildMsg();
+  $("#modalBg").classList.add("open");
+}
+function closeModal(){ $("#modalBg").classList.remove("open"); }
+
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1800); }
+
+// ---- Carga de datos ----
+function load(rows){
+  LEADS=rowsToLeads(rows);
+  refreshCats(); render();
+  if(!LEADS.length) toast("No se detectaron negocios en el archivo");
+  else toast(LEADS.length+" negocios cargados");
+}
+function readFile(file){
+  const fr=new FileReader();
+  fr.onload=e=>load(parseCSV(e.target.result));
+  fr.readAsText(file);
+}
+const SAMPLE=[
+  ["title","category","complete_address","phone","website","emails","review_rating","review_count","link","thumbnail"],
+  ["Dentalia Clínica Dental","Clínica dental","Av. Ejército 710, Arequipa","+51 954 123 456","","contacto@dentalia.pe","4.6","132","https://maps.google.com",""],
+  ["Sabores del Sur","Restaurante","Calle Santa Catalina 120, Arequipa","054 234567","https://saboresdelsur.pe","","4.3","489","https://maps.google.com",""],
+  ["Inmobiliaria Norte","Inmobiliaria","Av. Larco 345, Trujillo","+51 987 654 321","","ventas@inmonorte.com info@inmonorte.com","4.1","57","https://maps.google.com",""],
+  ["FitZone Gym","Gimnasio","Jr. de la Unión 800, Lima","01 4567890","https://fitzone.pe","","4.8","921","https://maps.google.com",""],
+  ["Estudio Contable RyR","Estudio contable","Av. Arequipa 2100, Lima","+51 999 888 777","","","4.0","23","https://maps.google.com",""]
+];
+
+// ---- Eventos ----
+$("#fileInput").onchange=e=>{ if(e.target.files[0]) readFile(e.target.files[0]); };
+$("#sampleBtn").onclick=()=>load(SAMPLE);
+["searchInput","catFilter","sortSel","onlyContactable","hideDone"].forEach(id=>{
+  const el=$("#"+id); el.addEventListener(id==="searchInput"?"input":"change",render);
+});
+$("#mService").onchange=buildMsg;
+$("#mClose").onclick=closeModal;
+$("#modalBg").onclick=e=>{ if(e.target===$("#modalBg")) closeModal(); };
+$("#mCopy").onclick=async()=>{ try{await navigator.clipboard.writeText($("#mText").value); toast("Mensaje copiado ✓");}catch(e){ $("#mText").select(); document.execCommand("copy"); toast("Mensaje copiado ✓"); } };
+$("#mWa").onclick=()=>{ const n=waNumber(current.phone); if(!n){toast("Este negocio no tiene teléfono");return;} window.open(`https://wa.me/${n}?text=${encodeURIComponent($("#mText").value)}`,"_blank"); };
+$("#mMail").onclick=()=>{ const e=current.emails[0]; if(!e){toast("Este negocio no tiene correo");return;} window.open(`mailto:${e}?subject=${encodeURIComponent("Propuesta para "+current.title)}&body=${encodeURIComponent($("#mText").value)}`); };
+
+$("#myName").value=store.get("bc3k_name","");
+$("#myName").oninput=e=>store.set("bc3k_name",e.target.value);
+
+// Tema
+function applyTheme(t){ document.documentElement.setAttribute("data-theme",t); $("#themeBtn").textContent=t==="dark"?"☀️":"🌙"; store.set("bc3k_theme",t); }
+$("#themeBtn").onclick=()=>applyTheme(document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark");
+const savedTheme=store.get("bc3k_theme",null);
+if(savedTheme) applyTheme(savedTheme);
+else $("#themeBtn").textContent = matchMedia("(prefers-color-scheme:dark)").matches?"☀️":"🌙";
+
+// Drag & drop
+document.addEventListener("dragover",e=>e.preventDefault());
+document.addEventListener("drop",e=>{ e.preventDefault(); const f=e.dataTransfer.files[0]; if(f) readFile(f); });
+
+// Exportar (leads filtrados visibles + estado)
+$("#exportBtn").onclick=()=>{
+  if(!LEADS.length){toast("Primero carga datos");return;}
+  const rows=[["nombre","rubro","direccion","telefono","correo","web","rating","reseñas","contactado","maps"]];
+  LEADS.forEach(l=>rows.push([l.title,l.category,l.address,l.phone,l.emails.join(" "),l.website,l.rating||"",l.reviews||"",contacted.has(idOf(l))?"si":"no",l.link]));
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv"}));
+  a.download="leads-busca-chamba.csv"; a.click();
+  toast("CSV exportado ✓");
+};
+
+updateStats();
+</script>
+</body>
+</html>
