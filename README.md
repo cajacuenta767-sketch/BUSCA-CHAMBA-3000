@@ -12,9 +12,21 @@ Nombre del negocio, categoría, dirección, teléfono, sitio web, horario, ratin
 
 ---
 
-## Panel de Leads (`dashboard.html`)
+## Panel de Leads (`dashboard.html` + `server.js`)
 
-Después de scrapear, abre **`dashboard.html`** en tu navegador (doble clic) y carga el `salidas/resultados.csv`. Es un panel visual, **100% local** (tus datos no se suben a ningún lado), con:
+Panel visual para trabajar los leads. Funciona de **dos formas**:
+
+**A) Modo en vivo (recomendado)** — con un servidor local (Node, sin dependencias):
+
+```bash
+node server.js      # abre http://localhost:8090
+```
+
+El botón **▶️ Iniciar** lanza el scraper y **los leads van apareciendo en vivo** en el panel; el servidor **guarda todo** (leads, estados, notas) aunque cierres. Para escanear necesita el binario `gms` (o define `SCRAPER_MODE=docker` para usar la imagen). Botón **Demo** para verlo funcionar sin escanear.
+
+**B) Modo archivo** — abres `dashboard.html` con doble clic y cargas un `resultados.csv` a mano (sin escaneo en vivo).
+
+En ambos modos tienes:
 
 - Buscador, filtros por rubro y orden por rating / número de reseñas.
 - Botones directos de **WhatsApp**, **correo**, **llamar** y **web** por cada negocio.
@@ -24,7 +36,9 @@ Después de scrapear, abre **`dashboard.html`** en tu navegador (doble clic) y c
 - **🛠️ Herramientas**: copiar todos los teléfonos/correos, abrir WhatsApp Web, reiniciar contactados.
 - **📊 Exportar Excel `.xlsx`** con encabezados y columnas correctas (si abres sin internet, baja un CSV compatible con Excel).
 
-No instala nada: es un solo archivo HTML. Ábrelo con **Datos de ejemplo** para ver cómo se ve sin datos propios. La pestaña de mapa necesita internet (usa mapas de OpenStreetMap).
+Además: **badges** por negocio (🌐 web / 💬 WhatsApp / ✉️ correo), aviso **🔥 SIN WEB** (prospecto ideal), **filtros rápidos**, **pipeline** con estados (Nuevo → Contactado → Respondió → Propuesta → Cliente) y **notas** por lead, y **mensajes de seguimiento**.
+
+El botón **Ejemplo** carga datos de muestra para ver el panel sin datos propios. La pestaña de mapa necesita internet (usa OpenStreetMap). En modo en vivo, el scraper debe poder correr en esa máquina (binario `gms` o Docker).
 
 ## Requisitos
 

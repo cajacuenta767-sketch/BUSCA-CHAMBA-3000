@@ -6,535 +6,374 @@
 <title>Panel de Leads — BUSCA-CHAMBA-3000</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
-  :root{
-    --bg:#f5f7fa; --surface:#ffffff; --surface-2:#eef1f6;
-    --text:#161a22; --muted:#5c6675; --border:#e2e6ee;
-    --accent:#4f46e5; --accent-weak:#ecebfd;
-    --wa:#25d366; --mail:#0ea5e9; --ok:#16a34a; --ok-weak:#e7f6ec;
-    --star:#f59e0b; --shadow:0 1px 2px rgba(16,24,40,.06),0 4px 16px rgba(16,24,40,.05);
-    --radius:14px;
-  }
-  :root[data-theme="dark"]{
-    --bg:#0e1320; --surface:#161d2c; --surface-2:#1d2637;
-    --text:#e8ecf4; --muted:#9aa4b8; --border:#28324a;
-    --accent:#7c83ff; --accent-weak:#20233f;
-    --wa:#25d366; --mail:#38bdf8; --ok:#34d399; --ok-weak:#173026;
-    --star:#fbbf24; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
-  }
-  @media (prefers-color-scheme:dark){
-    :root:not([data-theme="light"]){
-      --bg:#0e1320; --surface:#161d2c; --surface-2:#1d2637;
-      --text:#e8ecf4; --muted:#9aa4b8; --border:#28324a;
-      --accent:#7c83ff; --accent-weak:#20233f;
-      --wa:#25d366; --mail:#38bdf8; --ok:#34d399; --ok-weak:#173026;
-      --star:#fbbf24; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
-    }
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0}
+  :root{--bg:#f5f7fa;--surface:#fff;--surface-2:#eef1f6;--text:#161a22;--muted:#5c6675;--border:#e2e6ee;--accent:#4f46e5;--accent-weak:#ecebfd;--wa:#25d366;--mail:#0ea5e9;--ok:#16a34a;--ok-weak:#e7f6ec;--warn:#ea580c;--warn-weak:#fdeee2;--star:#f59e0b;--shadow:0 1px 2px rgba(16,24,40,.06),0 4px 16px rgba(16,24,40,.05);--radius:14px}
+  :root[data-theme="dark"]{--bg:#0e1320;--surface:#161d2c;--surface-2:#1d2637;--text:#e8ecf4;--muted:#9aa4b8;--border:#28324a;--accent:#7c83ff;--accent-weak:#20233f;--mail:#38bdf8;--ok:#34d399;--ok-weak:#173026;--warn:#fb923c;--warn-weak:#3a2415;--star:#fbbf24;--shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35)}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1320;--surface:#161d2c;--surface-2:#1d2637;--text:#e8ecf4;--muted:#9aa4b8;--border:#28324a;--accent:#7c83ff;--accent-weak:#20233f;--mail:#38bdf8;--ok:#34d399;--ok-weak:#173026;--warn:#fb923c;--warn-weak:#3a2415;--star:#fbbf24;--shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35)}}
+  *{box-sizing:border-box}html,body{margin:0}
   body{background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
-  a{color:inherit}
-  .wrap{max-width:1180px;margin:0 auto;padding:20px 16px 64px}
-  header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:16px}
+  a{color:inherit}.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 64px}
+  header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:14px}
   .brand{display:flex;align-items:center;gap:11px;margin-right:auto}
   .logo{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,var(--accent),#22d3ee);display:grid;place-items:center;font-size:21px;box-shadow:var(--shadow)}
-  .brand h1{font-size:18px;margin:0;letter-spacing:-.2px}
-  .brand p{margin:0;font-size:12.5px;color:var(--muted)}
+  .brand h1{font-size:18px;margin:0}.brand p{margin:0;font-size:12.5px;color:var(--muted)}
   .btn{border:1px solid var(--border);background:var(--surface);color:var(--text);padding:9px 13px;border-radius:10px;font-size:13.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:.15s;white-space:nowrap}
   .btn:hover{border-color:var(--accent);color:var(--accent)}
-  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-  .btn.primary:hover{filter:brightness(1.07);color:#fff}
-  .btn.ghost{background:transparent}
-  .name-input{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:10px;padding:9px 12px;font-size:13.5px;width:160px}
-  .name-input:focus{outline:none;border-color:var(--accent)}
-
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}.btn.primary:hover{filter:brightness(1.07);color:#fff}
+  .btn.danger{background:var(--warn);border-color:var(--warn);color:#fff}
+  .btn.ghost{background:transparent}.btn:disabled{opacity:.5;cursor:not-allowed}
+  .name-input{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:10px;padding:9px 12px;font-size:13.5px;width:150px}
+  .mode{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--muted);padding:5px 10px;border:1px solid var(--border);border-radius:20px}
+  .dot{width:8px;height:8px;border-radius:50%;background:#94a3b8}.dot.on{background:var(--ok);box-shadow:0 0 0 3px var(--ok-weak)}.dot.live{background:var(--warn);animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
   .tabs{display:flex;gap:6px;border-bottom:1px solid var(--border);margin-bottom:18px;flex-wrap:wrap}
   .tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:14px;font-weight:600;padding:10px 14px;cursor:pointer;margin-bottom:-1px}
-  .tab:hover{color:var(--text)}
-  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
-
-  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
-  .stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow)}
-  .stat .n{font-size:26px;font-weight:750;letter-spacing:-.5px}
-  .stat .l{font-size:12px;color:var(--muted);margin-top:2px}
-  .stat.accent .n{color:var(--accent)}
-  .stat.ok .n{color:var(--ok)}
-
+  .tab:hover{color:var(--text)}.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:13px 15px;box-shadow:var(--shadow)}
+  .stat .n{font-size:25px;font-weight:750}.stat .l{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .stat.accent .n{color:var(--accent)}.stat.ok .n{color:var(--ok)}.stat.warn .n{color:var(--warn)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  .chipf{border:1px solid var(--border);background:var(--surface);color:var(--muted);border-radius:20px;padding:7px 13px;font-size:12.5px;font-weight:600;cursor:pointer}
+  .chipf.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .chipf.warn.on{background:var(--warn);border-color:var(--warn)}
   .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
   .search{position:relative;flex:1;min-width:200px}
   .search input{width:100%;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:11px;padding:11px 12px 11px 38px;font-size:14px}
   .search input:focus{outline:none;border-color:var(--accent)}
   .search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted)}
-  select,.num{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:11px;padding:11px 12px;font-size:13.5px;cursor:pointer}
-  .num{width:76px;cursor:text}
-  .chk{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none}
-  .chk input{width:16px;height:16px;accent-color:var(--accent)}
-
+  select,.num,textarea{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:11px;padding:11px 12px;font-size:13.5px;font-family:inherit}
+  select{cursor:pointer}.num{width:74px}
+  .chk{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none}.chk input{width:16px;height:16px;accent-color:var(--accent)}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:10px;position:relative}
-  .card.done{opacity:.62}
-  .card.done::after{content:"✓ contactado";position:absolute;top:12px;right:12px;font-size:10.5px;font-weight:700;color:var(--ok);background:var(--ok-weak);padding:3px 8px;border-radius:20px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:9px;position:relative;animation:in .25s}
+  @keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1}}
+  .card.st-cliente{border-color:var(--ok)}.card.st-descartado{opacity:.55}
   .card-top{display:flex;gap:11px}
-  .thumb{width:46px;height:46px;border-radius:10px;object-fit:cover;background:var(--surface-2);flex:none}
-  .card h3{margin:0;font-size:15.5px;line-height:1.3;padding-right:70px}
+  .thumb{width:44px;height:44px;border-radius:10px;object-fit:cover;background:var(--surface-2);flex:none}
+  .card h3{margin:0;font-size:15.5px;line-height:1.3}
   .badge{display:inline-block;font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-weak);padding:2px 9px;border-radius:20px;margin-top:5px}
-  .rating{font-size:12.5px;color:var(--muted);margin-top:5px}
-  .rating b{color:var(--star)}
-  .addr{font-size:12.5px;color:var(--muted);display:flex;gap:6px}
+  .rating{font-size:12.5px;color:var(--muted);margin-top:4px}.rating b{color:var(--star)}
+  .sug{font-size:12px;color:var(--accent);font-weight:600;margin-top:4px}
+  .flag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;color:#fff;background:var(--warn);padding:3px 9px;border-radius:8px;align-self:flex-start}
+  .badges{display:flex;gap:6px;flex-wrap:wrap}
+  .b2{font-size:11.5px;font-weight:600;padding:4px 9px;border-radius:8px;border:1px solid var(--border);display:inline-flex;gap:5px;align-items:center;color:var(--muted)}
+  .b2.yes{color:var(--ok);border-color:var(--ok);background:var(--ok-weak)}
+  .b2.no{color:var(--muted);opacity:.7}
+  .addr{font-size:12.5px;color:var(--muted)}
   .actions{display:flex;flex-wrap:wrap;gap:7px}
   .chip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:7px 11px;border-radius:9px;text-decoration:none;border:1px solid var(--border);cursor:pointer;background:var(--surface)}
-  .chip:hover{filter:brightness(.98)}
-  .chip.wa{background:var(--wa);border-color:var(--wa);color:#053d1c}
-  .chip.mail{color:var(--mail);border-color:var(--mail)}
+  .chip.wa{background:var(--wa);border-color:var(--wa);color:#053d1c}.chip.mail{color:var(--mail);border-color:var(--mail)}
   .chip.msg{background:var(--accent);border-color:var(--accent);color:#fff;margin-left:auto}
-  .card-foot{display:flex;align-items:center;gap:10px;border-top:1px solid var(--border);padding-top:10px;margin-top:auto}
-  .card-foot .chk{font-size:12.5px}
-
-  .empty{text-align:center;padding:56px 20px;color:var(--muted)}
-  .empty .big{font-size:44px;margin-bottom:10px}
-  .empty h2{color:var(--text);font-size:18px;margin:0 0 6px}
-  .empty code{background:var(--surface-2);padding:2px 7px;border-radius:6px;font-size:12.5px}
+  .card-foot{display:flex;align-items:center;gap:8px;border-top:1px solid var(--border);padding-top:10px;margin-top:auto}
+  .pipe{padding:6px 9px;border-radius:9px;font-size:12px;font-weight:600}
+  .empty{text-align:center;padding:52px 20px;color:var(--muted)}.empty .big{font-size:44px;margin-bottom:10px}.empty h2{color:var(--text);font-size:18px;margin:0 0 6px}.empty code{background:var(--surface-2);padding:2px 7px;border-radius:6px;font-size:12.5px}
   .count-note{font-size:12.5px;color:var(--muted);margin:0 0 12px}
-
-  #map{height:460px;border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;margin:6px 0 12px;z-index:0}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:16px}
+  .livebar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+  .livecount{font-size:13px;color:var(--muted);font-weight:600}
+  #map{height:440px;border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;margin:6px 0 12px;z-index:0}
   .help{font-size:13px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:14px}
-  .mono{width:100%;border:1px solid var(--border);background:var(--surface-2);color:var(--text);border-radius:10px;padding:11px 12px;font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical;min-height:74px}
-  .tools-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:16px}
-  .tools-grid .btn{justify-content:flex-start;padding:14px 16px}
-
-  .modal-bg{position:fixed;inset:0;background:rgba(6,10,20,.55);display:none;place-items:center;padding:16px;z-index:1000}
-  .modal-bg.open{display:grid}
-  .modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);width:100%;max-width:520px;padding:20px;max-height:90vh;overflow:auto}
-  .modal h3{margin:0 0 3px;font-size:17px}
-  .modal .sub{color:var(--muted);font-size:13px;margin:0 0 15px}
+  .mono{width:100%;border:1px solid var(--border);background:var(--surface-2);color:var(--text);border-radius:10px;padding:11px 12px;font:12.5px/1.5 ui-monospace,Menlo,monospace;resize:vertical;min-height:66px}
+  .tools-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:16px}.tools-grid .btn{justify-content:flex-start;padding:14px 16px}
+  .modal-bg{position:fixed;inset:0;background:rgba(6,10,20,.55);display:none;place-items:center;padding:16px;z-index:1000}.modal-bg.open{display:grid}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);width:100%;max-width:540px;padding:20px;max-height:90vh;overflow:auto}
+  .modal h3{margin:0 0 3px;font-size:17px}.modal .sub{color:var(--muted);font-size:13px;margin:0 0 14px}
   .modal label{font-size:12.5px;font-weight:600;color:var(--muted);display:block;margin:12px 0 6px}
-  .modal select,.modal textarea{width:100%;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:10px;padding:11px 12px;font-size:14px;font-family:inherit}
-  .modal textarea{min-height:135px;resize:vertical;line-height:1.55}
+  .modal select,.modal textarea{width:100%;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:10px;padding:11px 12px;font-size:14px}
+  .modal textarea{min-height:120px;resize:vertical;line-height:1.5}
   .modal-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
-  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:11px 18px;border-radius:11px;font-size:13.5px;font-weight:600;opacity:0;transition:.25s;z-index:2000;pointer-events:none}
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:11px 18px;border-radius:11px;font-size:13.5px;font-weight:600;opacity:0;transition:.25s;z-index:2000;pointer-events:none}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .leaflet-popup-content{font:13px system-ui}
-  @media (max-width:720px){ .stats{grid-template-columns:repeat(2,1fr)} .brand{width:100%} }
+  @media (max-width:720px){.stats{grid-template-columns:repeat(2,1fr)}.brand{width:100%}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="brand">
-      <div class="logo">🧲</div>
-      <div><h1>Panel de Leads</h1><p>BUSCA-CHAMBA-3000 · tus datos no salen de este navegador</p></div>
-    </div>
-    <input class="name-input" id="myName" placeholder="Tu nombre (para los mensajes)">
+    <div class="brand"><div class="logo">🧲</div><div><h1>Panel de Leads</h1><p>BUSCA-CHAMBA-3000</p></div></div>
+    <span class="mode" id="modeTag"><span class="dot" id="modeDot"></span><span id="modeTxt">…</span></span>
+    <input class="name-input" id="myName" placeholder="Tu nombre">
     <button class="btn ghost" id="themeBtn" title="Tema">🌙</button>
-    <button class="btn" id="sampleBtn">Datos de ejemplo</button>
-    <label class="btn primary" for="fileInput">📂 Cargar CSV<input type="file" id="fileInput" accept=".csv,text/csv" hidden></label>
+    <button class="btn ghost" id="sampleBtn">Ejemplo</button>
+    <label class="btn" for="fileInput">📂 CSV<input type="file" id="fileInput" accept=".csv,text/csv" hidden></label>
   </header>
 
   <nav class="tabs">
     <button class="tab active" data-tab="leads">📇 Leads</button>
-    <button class="tab" data-tab="map">🗺️ Mapa y cobertura</button>
+    <button class="tab" data-tab="scan">▶️ Escanear</button>
     <button class="tab" data-tab="tools">🛠️ Herramientas</button>
   </nav>
 
-  <!-- ===== TAB LEADS ===== -->
+  <!-- LEADS -->
   <section id="tab-leads">
     <div class="stats">
       <div class="stat"><div class="n" id="sTotal">0</div><div class="l">Negocios</div></div>
+      <div class="stat warn"><div class="n" id="sNoWeb">0</div><div class="l">🔥 Sin web</div></div>
       <div class="stat accent"><div class="n" id="sPhone">0</div><div class="l">Con teléfono</div></div>
       <div class="stat accent"><div class="n" id="sMail">0</div><div class="l">Con correo</div></div>
-      <div class="stat"><div class="n" id="sWeb">0</div><div class="l">Con web</div></div>
-      <div class="stat ok"><div class="n" id="sDone">0</div><div class="l">Contactados</div></div>
+      <div class="stat ok"><div class="n" id="sDone">0</div><div class="l">En proceso</div></div>
     </div>
+    <div class="chips" id="chips"></div>
     <div class="controls">
-      <div class="search">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-        <input id="searchInput" placeholder="Buscar por nombre, rubro, dirección…">
-      </div>
+      <div class="search"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input id="searchInput" placeholder="Buscar…"></div>
       <select id="catFilter"><option value="">Todos los rubros</option></select>
-      <select id="sortSel">
-        <option value="name">Orden: nombre</option>
-        <option value="rating">Orden: mejor rating</option>
-        <option value="reviews">Orden: más reseñas</option>
-      </select>
-      <label class="chk"><input type="checkbox" id="onlyContactable"> Solo con contacto</label>
-      <label class="chk"><input type="checkbox" id="hideDone"> Ocultar contactados</label>
+      <select id="stateFilter"><option value="">Todos los estados</option></select>
+      <select id="sortSel"><option value="name">Nombre</option><option value="rating">Mejor rating</option><option value="reviews">Más reseñas</option></select>
     </div>
     <p class="count-note" id="countNote" hidden></p>
     <div class="grid" id="grid"></div>
-    <div class="empty" id="empty">
-      <div class="big">🧲</div>
-      <h2>Carga tus leads para empezar</h2>
-      <p>Haz clic en <b>Cargar CSV</b> y elige el <code>salidas/resultados.csv</code> del scraper.<br>¿Solo quieres ver cómo se ve? Pulsa <b>Datos de ejemplo</b>.</p>
-    </div>
+    <div class="empty" id="empty"><div class="big">🧲</div><h2>Sin leads todavía</h2><p>Ve a <b>▶️ Escanear</b> y pulsa <b>Iniciar</b> (o <b>Demo</b>) para verlos aparecer en vivo, o carga un <code>CSV</code>.</p></div>
   </section>
 
-  <!-- ===== TAB MAPA ===== -->
-  <section id="tab-map" hidden>
-    <div class="help">
-      <b>Cómo usarlo:</b> mueve el mapa hasta el área que quieres barrer → elige el <b>tamaño de celda</b> → <b>Generar cuadrícula</b>. Las celdas <b style="color:var(--ok)">verdes</b> ya tienen negocios escaneados (o las marcaste tú con clic); las grises están pendientes. Copia el <b>comando de escaneo</b> y córrelo en tu PC/VPS para barrer esa área celda por celda sin saltarte nada.
+  <!-- SCAN -->
+  <section id="tab-scan" hidden>
+    <div class="panel">
+      <div class="livebar">
+        <button class="btn primary" id="playBtn">▶️ Iniciar escaneo</button>
+        <button class="btn danger" id="stopBtn" hidden>⏹️ Detener</button>
+        <button class="btn ghost" id="demoBtn">Demo</button>
+        <span class="livecount" id="liveCount"></span>
+      </div>
+      <div id="serverWarn" class="help" hidden>⚠️ No hay servidor. Para escanear en vivo, en tu PC/VPS corre <code>node server.js</code> y abre <code>http://localhost:8090</code>. Aquí (archivo suelto) solo puedes cargar un CSV.</div>
+      <label class="chk" style="margin-bottom:6px;font-weight:600;color:var(--text)">Búsquedas (una por línea)</label>
+      <textarea id="scanQueries" style="width:100%;min-height:96px" placeholder="farmacias en Miraflores&#10;talleres de celulares en Lima"></textarea>
+      <div class="controls" style="margin-top:10px">
+        <label class="chk"><input type="checkbox" id="useGrid"> Barrer por cuadrícula del mapa</label>
+        <label class="chk">Celda (km) <input class="num" id="cellKm" type="number" min="0.2" step="0.1" value="1"></label>
+        <label class="chk"><input type="checkbox" id="scanEmail" checked> Extraer correos</label>
+      </div>
     </div>
+    <div class="help"><b>Mapa y cobertura:</b> mueve el mapa al área a barrer, marca <b>Barrer por cuadrícula</b> y pulsa <b>Generar cuadrícula</b>. Celdas <b style="color:var(--ok)">verdes</b> = ya tienen negocios; grises = pendientes (clic para marcar). Al Iniciar con cuadrícula activa, se barre celda por celda sin saltarse zonas.</div>
     <div class="controls">
-      <label class="chk">Tamaño de celda (km): <input class="num" id="cellKm" type="number" min="0.2" step="0.1" value="1"></label>
-      <button class="btn primary" id="drawGrid">Generar cuadrícula sobre esta vista</button>
-      <button class="btn ghost" id="fitPins">Centrar en mis leads</button>
+      <button class="btn" id="drawGrid">Generar cuadrícula</button>
+      <button class="btn ghost" id="fitPins">Centrar en leads</button>
       <button class="btn ghost" id="clearScan">Limpiar marcado</button>
       <span id="gridInfo" style="color:var(--muted);font-size:13px"></span>
     </div>
     <div id="map"></div>
-    <label style="font-size:12.5px;font-weight:600;color:var(--muted)">Comando de escaneo por cuadrícula (córrelo en tu PC/VPS):</label>
+    <label style="font-size:12.5px;font-weight:600;color:var(--muted)">Comando manual equivalente (para tu PC/VPS):</label>
     <textarea id="scanCmd" class="mono" readonly></textarea>
-    <div style="margin-top:8px"><button class="btn primary" id="copyCmd">📋 Copiar comando</button></div>
+    <div style="margin-top:8px"><button class="btn" id="copyCmd">📋 Copiar comando</button></div>
   </section>
 
-  <!-- ===== TAB HERRAMIENTAS ===== -->
+  <!-- TOOLS -->
   <section id="tab-tools" hidden>
-    <div class="help">Acciones rápidas sobre tus leads. Las de "filtrados" usan lo que tengas filtrado en la pestaña <b>Leads</b>.</div>
+    <div class="help">Acciones sobre tus leads. "Filtrados" usa lo que tengas filtrado en <b>Leads</b>.</div>
     <div class="tools-grid">
       <button class="btn" data-act="xlsx">📊 Exportar Excel (.xlsx)</button>
-      <button class="btn" data-act="xlsx-nc">🟢 Excel: solo NO contactados</button>
+      <button class="btn" data-act="xlsx-nc">🟢 Excel: solo sin contactar</button>
       <button class="btn" data-act="phones">📞 Copiar teléfonos (filtrados)</button>
       <button class="btn" data-act="emails">✉️ Copiar correos (filtrados)</button>
       <button class="btn" data-act="wa-web">💬 Abrir WhatsApp Web</button>
-      <button class="btn ghost" data-act="reset">♻️ Reiniciar "contactados"</button>
+      <button class="btn ghost" data-act="reset">♻️ Borrar todos los leads</button>
     </div>
-    <div class="help">El Excel sale con encabezados y columnas correctas (Nombre, Rubro, Dirección, Teléfono, WhatsApp, Correo, Web, Rating, Reseñas, Contactado, Maps). Si abres el archivo sin internet, el botón de Excel baja un CSV compatible con Excel (separador <code>;</code> y acentos correctos).</div>
+    <div class="help">El Excel incluye Estado y Notas del pipeline. Sin internet baja un CSV compatible con Excel (separador <code>;</code>).</div>
   </section>
-
-  <div style="height:8px"></div>
 </div>
 
-<!-- Modal de mensaje -->
-<div class="modal-bg" id="modalBg">
-  <div class="modal">
-    <h3 id="mTitle">Mensaje</h3>
-    <p class="sub" id="mSub"></p>
-    <label>Qué ofrecer</label>
-    <select id="mService"></select>
-    <label>Mensaje (edítalo si quieres)</label>
-    <textarea id="mText"></textarea>
-    <div class="modal-actions">
-      <button class="btn primary" id="mCopy">📋 Copiar</button>
-      <button class="btn" id="mWa" style="border-color:var(--wa);color:var(--wa)">WhatsApp</button>
-      <button class="btn" id="mMail" style="border-color:var(--mail);color:var(--mail)">Email</button>
-      <button class="btn ghost" id="mClose" style="margin-left:auto">Cerrar</button>
-    </div>
+<div class="modal-bg" id="modalBg"><div class="modal">
+  <h3 id="mTitle">Mensaje</h3><p class="sub" id="mSub"></p>
+  <label>Qué ofrecer</label><select id="mService"></select>
+  <label class="chk" style="margin-top:10px"><input type="checkbox" id="mFollow"> Mensaje de seguimiento (2º toque)</label>
+  <label>Mensaje (edítalo si quieres)</label><textarea id="mText"></textarea>
+  <label>Notas / estado del contacto</label><textarea id="mNotes" style="min-height:60px" placeholder="Ej: pidió cotización, volver a escribir el viernes"></textarea>
+  <div class="modal-actions">
+    <button class="btn primary" id="mCopy">📋 Copiar</button>
+    <button class="btn" id="mWa" style="border-color:var(--wa);color:var(--wa)">WhatsApp</button>
+    <button class="btn" id="mMail" style="border-color:var(--mail);color:var(--mail)">Email</button>
+    <button class="btn ghost" id="mClose" style="margin-left:auto">Cerrar</button>
   </div>
-</div>
+</div></div>
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 "use strict";
-const $ = s => document.querySelector(s);
-const store = {
-  get:(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},
-  set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
-};
+const $=s=>document.querySelector(s);
+const store={get:(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const STATES={nuevo:{l:"Nuevo",c:"var(--muted)"},contactado:{l:"Contactado",c:"var(--mail)"},respondio:{l:"Respondió",c:"var(--star)"},propuesta:{l:"Propuesta",c:"var(--accent)"},cliente:{l:"Cliente ✅",c:"var(--ok)"},descartado:{l:"Descartado",c:"var(--warn)"}};
 
-// ---- Pitches: sistemas por rubro + servicios generales ----
-const PITCHES = {
-  verticals: {
-    farmacia:{label:"Farmacia / botica", build:(n,neg)=>`Hola 👋, encontré ${neg} en Google Maps. Soy ${n}, desarrollo software para boticas: sistema de ventas rápido, control de stock con alertas de vencimiento y bajo inventario, y recordatorios a clientes. Vende más y evita pérdidas por vencidos. ¿Le muestro una demo corta por aquí? Gracias.`},
-    taller_celulares:{label:"Taller de celulares / reparación", build:(n,neg)=>`Hola 👋, vi ${neg} en Google Maps. Soy ${n}, desarrollador. Hago un sistema para talleres: órdenes de reparación con ticket, aviso automático por WhatsApp al cliente ("su equipo está listo") e inventario de repuestos. Da orden y buena imagen. ¿Le interesa una demo? Saludos.`},
-    restaurante:{label:"Restaurante / comida", build:(n,neg)=>`Hola 👋, encontré ${neg} en Google Maps. Soy ${n}, desarrollador. Puedo armarles carta digital con código QR y pedidos/reservas por WhatsApp, sin comisiones de apps de delivery. Más pedidos directos. ¿Le muestro cómo quedaría? Gracias.`},
-    dental:{label:"Clínica / consultorio dental", build:(n,neg)=>`Hola 👋, vi ${neg} en Google Maps. Soy ${n}, desarrollador. Hago un sistema de citas con recordatorios automáticos por WhatsApp (reduce inasistencias) y ficha de pacientes. ¿Le interesaría verlo en una demo rápida? Saludos.`},
-    inmobiliaria:{label:"Inmobiliaria", build:(n,neg)=>`Hola 👋, encontré ${neg} en Google Maps. Soy ${n}, desarrollador. Puedo hacerles una web con catálogo de propiedades y formularios que llegan directo a su WhatsApp. Más consultas de compradores reales. ¿Le muestro un ejemplo? Gracias.`},
-    gimnasio:{label:"Gimnasio / fitness", build:(n,neg)=>`Hola 👋, vi ${neg} en Google Maps. Soy ${n}, desarrollador. Hago un sistema de membresías: control de asistencia, avisos de vencimiento de pago por WhatsApp y cobros. Menos morosidad y menos papeleo. ¿Le interesa una demo? Saludos.`},
-    bodega:{label:"Bodega / minimarket", build:(n,neg)=>`Hola 👋, encontré ${neg} en Google Maps. Soy ${n}, desarrollador. Puedo darles un sistema de ventas (POS) con control de inventario y registro de fiados. Sabe qué se vende, qué falta y quién le debe. ¿Le muestro cómo funciona? Gracias.`},
-    ferreteria:{label:"Ferretería", build:(n,neg)=>`Hola 👋, vi ${neg} en Google Maps. Soy ${n}, desarrollador. Hago catálogo online con cotizaciones rápidas y control de stock para ferreterías. Cotiza en segundos y no pierde ventas por falta de stock. ¿Le interesa verlo? Saludos.`},
-    hotel:{label:"Hotel / hospedaje", build:(n,neg)=>`Hola 👋, encontré ${neg} en Google Maps. Soy ${n}, desarrollador. Puedo hacerles web con motor de reservas y confirmaciones por WhatsApp, sin comisiones de terceros. Más reservas directas. ¿Le muestro un ejemplo? Gracias.`},
-    belleza:{label:"Salón / barbería / belleza", build:(n,neg)=>`Hola 👋, vi ${neg} en Google Maps. Soy ${n}, desarrollador. Hago un sistema de reservas online con recordatorios por WhatsApp para salones y barberías. Llena la agenda y reduce plantones. ¿Le interesa una demo? Saludos.`},
-    veterinaria:{label:"Veterinaria", build:(n,neg)=>`Hola 👋, encontré ${neg} en Google Maps. Soy ${n}, desarrollador. Puedo hacerles citas online, carnet de vacunas digital y recordatorios por WhatsApp para los dueños. Fideliza clientes y ordena la atención. ¿Le muestro? Gracias.`},
-    contable:{label:"Estudio contable", build:(n,neg)=>`Hola 👋, vi ${neg} en Google Maps. Soy ${n}, desarrollador. Puedo hacerles web profesional, agenda de citas y un portal para que sus clientes suban documentos. Más imagen y menos idas y venidas. ¿Le interesa verlo? Saludos.`},
-    juridico:{label:"Estudio jurídico / abogados", build:(n,neg)=>`Hola 👋, encontré ${neg} en Google Maps. Soy ${n}, desarrollador. Hago webs profesionales y agenda de consultas para estudios de abogados, con formularios que llegan a su WhatsApp. Más clientes y mejor imagen. ¿Le muestro un ejemplo? Gracias.`}
-  },
-  servicios: {
-    web:{label:"Página web / landing", build:(n,neg)=>`Hola 👋, encontré ${neg} en Google Maps y me gustó lo que hacen. Soy ${n}, desarrollo páginas web para negocios. Una web profesional puede darles más clientes y confianza. ¿Le interesaría ver una propuesta rápida, sin compromiso? Saludos.`},
-    ecommerce:{label:"Tienda online (e-commerce)", build:(n,neg)=>`Hola 👋, vi ${neg} en Google Maps. Soy ${n}, desarrollador. Ayudo a negocios a vender por internet con una tienda online propia (pagos, catálogo, delivery). ¿Le explico cómo podría funcionar para ustedes? Gracias.`},
-    app:{label:"App o sistema a medida", build:(n,neg)=>`Hola 👋, encontré ${neg} en Google Maps. Soy ${n}, desarrollo software a medida (apps y sistemas de gestión, citas, inventario). Si tienen un proceso manual que les quita tiempo, lo automatizo. ¿Conversamos? Saludos.`},
-    seguridad:{label:"Ciberseguridad / auditoría", build:(n,neg)=>`Hola 👋, vi ${neg} en Google Maps. Soy ${n}, especialista en ciberseguridad. Reviso páginas y sistemas de negocios para detectar fallas antes de que las aprovechen. Puedo hacerles un diagnóstico inicial sin costo. ¿Le interesa? Gracias.`},
-    automatizacion:{label:"Automatización / bots", build:(n,neg)=>`Hola 👋, encontré ${neg} en Google Maps. Soy ${n}, desarrollador. Creo automatizaciones y bots (WhatsApp, reservas, respuestas automáticas) para ahorrar tiempo y no perder clientes. ¿Le muestro un ejemplo de su rubro? Saludos.`}
-  }
-};
-const VERT_RULES = [
-  [/farmac|botica/,"farmacia"],
-  [/celular|reparaci|t[eé]cnico|phone|electr[oó]nic/,"taller_celulares"],
-  [/restaur|comida|cevich|poller|caf[eé]|pizzer|chifa|men[uú]|parrill|jugu/,"restaurante"],
-  [/dental|dentist|odont/,"dental"],
-  [/inmobili|bienes ra|propiedad/,"inmobiliaria"],
-  [/gimnas|gym|fitness|crossfit/,"gimnasio"],
-  [/bodega|minimarket|abarrote|market|licorer/,"bodega"],
-  [/ferret/,"ferreteria"],
-  [/hotel|hostal|hosped|lodge/,"hotel"],
-  [/peluquer|sal[oó]n|barber|belleza|spa|est[eé]tica|u[nñ]as/,"belleza"],
-  [/veterin|mascota/,"veterinaria"],
-  [/contab|contador/,"contable"],
-  [/abogad|jur[ií]dic|legal|notari/,"juridico"]
-];
-function detectVertical(cat){ const c=(cat||"").toLowerCase(); for(const [re,key] of VERT_RULES) if(re.test(c)) return key; return null; }
-function pitchByValue(v){ const g=v.slice(0,1), k=v.slice(2); return (g==="v"?PITCHES.verticals:PITCHES.servicios)[k]; }
+const PITCHES={verticals:{
+  farmacia:{label:"Farmacia / botica",build:(n,g)=>`Hola 👋, encontré ${g} en Google Maps. Soy ${n}, desarrollo software para boticas: ventas rápidas, control de stock con alertas de vencimiento y recordatorios a clientes. Vende más y evita pérdidas. ¿Le muestro una demo corta? Gracias.`},
+  taller_celulares:{label:"Taller de celulares",build:(n,g)=>`Hola 👋, vi ${g} en Google Maps. Soy ${n}, desarrollador. Hago un sistema para talleres: órdenes de reparación con ticket, aviso por WhatsApp al cliente ("su equipo está listo") e inventario de repuestos. ¿Le interesa una demo? Saludos.`},
+  restaurante:{label:"Restaurante / comida",build:(n,g)=>`Hola 👋, encontré ${g} en Google Maps. Soy ${n}, desarrollador. Puedo armarles carta digital con QR y pedidos/reservas por WhatsApp, sin comisiones de apps. Más pedidos directos. ¿Le muestro cómo quedaría? Gracias.`},
+  dental:{label:"Clínica / dental",build:(n,g)=>`Hola 👋, vi ${g} en Google Maps. Soy ${n}, desarrollador. Hago sistema de citas con recordatorios automáticos por WhatsApp (reduce inasistencias) y ficha de pacientes. ¿Le interesaría una demo rápida? Saludos.`},
+  inmobiliaria:{label:"Inmobiliaria",build:(n,g)=>`Hola 👋, encontré ${g} en Google Maps. Soy ${n}, desarrollador. Puedo hacerles web con catálogo de propiedades y formularios que llegan a su WhatsApp. Más consultas reales. ¿Le muestro un ejemplo? Gracias.`},
+  gimnasio:{label:"Gimnasio / fitness",build:(n,g)=>`Hola 👋, vi ${g} en Google Maps. Soy ${n}, desarrollador. Sistema de membresías: asistencia, avisos de vencimiento por WhatsApp y cobros. Menos morosidad. ¿Le interesa una demo? Saludos.`},
+  bodega:{label:"Bodega / minimarket",build:(n,g)=>`Hola 👋, encontré ${g} en Google Maps. Soy ${n}, desarrollador. Sistema de ventas (POS) con inventario y fiados: sabe qué se vende, qué falta y quién le debe. ¿Le muestro? Gracias.`},
+  ferreteria:{label:"Ferretería",build:(n,g)=>`Hola 👋, vi ${g} en Google Maps. Soy ${n}, desarrollador. Catálogo online con cotizaciones rápidas y control de stock. Cotiza en segundos. ¿Le interesa verlo? Saludos.`},
+  hotel:{label:"Hotel / hospedaje",build:(n,g)=>`Hola 👋, encontré ${g} en Google Maps. Soy ${n}, desarrollador. Web con motor de reservas y confirmaciones por WhatsApp, sin comisiones. Más reservas directas. ¿Le muestro? Gracias.`},
+  belleza:{label:"Salón / barbería",build:(n,g)=>`Hola 👋, vi ${g} en Google Maps. Soy ${n}, desarrollador. Reservas online con recordatorios por WhatsApp para salones y barberías. Llena la agenda. ¿Le interesa una demo? Saludos.`},
+  veterinaria:{label:"Veterinaria",build:(n,g)=>`Hola 👋, encontré ${g} en Google Maps. Soy ${n}, desarrollador. Citas online, carnet de vacunas digital y recordatorios por WhatsApp. Fideliza clientes. ¿Le muestro? Gracias.`},
+  contable:{label:"Estudio contable",build:(n,g)=>`Hola 👋, vi ${g} en Google Maps. Soy ${n}, desarrollador. Web profesional, agenda de citas y portal para que sus clientes suban documentos. ¿Le interesa verlo? Saludos.`},
+  juridico:{label:"Estudio jurídico",build:(n,g)=>`Hola 👋, encontré ${g} en Google Maps. Soy ${n}, desarrollador. Webs profesionales y agenda de consultas para abogados, con formularios a su WhatsApp. ¿Le muestro un ejemplo? Gracias.`}
+},servicios:{
+  web:{label:"Página web / landing",build:(n,g)=>`Hola 👋, encontré ${g} en Google Maps y me gustó lo que hacen. Soy ${n}, desarrollo páginas web para negocios. Más clientes y confianza. ¿Le interesaría una propuesta rápida, sin compromiso? Saludos.`},
+  ecommerce:{label:"Tienda online",build:(n,g)=>`Hola 👋, vi ${g} en Google Maps. Soy ${n}, desarrollador. Ayudo a vender por internet con tienda online propia (pagos, catálogo, delivery). ¿Le explico cómo funcionaría? Gracias.`},
+  app:{label:"App / sistema a medida",build:(n,g)=>`Hola 👋, encontré ${g} en Google Maps. Soy ${n}, desarrollo software a medida. Si tienen un proceso manual que les quita tiempo, lo automatizo. ¿Conversamos? Saludos.`},
+  seguridad:{label:"Ciberseguridad",build:(n,g)=>`Hola 👋, vi ${g} en Google Maps. Soy ${n}, especialista en ciberseguridad. Reviso páginas y sistemas para detectar fallas. Diagnóstico inicial sin costo. ¿Le interesa? Gracias.`}
+}};
+const FOLLOWUP=(n,g)=>`Hola de nuevo 👋, le escribí hace unos días por ${g}. Sé que anda ocupado; si le parece le paso una idea concreta y un precio referencial para que lo vea con calma. ¿Le interesa? — ${n}`;
+const VR=[[/farmac|botica/,"farmacia"],[/celular|reparaci|t[eé]cnico|phone|electr[oó]nic/,"taller_celulares"],[/restaur|comida|cevich|poller|caf[eé]|pizzer|chifa|men[uú]|parrill/,"restaurante"],[/dental|dentist|odont/,"dental"],[/inmobili|bienes ra|propiedad/,"inmobiliaria"],[/gimnas|gym|fitness|crossfit/,"gimnasio"],[/bodega|minimarket|abarrote|market|licorer/,"bodega"],[/ferret/,"ferreteria"],[/hotel|hostal|hosped|lodge/,"hotel"],[/peluquer|sal[oó]n|barber|belleza|spa|est[eé]tica|u[nñ]as/,"belleza"],[/veterin|mascota/,"veterinaria"],[/contab|contador/,"contable"],[/abogad|jur[ií]dic|legal|notari/,"juridico"]];
+function detectV(c){c=(c||"").toLowerCase();for(const[re,k]of VR)if(re.test(c))return k;return null;}
+function pitchBy(v){const g=v.slice(0,1),k=v.slice(2);return(g==="v"?PITCHES.verticals:PITCHES.servicios)[k];}
 
-let LEADS = [];
-let contacted = new Set(store.get("bc3k_contacted", []));
-let scannedCells = new Set(store.get("bc3k_scanned", []));
-let current = null;
+let SERVER=false, es=null, LEADS=[], byId={}, meta={}, current=null;
+let filter="all";
+function idOf(l){return l.link||(l.title+"|"+l.address);}
+function getMeta(id){return meta[id]||{state:"nuevo",notes:""};}
+function setMeta(id,patch){meta[id]=Object.assign(getMeta(id),patch);if(SERVER)fetch("/api/lead/update",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,patch:meta[id]})}).catch(()=>{});else store.set("bc3k_meta",meta);}
+function waN(p){let d=(p||"").replace(/\D/g,"");if(!d)return"";if(d.length===9&&d[0]==="9")d="51"+d;return d;}
+function esc(s){return(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function emailsOf(s){if(Array.isArray(s))return s;if(!s)return[];const m=(""+s).match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g)||[];return[...new Set(m.map(x=>x.toLowerCase()))];}
 
-// ---- CSV ----
-function parseCSV(text){
-  const rows=[]; let row=[], field="", inQ=false;
-  for(let i=0;i<text.length;i++){
-    const c=text[i];
-    if(inQ){ if(c==='"'){ if(text[i+1]==='"'){field+='"';i++;} else inQ=false; } else field+=c; }
-    else{ if(c==='"') inQ=true; else if(c===',') { row.push(field); field=""; } else if(c==='\n'){ row.push(field); rows.push(row); row=[]; field=""; } else if(c!=='\r') field+=c; }
-  }
-  if(field.length||row.length){ row.push(field); rows.push(row); }
-  return rows;
-}
-function extractEmails(s){ if(!s) return []; const m=s.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g)||[]; return [...new Set(m.map(x=>x.toLowerCase()))]; }
-function idOf(l){ return l.link || (l.title+"|"+l.address); }
-function rowsToLeads(rows){
-  if(!rows.length) return [];
-  const H = rows[0].map(h=>h.trim().toLowerCase());
-  const gi = n => H.indexOf(n);
-  const g = (r,n)=>{const i=gi(n);return i>=0?(r[i]||"").trim():"";};
-  const out=[];
-  for(let k=1;k<rows.length;k++){
-    const r=rows[k];
-    if(r.length===1 && r[0]==="") continue;
-    const title=g(r,"title"); if(!title) continue;
-    out.push({
-      title, category:g(r,"category"),
-      address:g(r,"complete_address")||g(r,"address"),
-      phone:g(r,"phone"), website:g(r,"website"),
-      emails:extractEmails(g(r,"emails")),
-      rating:parseFloat(g(r,"review_rating"))||0,
-      reviews:parseInt(g(r,"review_count").replace(/\D/g,""))||0,
-      lat:parseFloat(g(r,"latitude"))||0, lon:parseFloat(g(r,"longitude"))||0,
-      link:g(r,"link"), thumb:g(r,"thumbnail")
-    });
-  }
-  return out;
-}
-function waNumber(phone){ let d=(phone||"").replace(/\D/g,""); if(!d) return ""; if(d.length===9 && d[0]==="9") d="51"+d; return d; }
-function esc(s){return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+// ---- CSV (modo archivo) ----
+function parseCSV(t){const rows=[];let row=[],f="",q=false;for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++;}else q=false;}else f+=c;}else{if(c==='"')q=true;else if(c===","){row.push(f);f="";}else if(c==="\n"){row.push(f);rows.push(row);row=[];f="";}else if(c!=="\r")f+=c;}}if(f.length||row.length){row.push(f);rows.push(row);}return rows;}
+function rowsToLeads(rows){if(!rows.length)return[];const H=rows[0].map(h=>h.trim().toLowerCase());const gi=n=>H.indexOf(n),g=(r,n)=>{const i=gi(n);return i>=0?(r[i]||"").trim():"";};const out=[];for(let k=1;k<rows.length;k++){const r=rows[k];if(r.length===1&&r[0]==="")continue;const t=g(r,"title");if(!t)continue;out.push({title:t,category:g(r,"category"),address:g(r,"complete_address")||g(r,"address"),phone:g(r,"phone"),website:g(r,"website"),emails:emailsOf(g(r,"emails")),rating:parseFloat(g(r,"review_rating"))||0,reviews:parseInt(g(r,"review_count").replace(/\D/g,""))||0,lat:parseFloat(g(r,"latitude"))||0,lon:parseFloat(g(r,"longitude"))||0,link:g(r,"link"),thumb:g(r,"thumbnail")});}return out;}
 
-// ---- Filtro ----
+// ---- Filtros ----
+const CHIPS=[["all","Todos",""],["noweb","🔥 Sin web","warn"],["wa","WhatsApp",""],["mail","Con correo",""],["web","Con web",""]];
+function renderChips(){$("#chips").innerHTML=CHIPS.map(([k,l,c])=>`<button class="chipf ${c} ${filter===k?"on":""}" data-f="${k}">${l}</button>`).join("");document.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{filter=b.dataset.f;renderChips();render();});}
+function passesChip(l){if(filter==="noweb")return !l.website;if(filter==="wa")return !!waN(l.phone);if(filter==="mail")return l.emails.length>0;if(filter==="web")return !!l.website;return true;}
 function getFiltered(){
-  const q=($("#searchInput").value||"").toLowerCase().trim();
-  const cat=$("#catFilter").value, onlyC=$("#onlyContactable").checked, hideD=$("#hideDone").checked, sort=$("#sortSel").value;
-  let list=LEADS.filter(l=>{
-    if(cat && l.category!==cat) return false;
-    if(onlyC && !l.phone && !l.emails.length) return false;
-    if(hideD && contacted.has(idOf(l))) return false;
-    if(q){ const hay=(l.title+" "+l.category+" "+l.address+" "+l.phone+" "+l.emails.join(" ")).toLowerCase(); if(!hay.includes(q)) return false; }
-    return true;
-  });
-  list.sort((a,b)=> sort==="rating"? b.rating-a.rating : sort==="reviews"? b.reviews-a.reviews : a.title.localeCompare(b.title));
+  const q=($("#searchInput").value||"").toLowerCase().trim(),cat=$("#catFilter").value,st=$("#stateFilter").value,sort=$("#sortSel").value;
+  let list=LEADS.filter(l=>{if(!passesChip(l))return false;if(cat&&l.category!==cat)return false;if(st&&getMeta(idOf(l)).state!==st)return false;if(q){const h=(l.title+" "+l.category+" "+l.address+" "+l.phone+" "+l.emails.join(" ")).toLowerCase();if(!h.includes(q))return false;}return true;});
+  list.sort((a,b)=>sort==="rating"?b.rating-a.rating:sort==="reviews"?b.reviews-a.reviews:a.title.localeCompare(b.title));
   return list;
 }
 function render(){
-  const list=getFiltered();
-  const LIMIT=400, shown=list.slice(0,LIMIT);
-  const grid=$("#grid"); grid.innerHTML="";
-  const note=$("#countNote");
-  if(LEADS.length){ note.hidden=false; note.textContent=`Mostrando ${shown.length} de ${list.length} resultados${list.length>LIMIT?" (limitado a "+LIMIT+")":""}.`; } else note.hidden=true;
-  const frag=document.createDocumentFragment();
-  for(const l of shown) frag.appendChild(card(l));
-  grid.appendChild(frag);
-  $("#empty").hidden = LEADS.length>0;
-  updateStats();
+  const list=getFiltered(),LIMIT=500,shown=list.slice(0,LIMIT),grid=$("#grid");grid.innerHTML="";
+  const note=$("#countNote");if(LEADS.length){note.hidden=false;note.textContent=`Mostrando ${shown.length} de ${list.length}${list.length>LIMIT?" (limitado a "+LIMIT+")":""}.`;}else note.hidden=true;
+  const fr=document.createDocumentFragment();for(const l of shown)fr.appendChild(card(l));grid.appendChild(fr);
+  $("#empty").hidden=LEADS.length>0;updateStats();refreshCats();refreshStates();
 }
 function card(l){
-  const el=document.createElement("div");
-  el.className="card"+(contacted.has(idOf(l))?" done":"");
-  const wa=waNumber(l.phone), email=l.emails[0]||"";
-  let html=`<div class="card-top">`;
-  if(l.thumb) html+=`<img class="thumb" src="${esc(l.thumb)}" loading="lazy" onerror="this.remove()">`;
-  html+=`<div style="min-width:0"><h3>${esc(l.title)}</h3>`;
-  if(l.category) html+=`<span class="badge">${esc(l.category)}</span>`;
-  if(l.rating) html+=`<div class="rating"><b>★ ${l.rating.toFixed(1)}</b> · ${l.reviews} reseñas</div>`;
-  const vsug=detectVertical(l.category);
-  if(vsug) html+=`<div class="rating" style="color:var(--accent);font-weight:600">💡 Sistema ideal: ${esc(PITCHES.verticals[vsug].label)}</div>`;
-  html+=`</div></div>`;
-  if(l.address) html+=`<div class="addr">📍 ${esc(l.address)}</div>`;
-  html+=`<div class="actions">`;
-  if(l.phone) html+=`<a class="chip" href="tel:${esc(l.phone.replace(/\s/g,''))}">📞 ${esc(l.phone)}</a>`;
-  if(wa) html+=`<a class="chip wa" target="_blank" href="https://wa.me/${wa}">WhatsApp</a>`;
-  if(email) html+=`<a class="chip mail" href="mailto:${esc(email)}">✉️ Correo</a>`;
-  if(l.website) html+=`<a class="chip" target="_blank" href="${esc(l.website)}">🌐 Web</a>`;
-  html+=`<button class="chip msg" data-msg>✍️ Mensaje</button></div>`;
-  html+=`<div class="card-foot"><label class="chk"><input type="checkbox" data-done ${contacted.has(idOf(l))?"checked":""}> Marcar como contactado</label>`;
-  if(l.link) html+=`<a class="chip" style="margin-left:auto;border:none" target="_blank" href="${esc(l.link)}">Ver en Maps ↗</a>`;
-  html+=`</div>`;
-  el.innerHTML=html;
+  const id=idOf(l),m=getMeta(id),wa=waN(l.phone),email=l.emails[0]||"";
+  const el=document.createElement("div");el.className="card st-"+m.state;
+  let h=`<div class="card-top">`;
+  if(l.thumb)h+=`<img class="thumb" src="${esc(l.thumb)}" loading="lazy" onerror="this.remove()">`;
+  h+=`<div style="min-width:0"><h3>${esc(l.title)}</h3>`;
+  if(l.category)h+=`<span class="badge">${esc(l.category)}</span>`;
+  if(l.rating)h+=`<div class="rating"><b>★ ${l.rating.toFixed(1)}</b> · ${l.reviews} reseñas</div>`;
+  const v=detectV(l.category);if(v)h+=`<div class="sug">💡 ${esc(PITCHES.verticals[v].label)}</div>`;
+  h+=`</div></div>`;
+  if(!l.website)h+=`<span class="flag">🔥 SIN WEB · prospecto ideal</span>`;
+  h+=`<div class="badges"><span class="b2 ${l.website?"yes":"no"}">🌐 ${l.website?"Web":"Sin web"}</span><span class="b2 ${wa?"yes":"no"}">💬 ${wa?"WhatsApp":"Sin WA"}</span><span class="b2 ${email?"yes":"no"}">✉️ ${email?"Correo":"Sin correo"}</span></div>`;
+  if(l.address)h+=`<div class="addr">📍 ${esc(l.address)}</div>`;
+  h+=`<div class="actions">`;
+  if(l.phone)h+=`<a class="chip" href="tel:${esc(l.phone.replace(/\s/g,''))}">📞 ${esc(l.phone)}</a>`;
+  if(wa)h+=`<a class="chip wa" target="_blank" href="https://wa.me/${wa}">WhatsApp</a>`;
+  if(email)h+=`<a class="chip mail" href="mailto:${esc(email)}">✉️</a>`;
+  if(l.website)h+=`<a class="chip" target="_blank" href="${esc(l.website)}">🌐</a>`;
+  h+=`<button class="chip msg" data-msg>✍️ Mensaje</button></div>`;
+  h+=`<div class="card-foot"><select class="pipe" data-state style="color:${STATES[m.state].c}">`+Object.entries(STATES).map(([k,v])=>`<option value="${k}" ${m.state===k?"selected":""}>${v.l}</option>`).join("")+`</select>`;
+  if(l.link)h+=`<a class="chip" style="margin-left:auto;border:none" target="_blank" href="${esc(l.link)}">Maps ↗</a>`;
+  h+=`</div>`;
+  el.innerHTML=h;
   el.querySelector("[data-msg]").onclick=()=>openModal(l);
-  el.querySelector("[data-done]").onchange=e=>{ const id=idOf(l); if(e.target.checked) contacted.add(id); else contacted.delete(id); store.set("bc3k_contacted",[...contacted]); el.classList.toggle("done",e.target.checked); updateStats(); };
+  const sel=el.querySelector("[data-state]");sel.onchange=e=>{setMeta(id,{state:e.target.value});el.className="card st-"+e.target.value;sel.style.color=STATES[e.target.value].c;updateStats();};
   return el;
 }
-function updateStats(){
-  $("#sTotal").textContent=LEADS.length;
-  $("#sPhone").textContent=LEADS.filter(l=>l.phone).length;
-  $("#sMail").textContent=LEADS.filter(l=>l.emails.length).length;
-  $("#sWeb").textContent=LEADS.filter(l=>l.website).length;
-  $("#sDone").textContent=LEADS.filter(l=>contacted.has(idOf(l))).length;
-}
-function refreshCats(){
-  const cats=[...new Set(LEADS.map(l=>l.category).filter(Boolean))].sort();
-  const sel=$("#catFilter"); const cur=sel.value;
-  sel.innerHTML='<option value="">Todos los rubros</option>'+cats.map(c=>`<option>${esc(c)}</option>`).join("");
-  sel.value=cur;
-}
+function appendCardLive(l){if(!passesChip(l))return;const q=($("#searchInput").value||"").toLowerCase().trim();if(q&&!(l.title+" "+l.category).toLowerCase().includes(q))return;$("#empty").hidden=true;$("#grid").appendChild(card(l));}
+function updateStats(){$("#sTotal").textContent=LEADS.length;$("#sNoWeb").textContent=LEADS.filter(l=>!l.website).length;$("#sPhone").textContent=LEADS.filter(l=>l.phone).length;$("#sMail").textContent=LEADS.filter(l=>l.emails.length).length;$("#sDone").textContent=LEADS.filter(l=>{const s=getMeta(idOf(l)).state;return s&&s!=="nuevo";}).length;}
+function refreshCats(){const cats=[...new Set(LEADS.map(l=>l.category).filter(Boolean))].sort(),sel=$("#catFilter"),cur=sel.value;sel.innerHTML='<option value="">Todos los rubros</option>'+cats.map(c=>`<option>${esc(c)}</option>`).join("");sel.value=cur;}
+function refreshStates(){const sel=$("#stateFilter"),cur=sel.value;sel.innerHTML='<option value="">Todos los estados</option>'+Object.entries(STATES).map(([k,v])=>`<option value="${k}">${v.l}</option>`).join("");sel.value=cur;}
 
 // ---- Modal ----
-function myName(){ return ($("#myName").value||"").trim() || "[tu nombre]"; }
-function buildMsg(){ $("#mText").value = pitchByValue($("#mService").value).build(myName(), current.title); }
-function openModal(l){
-  current=l;
-  $("#mTitle").textContent=l.title;
-  $("#mSub").textContent=((l.phone?("📞 "+l.phone):"")+(l.emails[0]?("   ✉️ "+l.emails[0]):"")) || "Sin contacto directo";
-  const groups=[["Vender un sistema (por rubro)","v",PITCHES.verticals],["Servicio general","s",PITCHES.servicios]];
-  $("#mService").innerHTML=groups.map(([label,gp,obj])=>`<optgroup label="${label}">`+Object.entries(obj).map(([k,v])=>`<option value="${gp}:${k}">${v.label}</option>`).join("")+`</optgroup>`).join("");
-  const vk=detectVertical(l.category);
-  $("#mService").value = vk ? ("v:"+vk) : "s:web";
-  buildMsg();
-  $("#modalBg").classList.add("open");
-}
-function closeModal(){ $("#modalBg").classList.remove("open"); }
-function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1800); }
+function myName(){return($("#myName").value||"").trim()||"[tu nombre]";}
+function buildMsg(){if($("#mFollow").checked){$("#mText").value=FOLLOWUP(myName(),current.title);}else{$("#mText").value=pitchBy($("#mService").value).build(myName(),current.title);}}
+function openModal(l){current=l;const id=idOf(l),m=getMeta(id);
+  $("#mTitle").textContent=l.title;$("#mSub").textContent=((l.phone?("📞 "+l.phone):"")+(l.emails[0]?("   ✉️ "+l.emails[0]):""))||"Sin contacto directo";
+  $("#mFollow").checked=false;
+  const G=[["Vender un sistema (por rubro)","v",PITCHES.verticals],["Servicio general","s",PITCHES.servicios]];
+  $("#mService").innerHTML=G.map(([lb,g,o])=>`<optgroup label="${lb}">`+Object.entries(o).map(([k,v])=>`<option value="${g}:${k}">${v.label}</option>`).join("")+`</optgroup>`).join("");
+  const vk=detectV(l.category);$("#mService").value=vk?("v:"+vk):"s:web";
+  $("#mNotes").value=m.notes||"";buildMsg();$("#modalBg").classList.add("open");}
+function closeModal(){if(current)setMeta(idOf(current),{notes:$("#mNotes").value});$("#modalBg").classList.remove("open");}
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1800);}
 
-// ---- Carga ----
-function load(rows){
-  LEADS=rowsToLeads(rows); refreshCats(); render();
-  if(map){ drawPins(); buildGrid(); }
-  toast(LEADS.length? (LEADS.length+" negocios cargados") : "No se detectaron negocios");
+// ---- Ingesta de leads ----
+function addLead(l,live){l.emails=emailsOf(l.emails);const id=idOf(l);if(!byId[id]){byId[id]=l;LEADS.push(l);if(l._meta&&!meta[id])meta[id]=l._meta;if(live){appendCardLive(l);updateStats();addPin(l);}}else Object.assign(byId[id],l);}
+function loadAll(arr){LEADS=[];byId={};$("#grid").innerHTML="";arr.forEach(l=>addLead(l,false));render();if(map){drawPins();}}
+
+// ---- Servidor / SSE ----
+function setMode(on){$("#modeDot").className="dot"+(on?" on":"");$("#modeTxt").textContent=on?"En vivo (servidor)":"Modo archivo";$("#serverWarn").hidden=on;$("#playBtn").disabled=!on;$("#stopBtn").disabled=!on;$("#demoBtn").disabled=!on;}
+function connectSSE(){try{es=new EventSource("/api/stream");}catch(e){return;}
+  es.addEventListener("lead",e=>addLead(JSON.parse(e.data),true));
+  es.addEventListener("status",e=>onStatus(JSON.parse(e.data)));
+  es.addEventListener("done",e=>{const d=JSON.parse(e.data);onStatus({running:false});toast("Escaneo terminado ("+(d.found||0)+" leads)");});
+  es.addEventListener("update",e=>{const d=JSON.parse(e.data);meta[d.id]=d.meta;});
+  es.addEventListener("reset",()=>{LEADS=[];byId={};render();if(pinLayer)pinLayer.clearLayers();});
 }
-function readFile(file){ const fr=new FileReader(); fr.onload=e=>load(parseCSV(e.target.result)); fr.readAsText(file); }
-const SAMPLE=[
-  ["title","category","complete_address","phone","website","emails","review_rating","review_count","latitude","longitude","link","thumbnail"],
-  ["Dentalia Clínica Dental","Clínica dental","Av. Ejército 710, Arequipa","+51 954 123 456","","contacto@dentalia.pe","4.6","132","-16.3989","-71.5350","https://maps.google.com",""],
-  ["Botica San Martín","Farmacia","Calle Mercaderes 210, Arequipa","054 234567","","","4.2","88","-16.3985","-71.5370","https://maps.google.com",""],
-  ["TecniCell Reparaciones","Servicio técnico de celulares","Av. Larco 345, Trujillo","+51 987 654 321","","ventas@tecnicell.com","4.1","57","-8.1120","-79.0280","https://maps.google.com",""],
-  ["FitZone Gym","Gimnasio","Jr. de la Unión 800, Lima","01 4567890","https://fitzone.pe","","4.8","921","-12.0500","-77.0330","https://maps.google.com",""],
-  ["Sabores del Sur","Restaurante","Calle Santa Catalina 120, Arequipa","+51 999 888 777","","","4.3","489","-16.3960","-71.5375","https://maps.google.com",""],
-  ["Bodega Doña Rosa","Bodega","Av. Brasil 1200, Lima","","","","4.0","23","-12.0720","-77.0530","https://maps.google.com",""]
-];
+function onStatus(st){const run=!!st.running;$("#playBtn").hidden=run;$("#stopBtn").hidden=!run;$("#liveCount").textContent=run?("● escaneando… "+(st.found||LEADS.length)+" leads"):(LEADS.length?LEADS.length+" leads":"");$("#modeDot").className="dot"+(SERVER?(run?" live":" on"):"");}
+function detectServer(){fetch("/api/status").then(r=>r.ok?r.json():Promise.reject()).then(st=>{SERVER=true;setMode(true);fetch("/api/leads").then(r=>r.json()).then(d=>{(d.leads||[]).forEach(l=>{if(l._meta)meta[idOf(l)]=l._meta;});loadAll(d.leads||[]);onStatus(d.status||{});});connectSSE();}).catch(()=>{SERVER=false;setMode(false);meta=store.get("bc3k_meta",{});render();});}
+
+// ---- Play ----
+function startScan(demo){const queries=$("#scanQueries").value.trim();if(!demo&&!queries){toast("Escribe al menos una búsqueda");return;}
+  let gridBbox=null;const useGrid=$("#useGrid").checked&&map;if(useGrid){const b=map.getBounds();gridBbox=`${b.getSouth().toFixed(5)},${b.getWest().toFixed(5)},${b.getNorth().toFixed(5)},${b.getEast().toFixed(5)}`;}
+  fetch("/api/scrape/start",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({queries,demo:!!demo,email:$("#scanEmail").checked,gridBbox,gridCell:cellKm(),zoom:15,depth:useGrid?1:10})}).then(r=>r.json()).then(j=>{if(j.error)toast(j.error);else toast(demo?"Demo iniciado":"Escaneo iniciado");}).catch(()=>toast("No se pudo conectar al servidor"));}
+function stopScan(){fetch("/api/scrape/stop",{method:"POST"}).then(()=>toast("Detenido")).catch(()=>{});}
 
 // ---- Herramientas ----
-function leadsForExport(scope){ return scope==="nc" ? LEADS.filter(l=>!contacted.has(idOf(l))) : LEADS; }
-function rowsForExport(list){ return list.map(l=>({ Nombre:l.title, Rubro:l.category, Direccion:l.address, Telefono:l.phone, WhatsApp:waNumber(l.phone), Correo:l.emails.join(" "), Web:l.website, Rating:l.rating||"", Reseñas:l.reviews||"", Contactado:contacted.has(idOf(l))?"Sí":"No", Maps:l.link })); }
-function exportExcel(scope){
-  const list=leadsForExport(scope); if(!list.length){ toast("No hay datos"); return; }
-  const data=rowsForExport(list);
-  const fname=(scope==="nc"?"leads-no-contactados":"leads");
-  if(window.XLSX){
-    const ws=XLSX.utils.json_to_sheet(data);
-    ws["!cols"]=[{wch:32},{wch:22},{wch:40},{wch:16},{wch:14},{wch:28},{wch:28},{wch:7},{wch:8},{wch:11},{wch:26}];
-    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Leads");
-    XLSX.writeFile(wb,fname+".xlsx"); toast("Excel (.xlsx) exportado ✓");
-  } else {
-    const headers=Object.keys(data[0]);
-    const csv="sep=;\n"+[headers.join(";")].concat(data.map(r=>headers.map(h=>`"${String(r[h]??"").replace(/"/g,'""')}"`).join(";"))).join("\n");
-    const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"})); a.download=fname+".csv"; a.click();
-    toast("CSV para Excel exportado ✓");
-  }
-}
-async function copyText(txt,msg){ try{ await navigator.clipboard.writeText(txt); }catch(e){ const ta=document.createElement("textarea"); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); } toast(msg); }
-document.querySelectorAll("[data-act]").forEach(b=>b.onclick=()=>{
-  const a=b.dataset.act;
-  if(a==="xlsx") exportExcel("all");
-  else if(a==="xlsx-nc") exportExcel("nc");
-  else if(a==="phones"){ const ph=[...new Set(getFiltered().map(l=>l.phone).filter(Boolean))]; if(!ph.length){toast("Sin teléfonos");return;} copyText(ph.join("\n"),ph.length+" teléfonos copiados ✓"); }
-  else if(a==="emails"){ const em=[...new Set(getFiltered().flatMap(l=>l.emails))]; if(!em.length){toast("Sin correos");return;} copyText(em.join("\n"),em.length+" correos copiados ✓"); }
-  else if(a==="wa-web") window.open("https://web.whatsapp.com","_blank");
-  else if(a==="reset"){ if(confirm("¿Reiniciar todos los marcados como contactado?")){ contacted.clear(); store.set("bc3k_contacted",[]); render(); toast("Reiniciado"); } }
-});
+function rowsExport(list){return list.map(l=>{const m=getMeta(idOf(l));return{Nombre:l.title,Rubro:l.category,Direccion:l.address,Telefono:l.phone,WhatsApp:waN(l.phone),Correo:l.emails.join(" "),Web:l.website,Rating:l.rating||"",Reseñas:l.reviews||"",Estado:STATES[m.state].l,Notas:m.notes||"",Maps:l.link};});}
+function exportExcel(scope){let list=scope==="nc"?LEADS.filter(l=>getMeta(idOf(l)).state==="nuevo"):LEADS;if(!list.length){toast("No hay datos");return;}const data=rowsExport(list),fn=scope==="nc"?"leads-sin-contactar":"leads";
+  if(window.XLSX){const ws=XLSX.utils.json_to_sheet(data);ws["!cols"]=[{wch:30},{wch:20},{wch:38},{wch:15},{wch:13},{wch:26},{wch:26},{wch:7},{wch:8},{wch:12},{wch:30},{wch:24}];const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Leads");XLSX.writeFile(wb,fn+".xlsx");toast("Excel exportado ✓");}
+  else{const H=Object.keys(data[0]),csv="sep=;\n"+[H.join(";")].concat(data.map(r=>H.map(h=>`"${String(r[h]??"").replace(/"/g,'""')}"`).join(";"))).join("\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}));a.download=fn+".csv";a.click();toast("CSV exportado ✓");}}
+async function copyTxt(t,m){try{await navigator.clipboard.writeText(t);}catch(e){const ta=document.createElement("textarea");ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();}toast(m);}
+document.querySelectorAll("[data-act]").forEach(b=>b.onclick=()=>{const a=b.dataset.act;
+  if(a==="xlsx")exportExcel("all");else if(a==="xlsx-nc")exportExcel("nc");
+  else if(a==="phones"){const p=[...new Set(getFiltered().map(l=>l.phone).filter(Boolean))];if(!p.length){toast("Sin teléfonos");return;}copyTxt(p.join("\n"),p.length+" teléfonos ✓");}
+  else if(a==="emails"){const e=[...new Set(getFiltered().flatMap(l=>l.emails))];if(!e.length){toast("Sin correos");return;}copyTxt(e.join("\n"),e.length+" correos ✓");}
+  else if(a==="wa-web")window.open("https://web.whatsapp.com","_blank");
+  else if(a==="reset"){if(confirm("¿Borrar todos los leads?")){if(SERVER)fetch("/api/reset",{method:"POST"});LEADS=[];byId={};render();if(pinLayer)pinLayer.clearLayers();toast("Borrado");}}});
 
 // ---- Mapa ----
 let map=null,gridLayer=null,pinLayer=null;
-function cellKm(){ return Math.max(0.2, parseFloat($("#cellKm").value)||1); }
-function initMap(){
-  if(map){ setTimeout(()=>map.invalidateSize(),60); return; }
-  if(!window.L){ $("#gridInfo").textContent="No se pudo cargar el mapa (necesita internet)."; return; }
-  map=L.map("map").setView([-12.0464,-77.0428],13);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(map);
-  gridLayer=L.layerGroup().addTo(map);
-  pinLayer=L.layerGroup().addTo(map);
-  map.on("moveend",updateScanCmd);
-  setTimeout(()=>{ map.invalidateSize(); drawPins(); updateScanCmd(); },60);
-}
-function drawPins(){
-  if(!map||!pinLayer) return;
-  pinLayer.clearLayers();
-  LEADS.forEach(l=>{ if(l.lat&&l.lon) L.circleMarker([l.lat,l.lon],{radius:5,color:"#4f46e5",fillColor:"#4f46e5",fillOpacity:.85,weight:1}).bindPopup(`<b>${esc(l.title)}</b><br>${esc(l.category||"")}<br>${esc(l.phone||"")}`).addTo(pinLayer); });
-}
-function fitPins(){ if(!map) return; const pts=LEADS.filter(l=>l.lat&&l.lon).map(l=>[l.lat,l.lon]); if(pts.length) map.fitBounds(pts,{padding:[30,30]}); else toast("Tus leads no tienen coordenadas"); }
-function buildGrid(){
-  if(!map||!gridLayer) return;
-  gridLayer.clearLayers();
-  const b=map.getBounds(), s=b.getSouth(), w=b.getWest(), nn=b.getNorth(), e=b.getEast();
-  const latC=(s+nn)/2, km=cellKm();
-  const dLat=km/111, dLon=km/(111*Math.cos(latC*Math.PI/180));
-  const nLat=Math.ceil((nn-s)/dLat), nLon=Math.ceil((e-w)/dLon);
-  if(nLat*nLon>800){ $("#gridInfo").textContent=`Demasiadas celdas (${nLat*nLon}). Acerca el mapa o sube el tamaño de celda.`; return; }
-  let total=0, done=0;
-  for(let lat=s; lat<nn; lat+=dLat){
-    for(let lon=w; lon<e; lon+=dLon){
-      const top=Math.min(lat+dLat,nn), right=Math.min(lon+dLon,e);
-      const key=lat.toFixed(4)+"_"+lon.toFixed(4);
-      const hasLead=LEADS.some(l=>l.lat>=lat&&l.lat<top&&l.lon>=lon&&l.lon<right);
-      const scanned=hasLead || scannedCells.has(key);
-      total++; if(scanned) done++;
-      const rect=L.rectangle([[lat,lon],[top,right]],{color:scanned?"#16a34a":"#94a3b8",weight:1,fillColor:scanned?"#16a34a":"#64748b",fillOpacity:scanned?0.22:0.05});
-      rect.on("click",()=>{ if(scannedCells.has(key)) scannedCells.delete(key); else scannedCells.add(key); store.set("bc3k_scanned",[...scannedCells]); buildGrid(); });
-      gridLayer.addLayer(rect);
-    }
-  }
-  $("#gridInfo").textContent=`Celda ${km} km · ${done}/${total} celdas escaneadas`;
-}
-function scanCommand(){
-  if(!map) return "";
-  const b=map.getBounds();
-  const bbox=`${b.getSouth().toFixed(5)},${b.getWest().toFixed(5)},${b.getNorth().toFixed(5)},${b.getEast().toFixed(5)}`;
-  return `./gms -input queries.txt -results salidas/resultados.csv -email -lang es \\\n  -grid-bbox "${bbox}" -grid-cell ${cellKm()} -zoom 15 -exit-on-inactivity 3m`;
-}
-function updateScanCmd(){ $("#scanCmd").value = scanCommand(); }
+function cellKm(){return Math.max(0.2,parseFloat($("#cellKm").value)||1);}
+function initMap(){if(map){setTimeout(()=>map.invalidateSize(),60);return;}if(!window.L){$("#gridInfo").textContent="El mapa necesita internet.";return;}
+  map=L.map("map").setView([-12.0464,-77.0428],13);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(map);
+  gridLayer=L.layerGroup().addTo(map);pinLayer=L.layerGroup().addTo(map);map.on("moveend",updateCmd);
+  setTimeout(()=>{map.invalidateSize();drawPins();updateCmd();},60);}
+function addPin(l){if(map&&pinLayer&&l.lat&&l.lon)L.circleMarker([l.lat,l.lon],{radius:5,color:"#4f46e5",fillColor:"#4f46e5",fillOpacity:.85,weight:1}).bindPopup(`<b>${esc(l.title)}</b><br>${esc(l.category||"")}<br>${esc(l.phone||"")}`).addTo(pinLayer);}
+function drawPins(){if(!pinLayer)return;pinLayer.clearLayers();LEADS.forEach(addPin);}
+function fitPins(){if(!map)return;const p=LEADS.filter(l=>l.lat&&l.lon).map(l=>[l.lat,l.lon]);if(p.length)map.fitBounds(p,{padding:[30,30]});else toast("Tus leads no tienen coordenadas");}
+function buildGrid(){if(!map||!gridLayer)return;gridLayer.clearLayers();const b=map.getBounds(),s=b.getSouth(),w=b.getWest(),nn=b.getNorth(),e=b.getEast(),latC=(s+nn)/2,km=cellKm(),dLat=km/111,dLon=km/(111*Math.cos(latC*Math.PI/180)),nLat=Math.ceil((nn-s)/dLat),nLon=Math.ceil((e-w)/dLon);
+  if(nLat*nLon>800){$("#gridInfo").textContent=`Demasiadas celdas (${nLat*nLon}). Acerca el mapa o sube la celda.`;return;}
+  let scanned=store.get("bc3k_scanned",[]);scanned=new Set(scanned);let total=0,done=0;
+  for(let lat=s;lat<nn;lat+=dLat)for(let lon=w;lon<e;lon+=dLon){const top=Math.min(lat+dLat,nn),right=Math.min(lon+dLon,e),key=lat.toFixed(4)+"_"+lon.toFixed(4),has=LEADS.some(l=>l.lat>=lat&&l.lat<top&&l.lon>=lon&&l.lon<right),sc=has||scanned.has(key);total++;if(sc)done++;
+    const rect=L.rectangle([[lat,lon],[top,right]],{color:sc?"#16a34a":"#94a3b8",weight:1,fillColor:sc?"#16a34a":"#64748b",fillOpacity:sc?.22:.05});
+    rect.on("click",()=>{if(scanned.has(key))scanned.delete(key);else scanned.add(key);store.set("bc3k_scanned",[...scanned]);buildGrid();});gridLayer.addLayer(rect);}
+  $("#gridInfo").textContent=`Celda ${km} km · ${done}/${total} celdas con negocios/marcadas`;}
+function scanCmd(){if(!map)return"";const b=map.getBounds();return `./gms -input queries.txt -results salidas/resultados.csv -email -lang es \\\n  -grid-bbox "${b.getSouth().toFixed(5)},${b.getWest().toFixed(5)},${b.getNorth().toFixed(5)},${b.getEast().toFixed(5)}" -grid-cell ${cellKm()} -zoom 15 -exit-on-inactivity 3m`;}
+function updateCmd(){$("#scanCmd").value=scanCmd();}
 
-// ---- Tabs ----
-document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
-  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
-  t.classList.add("active");
-  const name=t.dataset.tab;
-  ["leads","map","tools"].forEach(n=>$("#tab-"+n).hidden = n!==name);
-  if(name==="map") initMap();
-});
-
-// ---- Eventos ----
-$("#fileInput").onchange=e=>{ if(e.target.files[0]) readFile(e.target.files[0]); };
-$("#sampleBtn").onclick=()=>load(SAMPLE);
-["searchInput","catFilter","sortSel","onlyContactable","hideDone"].forEach(id=>{ const el=$("#"+id); el.addEventListener(id==="searchInput"?"input":"change",render); });
-$("#drawGrid").onclick=()=>{ buildGrid(); updateScanCmd(); };
-$("#fitPins").onclick=fitPins;
-$("#clearScan").onclick=()=>{ scannedCells.clear(); store.set("bc3k_scanned",[]); buildGrid(); toast("Marcado limpiado"); };
-$("#copyCmd").onclick=()=>copyText($("#scanCmd").value,"Comando copiado ✓");
-$("#mService").onchange=buildMsg;
-$("#mClose").onclick=closeModal;
-$("#modalBg").onclick=e=>{ if(e.target===$("#modalBg")) closeModal(); };
-$("#mCopy").onclick=()=>copyText($("#mText").value,"Mensaje copiado ✓");
-$("#mWa").onclick=()=>{ const n=waNumber(current.phone); if(!n){toast("Sin teléfono");return;} window.open(`https://wa.me/${n}?text=${encodeURIComponent($("#mText").value)}`,"_blank"); };
-$("#mMail").onclick=()=>{ const em=current.emails[0]; if(!em){toast("Sin correo");return;} window.open(`mailto:${em}?subject=${encodeURIComponent("Propuesta para "+current.title)}&body=${encodeURIComponent($("#mText").value)}`); };
-$("#myName").value=store.get("bc3k_name","");
-$("#myName").oninput=e=>store.set("bc3k_name",e.target.value);
-
-function applyTheme(t){ document.documentElement.setAttribute("data-theme",t); $("#themeBtn").textContent=t==="dark"?"☀️":"🌙"; store.set("bc3k_theme",t); if(map) setTimeout(()=>map.invalidateSize(),60); }
+// ---- Tabs / eventos ----
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));t.classList.add("active");const n=t.dataset.tab;["leads","scan","tools"].forEach(x=>$("#tab-"+x).hidden=x!==n);if(n==="scan")initMap();});
+$("#fileInput").onchange=e=>{if(e.target.files[0]){const fr=new FileReader();fr.onload=ev=>{loadAll(rowsToLeads(parseCSV(ev.target.result)));toast(LEADS.length+" cargados");};fr.readAsText(e.target.files[0]);}};
+["searchInput","catFilter","stateFilter","sortSel"].forEach(id=>{const el=$("#"+id);el.addEventListener(id==="searchInput"?"input":"change",render);});
+$("#playBtn").onclick=()=>startScan(false);$("#stopBtn").onclick=stopScan;$("#demoBtn").onclick=()=>startScan(true);
+$("#drawGrid").onclick=()=>{buildGrid();updateCmd();};$("#fitPins").onclick=fitPins;$("#clearScan").onclick=()=>{store.set("bc3k_scanned",[]);buildGrid();toast("Marcado limpiado");};$("#copyCmd").onclick=()=>copyTxt($("#scanCmd").value,"Comando copiado ✓");
+$("#mService").onchange=buildMsg;$("#mFollow").onchange=buildMsg;$("#mClose").onclick=closeModal;$("#modalBg").onclick=e=>{if(e.target===$("#modalBg"))closeModal();};
+$("#mCopy").onclick=()=>{if(current)setMeta(idOf(current),{notes:$("#mNotes").value});copyTxt($("#mText").value,"Mensaje copiado ✓");};
+$("#mWa").onclick=()=>{const n=waN(current.phone);if(!n){toast("Sin teléfono");return;}setMeta(idOf(current),{notes:$("#mNotes").value});window.open(`https://wa.me/${n}?text=${encodeURIComponent($("#mText").value)}`,"_blank");};
+$("#mMail").onclick=()=>{const e=current.emails[0];if(!e){toast("Sin correo");return;}window.open(`mailto:${e}?subject=${encodeURIComponent("Propuesta para "+current.title)}&body=${encodeURIComponent($("#mText").value)}`);};
+$("#myName").value=store.get("bc3k_name","");$("#myName").oninput=e=>store.set("bc3k_name",e.target.value);
+function applyTheme(t){document.documentElement.setAttribute("data-theme",t);$("#themeBtn").textContent=t==="dark"?"☀️":"🌙";store.set("bc3k_theme",t);if(map)setTimeout(()=>map.invalidateSize(),60);}
 $("#themeBtn").onclick=()=>applyTheme(document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark");
-const savedTheme=store.get("bc3k_theme",null);
-if(savedTheme) applyTheme(savedTheme); else $("#themeBtn").textContent = matchMedia("(prefers-color-scheme:dark)").matches?"☀️":"🌙";
+const th=store.get("bc3k_theme",null);if(th)applyTheme(th);else $("#themeBtn").textContent=matchMedia("(prefers-color-scheme:dark)").matches?"☀️":"🌙";
+document.addEventListener("dragover",e=>e.preventDefault());document.addEventListener("drop",e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f){const fr=new FileReader();fr.onload=ev=>{loadAll(rowsToLeads(parseCSV(ev.target.result)));toast(LEADS.length+" cargados");};fr.readAsText(f);}});
 
-document.addEventListener("dragover",e=>e.preventDefault());
-document.addEventListener("drop",e=>{ e.preventDefault(); const f=e.dataTransfer.files[0]; if(f) readFile(f); });
-
-updateStats();
+const SAMPLE=[
+ {title:"Botica San Martín",category:"Farmacia",address:"Calle Mercaderes 210, Arequipa",phone:"054 234567",website:"",emails:[],rating:4.2,reviews:88,lat:-16.3985,lon:-71.537,link:"https://maps.google.com/1",thumb:""},
+ {title:"TecniCell Reparaciones",category:"Servicio técnico de celulares",address:"Av. Larco 345, Trujillo",phone:"+51 987 654 321",website:"",emails:["ventas@tecnicell.com"],rating:4.1,reviews:57,lat:-8.112,lon:-79.028,link:"https://maps.google.com/2",thumb:""},
+ {title:"Dentalia Clínica Dental",category:"Clínica dental",address:"Av. Ejército 710, Arequipa",phone:"+51 954 123 456",website:"https://dentalia.pe",emails:["contacto@dentalia.pe"],rating:4.6,reviews:132,lat:-16.3989,lon:-71.535,link:"https://maps.google.com/3",thumb:""},
+ {title:"Sabores del Sur",category:"Restaurante",address:"Calle Santa Catalina 120, Arequipa",phone:"+51 999 888 777",website:"",emails:[],rating:4.3,reviews:489,lat:-16.396,lon:-71.5375,link:"https://maps.google.com/4",thumb:""},
+ {title:"FitZone Gym",category:"Gimnasio",address:"Jr. de la Unión 800, Lima",phone:"01 4567890",website:"https://fitzone.pe",emails:[],rating:4.8,reviews:921,lat:-12.05,lon:-77.033,link:"https://maps.google.com/5",thumb:""},
+ {title:"Bodega Doña Rosa",category:"Bodega",address:"Av. Brasil 1200, Lima",phone:"",website:"",emails:[],rating:4.0,reviews:23,lat:-12.072,lon:-77.053,link:"https://maps.google.com/6",thumb:""}
+];
+$("#sampleBtn").onclick=()=>{loadAll(SAMPLE);toast("Datos de ejemplo cargados");};
+renderChips();render();detectServer();
 </script>
 </body>
 </html>

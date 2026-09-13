@@ -1,0 +1,9 @@
+{
+  "name": "busca-chamba-3000",
+  "version": "1.0.0",
+  "description": "Panel de leads + escaneo en vivo de Google Maps (sin dependencias)",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "private": true
+}

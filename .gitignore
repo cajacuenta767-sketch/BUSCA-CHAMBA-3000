@@ -1,9 +1,14 @@
-# Salidas del scraper (no versionar datos scrapeados)
+# Salidas del scraper y datos locales (no versionar)
 salidas/
 gmapsdata/
 webdata/
+data/
 *.csv
-*.json
+
+# Node
+node_modules/
+npm-debug.log*
+package-lock.json
 
 # Binarios compilados
 gms
