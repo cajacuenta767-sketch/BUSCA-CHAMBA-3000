@@ -213,7 +213,7 @@
       </div>
       <div id="serverWarn" class="help" hidden>⚠️ Sin servidor: para escanear en vivo corre <code>node server.js</code> y abre <code>http://localhost:8090</code>. Aquí (archivo suelto) solo puedes cargar un <code>CSV</code> ya escaneado.</div>
       <div class="section first">
-        <div class="section-head"><span class="step-num">1</span><div><h3>Elige la zona</h3><p>País, departamento y ciudad, y qué tan fino barrer el mapa. Empezamos por Perú y se expande a más países.</p></div></div>
+        <div class="section-head"><span class="step-num">1</span><div><h3>Elige la ciudad</h3><p>El único filtro es la ciudad: elige país y ciudad y se escanea <b>todo</b>. Empezamos por Bolivia y Perú, y se expande a más países.</p></div></div>
         <div class="form-grid">
           <div class="fld"><label>País</label><select class="field" id="countrySel"></select></div>
           <div class="fld"><label>Zona (departamento / ciudad)</label><select class="field" id="zoneSel"></select></div>
@@ -224,16 +224,7 @@
       </div>
 
       <div class="section">
-        <div class="section-head"><span class="step-num">2</span><div><h3>¿Qué buscar?</h3><p>Todo el área, o elige rubros por grupos. Clic en el título de un grupo para marcarlo entero.</p></div></div>
-        <div class="seg">
-          <label><input type="radio" name="scanmode" value="all" checked><span>🌎 Todo el área</span></label>
-          <label><input type="radio" name="scanmode" value="rubros"><span>🎯 Por rubro</span></label>
-        </div>
-        <div class="rub-groups" id="rubros" hidden></div>
-      </div>
-
-      <div class="section">
-        <div class="section-head"><span class="step-num">3</span><div><h3>Inicia el escaneo</h3><p>El mapa se pinta celda por celda y los leads aparecen al instante.</p></div></div>
+        <div class="section-head"><span class="step-num">2</span><div><h3>Inicia el escaneo</h3><p>Barre <b>TODOS los negocios</b> de la ciudad, celda por celda, y los clasifica solo por categoría. El mapa se pinta en vivo.</p></div></div>
         <div class="play-row" style="justify-content:flex-start">
           <button class="btn primary big" id="playBtn">▶️ Iniciar escaneo</button>
           <button class="btn amber" id="pauseBtn" hidden>⏸️ Pausar</button>
@@ -513,9 +504,50 @@ const RUBRO_GROUPS=[
   {name:"Hospedaje",icon:"🏨",items:["hotel","hostal"]}
 ];
 const RUBROS=RUBRO_GROUPS.flatMap(g=>g.items);
+// Normaliza la categoría de Google a una sola etiqueta por rubro, para que no
+// se fragmente en decenas de variantes ("Restaurante de pollos", "Pollería", …).
+const CATNORM=[
+ [/farmac|botica|droguer/i,"Farmacia / Botica"],
+ [/cevich/i,"Cevichería"],
+ [/poller|pollo|broaster/i,"Pollería"],
+ [/chifa|chin[ao]|wok|sushi|japon/i,"Chifa / Comida asiática"],
+ [/pizzer|pizza/i,"Pizzería"],
+ [/caf[eé]|coffee/i,"Cafetería"],
+ [/juguer|jugos|smoothie/i,"Juguería"],
+ [/panader|pasteler|reposter|bizcoch/i,"Panadería / Pastelería"],
+ [/hambur|sandwich|s[aá]ndwich|fast food|comida r[aá]pida|salchipap/i,"Comida rápida"],
+ [/bar\b|cervec|pub|licorer|discotec|karaoke/i,"Bar / Licorería"],
+ [/restaur|comida|men[uú]|parrill|cocina|marisc|pique|almuerz/i,"Restaurante"],
+ [/dental|dentist|odont/i,"Clínica dental"],
+ [/veterin|mascota|petshop|pet shop/i,"Veterinaria"],
+ [/[oó]ptic/i,"Óptica"],
+ [/laboratorio/i,"Laboratorio clínico"],
+ [/m[eé]dic|cl[ií]nic|consultorio|salud|hospital|psicolog|fisioterap/i,"Consultorio / Clínica"],
+ [/peluquer|barber|sal[oó]n de belleza|belleza|est[eé]tica|u[nñ]as|spa/i,"Peluquería / Barbería"],
+ [/gimnas|gym|fitness|crossfit/i,"Gimnasio"],
+ [/hotel|hostal|hosped|lodge|alojam|apart/i,"Hotel / Hospedaje"],
+ [/celular|phone|reparaci[oó]n de|t[eé]cnic|electr[oó]nic|inform[aá]tic|computa/i,"Taller de celulares / PC"],
+ [/ferret|construcci|materiales/i,"Ferretería"],
+ [/bodega|minimarket|abarrote|market|almac[eé]n|tienda de barrio/i,"Bodega / Minimarket"],
+ [/ropa|boutique|textil|calzado|zapat|moda/i,"Ropa / Calzado"],
+ [/librer|papeler|[uú]tiles/i,"Librería / Papelería"],
+ [/flor(er|ist)/i,"Florería"],
+ [/juguet/i,"Juguetería"],
+ [/lavander|tintorer/i,"Lavandería"],
+ [/cerrajer/i,"Cerrajería"],
+ [/imprent|gr[aá]fic|serigraf|publicidad/i,"Imprenta / Publicidad"],
+ [/mec[aá]nic|automotr|llanter|lubricentro|taller/i,"Taller mecánico"],
+ [/contab|contador/i,"Estudio contable"],
+ [/abogad|jur[ií]dic|legal|notari/i,"Estudio jurídico"],
+ [/inmobili|bienes ra|propiedad/i,"Inmobiliaria"],
+ [/viaje|turismo|agencia de/i,"Agencia de viajes"],
+ [/escuela|colegio|instituto|academia|educa/i,"Educación"],
+ [/transport|courier|env[ií]os|log[ií]stic/i,"Transporte / Envíos"],
+];
+function normCat(c){c=(""+(c||"")).trim();if(!c)return"";for(const [re,lab] of CATNORM)if(re.test(c))return lab;return c;}
 // Zonas por país. Cada zona = [nombre, lat, lon, radioKm]. Empezamos por Perú
 // (24 departamentos + Callao) y nos expandimos a países de habla hispana + EE. UU.
-const COUNTRIES=[
+const COUNTRIES_ALL=[
  {code:"PE",name:"Perú",flag:"🇵🇪",zones:{
   "Lima y Callao":[["Lima (metropolitana)",-12.05,-77.05,16],["Miraflores",-12.121,-77.030,3],["San Isidro",-12.097,-77.036,3],["Santiago de Surco",-12.135,-76.995,5],["San Juan de Lurigancho",-11.990,-77.005,6],["Callao",-12.055,-77.120,6],["Huacho",-11.107,-77.606,4]],
   "Arequipa":[["Arequipa",-16.409,-71.537,10]],
@@ -571,7 +603,9 @@ const COUNTRIES=[
  {code:"PR",name:"Puerto Rico",flag:"🇵🇷",zones:{"Principales ciudades":[["San Juan",18.466,-66.106,8],["Ponce",18.011,-66.614,5]]}},
  {code:"US",name:"Estados Unidos",flag:"🇺🇸",zones:{"Mercado hispano (EE. UU.)":[["Miami, FL",25.762,-80.192,14],["Los Ángeles, CA",34.052,-118.244,18],["Nueva York, NY",40.713,-74.006,14],["Houston, TX",29.760,-95.370,14],["Chicago, IL",41.878,-87.630,12],["San Antonio, TX",29.424,-98.494,10],["Phoenix, AZ",33.448,-112.074,12]]}}
 ];
-function curCountry(){const s=$("#countrySel");const code=s?s.value:"PE";return COUNTRIES.find(c=>c.code===code)||COUNTRIES[0];}
+// Empezamos por Bolivia y Perú; el resto queda en su orden original.
+const COUNTRIES=(()=>{const ord=["BO","PE"];return COUNTRIES_ALL.slice().sort((a,b)=>{const ia=ord.indexOf(a.code),ib=ord.indexOf(b.code);if(ia<0&&ib<0)return 0;if(ia<0)return 1;if(ib<0)return -1;return ia-ib;});})();
+function curCountry(){const s=$("#countrySel");const code=s&&s.value?s.value:COUNTRIES[0].code;return COUNTRIES.find(c=>c.code===code)||COUNTRIES[0];}
 function zoneBBox(z){const lat=z[1],lon=z[2],km=z[3]||7,dLat=km/111,dLon=km/(111*Math.cos(lat*Math.PI/180));return[lat-dLat,lon-dLon,lat+dLat,lon+dLon];}
 
 let SERVER=false,es=null,LEADS=[],byId={},meta={},current=null,filter="all",kanbanOn=false,scanWarn=0,scanStart=0;
@@ -588,7 +622,7 @@ function renderChips(){$("#chips").innerHTML=CHIPS.map(([k,l,c])=>`<button class
 function passesChip(l){const m=getMeta(idOf(l));if(filter==="noweb")return !realWeb(l);if(filter==="c-web")return classify(l).offer==="web";if(filter==="c-sist")return classify(l).offer==="sistema";if(filter==="wa")return !!waN(l.phone);if(filter==="mail")return l.emails.length>0;if(filter==="web")return !!realWeb(l);if(filter==="today")return m.state==="nuevo"||(m.follow&&m.follow<=todayStr());return true;}
 function getFiltered(){
   const q=($("#searchInput").value||"").toLowerCase().trim(),cat=$("#catFilter").value,st=$("#stateFilter").value,city=$("#cityFilter").value,mr=parseFloat($("#minRating").value)||0,sort=$("#sortSel").value;
-  let list=LEADS.filter(l=>{if(!passesChip(l))return false;if(cat&&l.category!==cat)return false;if(city&&cityOf(l)!==city)return false;if(mr&&(l.rating||0)<mr)return false;if(st&&getMeta(idOf(l)).state!==st)return false;if(q){const h=(l.title+" "+l.category+" "+l.address+" "+cityOf(l)+" "+(l.about||"")+" "+l.phone+" "+l.emails.join(" ")).toLowerCase();if(!h.includes(q))return false;}return true;});
+  let list=LEADS.filter(l=>{if(!passesChip(l))return false;if(cat&&normCat(l.category)!==cat)return false;if(city&&cityOf(l)!==city)return false;if(mr&&(l.rating||0)<mr)return false;if(st&&getMeta(idOf(l)).state!==st)return false;if(q){const h=(l.title+" "+l.category+" "+l.address+" "+cityOf(l)+" "+(l.about||"")+" "+l.phone+" "+l.emails.join(" ")).toLowerCase();if(!h.includes(q))return false;}return true;});
   list.sort((a,b)=>sort==="rating"?b.rating-a.rating:sort==="reviews"?b.reviews-a.reviews:sort==="name"?a.title.localeCompare(b.title):scoreOf(b)-scoreOf(a));
   return list;
 }
@@ -605,7 +639,7 @@ function card(l){
   let h=`<div class="card-top">`;
   if(l.thumb)h+=`<img class="thumb" src="${esc(l.thumb)}" loading="lazy" onerror="this.remove()">`;
   h+=`<div style="min-width:0"><h3>${esc(l.title)}</h3>`;
-  if(l.category)h+=`<span class="tag">${esc(l.category)}</span>`;
+  if(l.category)h+=`<span class="tag" title="${esc(l.category)}">${esc(normCat(l.category))}</span>`;
   if(l.rating)h+=`<div class="rating"><b>★ ${l.rating.toFixed(1)}</b> · ${l.reviews} reseñas</div>`;
   const v=detectV(l.category);if(v)h+=`<div class="sug">💡 ${esc(PITCHES.verticals[v].label)}</div>`;
   h+=`</div></div>`;
@@ -633,7 +667,7 @@ function card(l){
 function appendCardLive(l){if(kanbanOn){renderKanban();return;}if(!passesChip(l))return;const q=($("#searchInput").value||"").toLowerCase().trim();if(q&&!(l.title+" "+l.category).toLowerCase().includes(q))return;$("#empty").hidden=true;const el=card(l);el.classList.add("new");$("#grid").appendChild(el);}
 function animateNum(el,to){if(!el)return;const from=+el.dataset.v||0;el.dataset.v=to;if(from===to||matchMedia("(prefers-reduced-motion:reduce)").matches){el.textContent=to;return;}const t0=performance.now();function step(t){const k=Math.min(1,(t-t0)/500);el.textContent=Math.round(from+(to-from)*(1-Math.pow(1-k,3)));if(k<1)requestAnimationFrame(step);}requestAnimationFrame(step);}
 function updateStats(){animateNum($("#sTotal"),LEADS.length);animateNum($("#sNoWeb"),LEADS.filter(l=>!realWeb(l)).length);animateNum($("#sPhone"),LEADS.filter(l=>l.phone).length);animateNum($("#sMail"),LEADS.filter(l=>l.emails.length).length);animateNum($("#sDone"),LEADS.filter(l=>{const s=getMeta(idOf(l)).state;return s&&s!=="nuevo";}).length);const pc=$("#pillCount");pc.hidden=!LEADS.length;pc.textContent=LEADS.length;}
-function refreshCats(){const c=[...new Set(LEADS.map(l=>l.category).filter(Boolean))].sort(),s=$("#catFilter"),cur=s.value;s.innerHTML='<option value="">Todos los rubros</option>'+c.map(x=>`<option>${esc(x)}</option>`).join("");s.value=cur;}
+function refreshCats(){const cnt={};LEADS.forEach(l=>{const c=normCat(l.category);if(c)cnt[c]=(cnt[c]||0)+1;});const c=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]||a.localeCompare(b)),s=$("#catFilter"),cur=s.value;s.innerHTML='<option value="">Todos los rubros</option>'+c.map(x=>`<option value="${esc(x)}">${esc(x)} (${cnt[x]})</option>`).join("");s.value=cur;}
 function refreshCities(){const c=[...new Set(LEADS.map(cityOf).filter(Boolean))].sort(),s=$("#cityFilter"),cur=s.value;s.innerHTML='<option value="">Toda ciudad</option>'+c.map(x=>`<option>${esc(x)}</option>`).join("");s.value=cur;}
 function refreshStates(){const s=$("#stateFilter"),cur=s.value;s.innerHTML='<option value="">Todos los estados</option>'+Object.entries(STATES).map(([k,v])=>`<option value="${k}">${v.l}</option>`).join("");s.value=cur;}
 
@@ -662,7 +696,7 @@ function renderMetrics(){
   const order=["nuevo","contactado","respondio","propuesta","cliente"];
   const fc=order.map(s=>LEADS.filter(l=>getMeta(idOf(l)).state===s).length);const fmax=Math.max(1,...fc);
   $("#mFunnel").innerHTML=order.map((s,i)=>bar(STATES[s].l,fc[i],fmax,"funnel")).join("");
-  const cats={};LEADS.forEach(l=>{const c=l.category||"—";cats[c]=(cats[c]||0)+1;});
+  const cats={};LEADS.forEach(l=>{const c=normCat(l.category)||"—";cats[c]=(cats[c]||0)+1;});
   const top=Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,8);const cmax=Math.max(1,...top.map(x=>x[1]));
   $("#mCats").innerHTML=top.length?top.map(([c,n])=>bar(c,n,cmax)).join(""):'<p class="help">Sin datos aún.</p>';
   const noweb=LEADS.filter(l=>!realWeb(l)).length;
@@ -729,21 +763,17 @@ function detectServer(){fetch("/api/status").then(r=>r.ok?r.json():Promise.rejec
   connectSSE();}).catch(()=>{SERVER=false;setMode(false);meta=store.get("bc3k_meta",{});render();});}
 
 // ---- Escaneo ----
-const selectedRubros=()=>[...document.querySelectorAll(".rub.on")].map(x=>x.dataset.r);
 function scanArea(){if(!map)return null;const b=map.getBounds();return[b.getSouth(),b.getWest(),b.getNorth(),b.getEast()];}
 function startScan(){if(!SERVER){toast("Inicia el servidor (node server.js) para escanear");return;}
-  const mode=(document.querySelector('input[name="scanmode"]:checked')||{}).value||"all";
-  const rubros=mode==="rubros"?selectedRubros():[];
-  if(mode==="rubros"&&!rubros.length){toast("Elige al menos un rubro");return;}
   const area=scanArea();if(!area){toast("Cargando mapa…");return;}
-  fetch("/api/scan/start",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode,rubros,area,cellKm:cellKm(),email:$("#scanEmail").checked,skipScanned:$("#skipScanned").checked})}).then(r=>r.json()).then(j=>{if(j.error)toast(j.error);else toast("Escaneo iniciado: "+j.cells+" celdas"+(j.adjusted?" · celda ajustada a "+j.cellKm+" km":""));}).catch(()=>toast("No se pudo conectar"));}
+  fetch("/api/scan/start",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:"all",rubros:[],area,cellKm:cellKm(),email:$("#scanEmail").checked,skipScanned:$("#skipScanned").checked})}).then(r=>r.json()).then(j=>{if(j.error)toast(j.error);else toast("Escaneo iniciado: "+j.cells+" celdas"+(j.adjusted?" · celda ajustada a "+j.cellKm+" km":""));}).catch(()=>toast("No se pudo conectar"));}
 const post=u=>fetch(u,{method:"POST"}).catch(()=>{});
 function estimate(){if(!map){$("#estTxt").textContent="";return;}
   const b=map.getBounds(),latC=(b.getSouth()+b.getNorth())/2,spanLat=b.getNorth()-b.getSouth(),spanLon=b.getEast()-b.getWest();
   const CAP=550;const calc=k=>{const dLat=k/111,dLon=k/(111*Math.cos(latC*Math.PI/180));return Math.max(1,Math.ceil(spanLat/dLat)*Math.ceil(spanLon/dLon));};
   let km=cellKm(),n=calc(km),adj=false;
   while(n>CAP&&km<25){km=Math.round((km+(km<3?0.3:1))*10)/10;n=calc(km);adj=true;}
-  const rubN=($('input[name=scanmode]:checked')||{}).value==="rubros"?(selectedRubros().length||1):8;const min=Math.ceil(n*rubN*0.3);
+  const min=Math.ceil(n*8*0.3);
   $("#estTxt").textContent=`≈ ${n} celdas`+(adj?` · celda auto-ajustada a ${km} km`:"")+` · tiempo aprox. ${min<60?min+" min":(Math.round(min/6)/10)+" h"} (depende de proxies/conexión)`;}
 
 // ---- Config ----
@@ -773,7 +803,7 @@ const cellKm=()=>Math.max(0.2,parseFloat($("#cellKm").value)||1);
 function initMap(){if(map){setTimeout(()=>map.invalidateSize(),60);return;}if(!window.L){$("#progTxt").textContent="El mapa necesita internet.";return;}
   map=L.map("map").setView([-12.0464,-77.0428],13);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(map);
   gridLayer=L.layerGroup().addTo(map);pinLayer=L.layerGroup().addTo(map);map.on("moveend",estimate);
-  setTimeout(()=>{map.invalidateSize();LEADS.forEach(addPin);estimate();},60);}
+  setTimeout(()=>{map.invalidateSize();LEADS.forEach(addPin);goZone();estimate();},60);}
 function cellStyle(state){const m={pending:["#9aa4bd",.06],scanning:[cssv("--amber"),.42],done:[cssv("--ok"),.32],empty:[cssv("--ok"),.06],error:[cssv("--danger"),.38]};const[c,o]=m[state]||m.pending;return{color:c,weight:1,fillColor:c,fillOpacity:o};}
 function cssv(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()||"#888";}
 function drawServerCells(cells,area){if(!map)return;gridLayer.clearLayers();cellRects={};cells.forEach(c=>{const r=L.rectangle([[c.bbox[0],c.bbox[1]],[c.bbox[2],c.bbox[3]]],cellStyle(c.state));gridLayer.addLayer(r);cellRects[c.key]=r;});if(area)map.fitBounds([[area[0],area[1]],[area[2],area[3]]],{padding:[15,15]});}
@@ -803,7 +833,6 @@ function renderHistory(h){if(!h||!h.length)return;$("#histPanel").hidden=false;$
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));t.classList.add("active");const n=t.dataset.tab;["inicio","resultados","metricas","tools"].forEach(x=>$("#tab-"+x).hidden=x!==n);if(n==="inicio")initMap();if(n==="metricas")renderMetrics();});
 $("#fileInput").onchange=e=>{if(e.target.files[0]){const fr=new FileReader();fr.onload=ev=>importCSV(ev.target.result);fr.readAsText(e.target.files[0]);}};
 ["searchInput","cityFilter","catFilter","stateFilter","minRating","sortSel"].forEach(id=>{const el=$("#"+id);el.addEventListener(id==="searchInput"?"input":"change",render);});
-document.querySelectorAll('input[name="scanmode"]').forEach(r=>r.onchange=()=>{$("#rubros").hidden=(document.querySelector('input[name="scanmode"]:checked')||{}).value!=="rubros";estimate();});
 $("#cellKm").oninput=estimate;
 $("#playBtn").onclick=()=>startScan();
 $("#pauseBtn").onclick=()=>post("/api/scan/pause");$("#resumeBtn").onclick=()=>post("/api/scan/resume");$("#stopBtn").onclick=()=>post("/api/scan/stop");
@@ -830,10 +859,6 @@ $("#themeBtn").onclick=()=>applyTheme(document.documentElement.getAttribute("dat
 const th=store.get("bc3k_theme",null);if(th)applyTheme(th);else $("#themeBtn").textContent=matchMedia("(prefers-color-scheme:dark)").matches?"☀️":"🌙";
 document.addEventListener("dragover",e=>{if(!e.target.closest(".kcol"))e.preventDefault();});document.addEventListener("drop",e=>{if(e.target.closest(".kcol"))return;e.preventDefault();const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f){const fr=new FileReader();fr.onload=ev=>importCSV(ev.target.result);fr.readAsText(f);}});
 
-$("#rubros").innerHTML=RUBRO_GROUPS.map(g=>`<div class="rub-group"><button type="button" class="rub-group-label" title="Marcar/desmarcar todo el grupo"><span>${g.icon} ${g.name}</span><span class="rgl-count">${g.items.length}</span></button><div class="rub-wrap">${g.items.map(r=>`<button type="button" class="rub" data-r="${esc(r)}">${esc(r)}</button>`).join("")}</div></div>`).join("");
-function syncGroupLabels(){document.querySelectorAll("#rubros .rub-group").forEach(gr=>{const chips=[...gr.querySelectorAll(".rub")];const lab=gr.querySelector(".rub-group-label");lab.classList.toggle("on",chips.length>0&&chips.every(c=>c.classList.contains("on")));});}
-document.querySelectorAll("#rubros .rub").forEach(b=>b.onclick=()=>{b.classList.toggle("on");syncGroupLabels();estimate();});
-document.querySelectorAll("#rubros .rub-group-label").forEach(lab=>lab.onclick=()=>{const chips=[...lab.parentElement.querySelectorAll(".rub")];const allOn=chips.every(c=>c.classList.contains("on"));chips.forEach(c=>c.classList.toggle("on",!allOn));syncGroupLabels();estimate();});
 fillCountries();fillZones();loadMyZones();renderChips();render();initMap();detectServer();
 </script>
 </body>
