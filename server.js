@@ -126,9 +126,22 @@ function descFrom(s) {
     return uniq.slice(0, 14).join(" · ").slice(0, 240);
   } catch (e) { return ""; }
 }
+// Redes sociales: se buscan en TODAS las columnas de la fila (no solo "website").
+// OJO: una red social NO es página web propia; se guardan aparte a propósito.
+const SOC_PAT = {
+  fb: /(?:https?:\/\/)?(?:[\w-]+\.)?(?:facebook\.com|fb\.me)\/[^\s",;)]+/i,
+  ig: /(?:https?:\/\/)?(?:[\w-]+\.)?(?:instagram\.com|instagr\.am)\/[^\s",;)]+/i,
+  tt: /(?:https?:\/\/)?(?:[\w-]+\.)?tiktok\.com\/[^\s",;)]+/i
+};
+function socialFrom(vals) {
+  const t = (vals || []).filter(x => typeof x === "string").join(" ");
+  const o = {};
+  for (const k in SOC_PAT) { const m = t.match(SOC_PAT[k]); if (m) { let u = m[0].replace(/[),.;]+$/, ""); if (!/^https?:/i.test(u)) u = "https://" + u; o[k] = u; } }
+  return o;
+}
 function jsonAddr(str) { try { let o = JSON.parse(str); if (Array.isArray(o)) o = o[0] || {}; if (!o || typeof o !== "object") return null; const street = ("" + (o.street || "")).replace(/^[A-Z0-9]{4,}\+[A-Z0-9]+,?\s*/, "").trim(); const a = [street, o.borough, o.city, o.state, o.country].map(x => ("" + (x || "")).trim()).filter(Boolean).join(", "); return { address: a, city: ("" + (o.city || "")).trim(), country: ("" + (o.country || "")).trim().toUpperCase() }; } catch (e) { return null; } }
 function parseAddr(g) { const plain = (g("address") || "").trim(), comp = (g("complete_address") || "").trim(); const j = /^[\[{]/.test(comp) ? comp : (/^[\[{]/.test(plain) ? plain : ""); if (j) { const r = jsonAddr(j); if (r) return r; } const a = plain && !/^[\[{]/.test(plain) ? plain : (comp && !/^[\[{]/.test(comp) ? comp : ""); const p = a.split(",").map(s => s.trim()).filter(Boolean); return { address: a, city: p[p.length - 1] || "", country: "" }; }
-function rowToLead(H, r) { const gi = n => H.indexOf(n), g = n => { const i = gi(n); return i >= 0 ? (r[i] || "").trim() : ""; }; const t = g("title"); if (!t) return null; const pa = parseAddr(g); return { title: t, category: g("category"), address: pa.address, city: pa.city, country: pa.country || "", phone: g("phone"), website: g("website"), emails: emails(g("emails")), rating: parseFloat(g("review_rating")) || 0, reviews: parseInt((g("review_count") || "").replace(/\D/g, "")) || 0, lat: parseFloat(g("latitude")) || 0, lon: parseFloat(g("longitude")) || 0, link: g("link"), place_id: g("place_id") || g("cid"), thumb: g("thumbnail"), about: descFrom(g("descriptions") || g("about")), images: (g("images") || "").split(/[|;,\s]+/).filter(u => /^https?:/.test(u)).slice(0, 6) }; }
+function rowToLead(H, r) { const gi = n => H.indexOf(n), g = n => { const i = gi(n); return i >= 0 ? (r[i] || "").trim() : ""; }; const t = g("title"); if (!t) return null; const pa = parseAddr(g); const soc = socialFrom(r); return { title: t, social: soc, category: g("category"), address: pa.address, city: pa.city, country: pa.country || "", phone: g("phone"), website: g("website"), emails: emails(g("emails")), rating: parseFloat(g("review_rating")) || 0, reviews: parseInt((g("review_count") || "").replace(/\D/g, "")) || 0, lat: parseFloat(g("latitude")) || 0, lon: parseFloat(g("longitude")) || 0, link: g("link"), place_id: g("place_id") || g("cid"), thumb: g("thumbnail"), about: descFrom(g("descriptions") || g("about")), images: (g("images") || "").split(/[|;,\s]+/).filter(u => /^https?:/.test(u)).slice(0, 6) }; }
 function idOf(l) { const ph = (l.phone || "").replace(/\D/g, ""); return l.place_id || l.link || (ph ? "tel:" + ph : (l.title + "|" + l.address)); }
 function addLead(l) {
   if (scan && scan.exclude && scan.exclude.length) { const t = (l.title || "").toLowerCase(); if (scan.exclude.some(x => t.includes(x))) return false; }
