@@ -207,8 +207,9 @@
       </div>
       <div id="serverWarn" class="help" hidden>⚠️ Sin servidor: para escanear en vivo corre <code>node server.js</code> y abre <code>http://localhost:8090</code>. Aquí (archivo suelto) puedes cargar un CSV o pulsar <b>Ejemplo</b>.</div>
       <div class="section first">
-        <div class="section-head"><span class="step-num">1</span><div><h3>Elige la zona</h3><p>Departamento y ciudad del Perú, y qué tan fino barrer el mapa.</p></div></div>
+        <div class="section-head"><span class="step-num">1</span><div><h3>Elige la zona</h3><p>País, departamento y ciudad, y qué tan fino barrer el mapa. Empezamos por Perú y se expande a más países.</p></div></div>
         <div class="form-grid">
+          <div class="fld"><label>País</label><select class="field" id="countrySel"></select></div>
           <div class="fld"><label>Zona (departamento / ciudad)</label><select class="field" id="zoneSel"></select></div>
           <div class="fld"><label>Tamaño de celda (km)</label><input class="field" id="cellKm" type="number" min="0.2" step="0.1" value="1"></div>
           <div class="fld"><label>Correos</label><label class="chk" style="padding:9px 0"><input type="checkbox" id="scanEmail" checked> Extraer de las webs</label></div>
@@ -440,7 +441,66 @@ const RUBRO_GROUPS=[
   {name:"Hospedaje",icon:"🏨",items:["hotel","hostal"]}
 ];
 const RUBROS=RUBRO_GROUPS.flatMap(g=>g.items);
-const ZONES={"Lima":[["Lima (metropolitana)",-12.20,-77.15,-11.90,-76.90],["Miraflores",-12.14,-77.05,-12.10,-77.01],["San Isidro",-12.11,-77.06,-12.08,-77.02],["Surco",-12.16,-77.02,-12.10,-76.96],["San Juan de Lurigancho",-12.02,-77.02,-11.95,-76.96]],"Arequipa":[["Arequipa (centro)",-16.44,-71.58,-16.36,-71.50]],"La Libertad":[["Trujillo",-8.15,-79.06,-8.07,-78.98]],"Lambayeque":[["Chiclayo",-6.81,-79.88,-6.73,-79.80]],"Piura":[["Piura",-5.22,-80.66,-5.15,-80.59]],"Cusco":[["Cusco",-13.54,-72.00,-13.49,-71.93]],"Junín":[["Huancayo",-12.09,-75.24,-12.02,-75.18]],"Loreto":[["Iquitos",-3.78,-73.28,-3.72,-73.22]],"Ica":[["Ica",-14.09,-75.75,-14.03,-75.69]],"Puno":[["Puno",-15.86,-70.04,-15.81,-69.98]],"Áncash":[["Chimbote",-9.10,-78.60,-9.03,-78.54]],"Tacna":[["Tacna",-18.03,-70.27,-17.98,-70.22]]};
+// Zonas por país. Cada zona = [nombre, lat, lon, radioKm]. Empezamos por Perú
+// (24 departamentos + Callao) y nos expandimos a países de habla hispana + EE. UU.
+const COUNTRIES=[
+ {code:"PE",name:"Perú",flag:"🇵🇪",zones:{
+  "Lima y Callao":[["Lima (metropolitana)",-12.05,-77.05,16],["Miraflores",-12.121,-77.030,3],["San Isidro",-12.097,-77.036,3],["Santiago de Surco",-12.135,-76.995,5],["San Juan de Lurigancho",-11.990,-77.005,6],["Callao",-12.055,-77.120,6],["Huacho",-11.107,-77.606,4]],
+  "Arequipa":[["Arequipa",-16.409,-71.537,10]],
+  "La Libertad":[["Trujillo",-8.112,-79.028,9]],
+  "Lambayeque":[["Chiclayo",-6.771,-79.840,8]],
+  "Piura":[["Piura",-5.194,-80.632,7],["Sullana",-4.903,-80.685,5]],
+  "Cusco":[["Cusco",-13.532,-71.967,7]],
+  "Junín":[["Huancayo",-12.066,-75.210,7]],
+  "Áncash":[["Huaraz",-9.529,-77.529,5],["Chimbote",-9.074,-78.594,6]],
+  "Cajamarca":[["Cajamarca",-7.164,-78.512,6]],
+  "Ica":[["Ica",-14.068,-75.729,6],["Chincha Alta",-13.419,-76.132,5]],
+  "Loreto":[["Iquitos",-3.749,-73.253,7]],
+  "Puno":[["Puno",-15.840,-70.023,5],["Juliaca",-15.500,-70.133,6]],
+  "San Martín":[["Tarapoto",-6.488,-76.372,5],["Moyobamba",-6.034,-76.971,4]],
+  "Tacna":[["Tacna",-18.006,-70.246,6]],
+  "Ucayali":[["Pucallpa",-8.379,-74.553,7]],
+  "Ayacucho":[["Ayacucho",-13.159,-74.223,5]],
+  "Huánuco":[["Huánuco",-9.930,-76.242,5]],
+  "Tumbes":[["Tumbes",-3.567,-80.451,5]],
+  "Moquegua":[["Moquegua",-17.194,-70.935,4],["Ilo",-17.640,-71.343,4]],
+  "Apurímac":[["Abancay",-13.635,-72.881,4]],
+  "Amazonas":[["Chachapoyas",-6.229,-77.869,4]],
+  "Huancavelica":[["Huancavelica",-12.786,-74.976,4]],
+  "Pasco":[["Cerro de Pasco",-10.683,-76.256,4]],
+  "Madre de Dios":[["Puerto Maldonado",-12.593,-69.189,5]]
+ }},
+ {code:"BO",name:"Bolivia",flag:"🇧🇴",zones:{
+  "La Paz":[["La Paz / El Alto",-16.500,-68.150,12]],
+  "Santa Cruz":[["Santa Cruz de la Sierra",-17.784,-63.182,12]],
+  "Cochabamba":[["Cochabamba",-17.394,-66.157,9]],
+  "Chuquisaca":[["Sucre",-19.033,-65.262,6]],
+  "Oruro":[["Oruro",-17.980,-67.126,6]],
+  "Potosí":[["Potosí",-19.583,-65.753,5]],
+  "Tarija":[["Tarija",-21.535,-64.729,6]],
+  "Beni":[["Trinidad",-14.834,-64.900,5]],
+  "Pando":[["Cobija",-11.026,-68.769,4]]
+ }},
+ {code:"CO",name:"Colombia",flag:"🇨🇴",zones:{"Principales ciudades":[["Bogotá",4.711,-74.072,16],["Medellín",6.244,-75.573,10],["Cali",3.452,-76.532,10],["Barranquilla",10.968,-74.781,8],["Cartagena",10.391,-75.479,8],["Bucaramanga",7.119,-73.122,7]]}},
+ {code:"EC",name:"Ecuador",flag:"🇪🇨",zones:{"Principales ciudades":[["Quito",-0.180,-78.467,12],["Guayaquil",-2.170,-79.922,12],["Cuenca",-2.900,-79.005,7],["Ambato",-1.241,-78.620,5]]}},
+ {code:"CL",name:"Chile",flag:"🇨🇱",zones:{"Principales ciudades":[["Santiago",-33.447,-70.673,16],["Valparaíso / Viña del Mar",-33.045,-71.620,9],["Concepción",-36.827,-73.050,9],["Antofagasta",-23.650,-70.398,6]]}},
+ {code:"AR",name:"Argentina",flag:"🇦🇷",zones:{"Principales ciudades":[["Buenos Aires",-34.603,-58.382,18],["Córdoba",-31.420,-64.188,11],["Rosario",-32.958,-60.639,9],["Mendoza",-32.889,-68.845,8],["La Plata",-34.921,-57.954,7]]}},
+ {code:"MX",name:"México",flag:"🇲🇽",zones:{"Principales ciudades":[["Ciudad de México",19.433,-99.133,18],["Guadalajara",20.677,-103.347,12],["Monterrey",25.686,-100.316,12],["Puebla",19.041,-98.206,9],["Tijuana",32.514,-117.038,9],["Mérida",20.967,-89.592,8]]}},
+ {code:"VE",name:"Venezuela",flag:"🇻🇪",zones:{"Principales ciudades":[["Caracas",10.481,-66.904,12],["Maracaibo",10.654,-71.640,10],["Valencia",10.162,-68.008,8],["Barquisimeto",10.066,-69.347,7]]}},
+ {code:"GT",name:"Guatemala",flag:"🇬🇹",zones:{"Principales ciudades":[["Ciudad de Guatemala",14.634,-90.507,10],["Quetzaltenango",14.834,-91.518,5]]}},
+ {code:"DO",name:"Rep. Dominicana",flag:"🇩🇴",zones:{"Principales ciudades":[["Santo Domingo",18.486,-69.931,11],["Santiago de los Caballeros",19.451,-70.697,7]]}},
+ {code:"CR",name:"Costa Rica",flag:"🇨🇷",zones:{"Principales ciudades":[["San José",9.928,-84.090,10]]}},
+ {code:"PA",name:"Panamá",flag:"🇵🇦",zones:{"Principales ciudades":[["Ciudad de Panamá",8.983,-79.519,10]]}},
+ {code:"PY",name:"Paraguay",flag:"🇵🇾",zones:{"Principales ciudades":[["Asunción",-25.264,-57.576,10]]}},
+ {code:"UY",name:"Uruguay",flag:"🇺🇾",zones:{"Principales ciudades":[["Montevideo",-34.901,-56.164,10]]}},
+ {code:"HN",name:"Honduras",flag:"🇭🇳",zones:{"Principales ciudades":[["Tegucigalpa",14.072,-87.192,8],["San Pedro Sula",15.505,-88.025,7]]}},
+ {code:"SV",name:"El Salvador",flag:"🇸🇻",zones:{"Principales ciudades":[["San Salvador",13.692,-89.218,8]]}},
+ {code:"NI",name:"Nicaragua",flag:"🇳🇮",zones:{"Principales ciudades":[["Managua",12.115,-86.236,8]]}},
+ {code:"PR",name:"Puerto Rico",flag:"🇵🇷",zones:{"Principales ciudades":[["San Juan",18.466,-66.106,8],["Ponce",18.011,-66.614,5]]}},
+ {code:"US",name:"Estados Unidos",flag:"🇺🇸",zones:{"Mercado hispano (EE. UU.)":[["Miami, FL",25.762,-80.192,14],["Los Ángeles, CA",34.052,-118.244,18],["Nueva York, NY",40.713,-74.006,14],["Houston, TX",29.760,-95.370,14],["Chicago, IL",41.878,-87.630,12],["San Antonio, TX",29.424,-98.494,10],["Phoenix, AZ",33.448,-112.074,12]]}}
+];
+function curCountry(){const s=$("#countrySel");const code=s?s.value:"PE";return COUNTRIES.find(c=>c.code===code)||COUNTRIES[0];}
+function zoneBBox(z){const lat=z[1],lon=z[2],km=z[3]||7,dLat=km/111,dLon=km/(111*Math.cos(lat*Math.PI/180));return[lat-dLat,lon-dLon,lat+dLat,lon+dLon];}
 
 let SERVER=false,es=null,LEADS=[],byId={},meta={},current=null,filter="all",kanbanOn=false,scanWarn=0,scanStart=0;
 function getMeta(id){return meta[id]||{state:"nuevo",notes:""};}
@@ -632,8 +692,9 @@ function addPin(l){if(!map||!pinLayer||!l.lat||!l.lon)return;const id=idOf(l),wa
   mk.addTo(pinLayer);}
 function toggleHeat(){if(!map||!window.L||!L.heatLayer){toast("Heatmap no disponible");return;}if(heatLayer){map.removeLayer(heatLayer);heatLayer=null;toast("Heatmap off");return;}const pts=LEADS.filter(l=>l.lat&&l.lon).map(l=>[l.lat,l.lon,.6]);if(!pts.length){toast("Sin coordenadas");return;}heatLayer=L.heatLayer(pts,{radius:25,blur:18}).addTo(map);toast("Heatmap on");}
 function fitPins(){if(!map)return;const p=LEADS.filter(l=>l.lat&&l.lon).map(l=>[l.lat,l.lon]);if(p.length)map.fitBounds(p,{padding:[30,30]});else toast("Sin coordenadas");}
-function fillZones(){const s=$("#zoneSel");let h="";for(const dep in ZONES){h+=`<optgroup label="${dep}">`+ZONES[dep].map((z,i)=>`<option value="${dep}|${i}">${z[0]}</option>`).join("")+`</optgroup>`;}s.innerHTML=h;}
-function goZone(){const v=$("#zoneSel").value;if(!v||!map)return;const[dep,i]=v.split("|");const z=ZONES[dep][+i];map.fitBounds([[z[1],z[2]],[z[3],z[4]]],{padding:[10,10]});setTimeout(estimate,120);}
+function fillCountries(){const s=$("#countrySel");if(!s)return;s.innerHTML=COUNTRIES.map(c=>`<option value="${c.code}">${c.flag} ${c.name}</option>`).join("");}
+function fillZones(){const s=$("#zoneSel");const z=curCountry().zones;let h="";for(const dep in z){h+=`<optgroup label="${esc(dep)}">`+z[dep].map((zz,i)=>`<option value="${esc(dep)}||${i}">${esc(zz[0])}</option>`).join("")+`</optgroup>`;}s.innerHTML=h;}
+function goZone(){const v=$("#zoneSel").value;if(!v||!map)return;const p=v.split("||"),z=(curCountry().zones[p[0]]||[])[+p[1]];if(!z)return;const bb=zoneBBox(z);map.fitBounds([[bb[0],bb[1]],[bb[2],bb[3]]],{padding:[10,10]});setTimeout(estimate,120);}
 
 // ---- Zonas guardadas ----
 function loadMyZones(){const z=store.get("bc3k_zones",{});const s=$("#myZones");s.innerHTML='<option value="">Mis zonas…</option>'+Object.keys(z).map(n=>`<option>${esc(n)}</option>`).join("");}
@@ -651,7 +712,7 @@ document.querySelectorAll('input[name="scanmode"]').forEach(r=>r.onchange=()=>{$
 $("#cellKm").oninput=estimate;
 $("#playBtn").onclick=()=>startScan(false);$("#demoBtn").onclick=()=>startScan(true);
 $("#pauseBtn").onclick=()=>post("/api/scan/pause");$("#resumeBtn").onclick=()=>post("/api/scan/resume");$("#stopBtn").onclick=()=>post("/api/scan/stop");
-$("#zoneSel").onchange=goZone;$("#saveZone").onclick=saveMyZone;$("#myZones").onchange=goMyZone;
+$("#countrySel").onchange=()=>{fillZones();goZone();};$("#zoneSel").onchange=goZone;$("#saveZone").onclick=saveMyZone;$("#myZones").onchange=goMyZone;
 $("#fitPins").onclick=fitPins;$("#heatBtn").onclick=toggleHeat;
 $("#cfgSave").onclick=saveCfg;$("#cfgTest").onclick=testTg;
 $("#profSafe").onclick=()=>{$("#cfgPmin").value=6;$("#cfgPmax").value=12;$("#cfgSafe").checked=true;saveCfg();toast("Perfil Sigiloso");};
@@ -683,7 +744,7 @@ $("#rubros").innerHTML=RUBRO_GROUPS.map(g=>`<div class="rub-group"><button type=
 function syncGroupLabels(){document.querySelectorAll("#rubros .rub-group").forEach(gr=>{const chips=[...gr.querySelectorAll(".rub")];const lab=gr.querySelector(".rub-group-label");lab.classList.toggle("on",chips.length>0&&chips.every(c=>c.classList.contains("on")));});}
 document.querySelectorAll("#rubros .rub").forEach(b=>b.onclick=()=>{b.classList.toggle("on");syncGroupLabels();estimate();});
 document.querySelectorAll("#rubros .rub-group-label").forEach(lab=>lab.onclick=()=>{const chips=[...lab.parentElement.querySelectorAll(".rub")];const allOn=chips.every(c=>c.classList.contains("on"));chips.forEach(c=>c.classList.toggle("on",!allOn));syncGroupLabels();estimate();});
-fillZones();loadMyZones();renderChips();render();initMap();detectServer();
+fillCountries();fillZones();loadMyZones();renderChips();render();initMap();detectServer();
 </script>
 </body>
 </html>
