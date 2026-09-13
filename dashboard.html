@@ -140,6 +140,12 @@
   .b2.yes{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,transparent);background:var(--ok-weak)}.b2.no{opacity:.65}
   .addr{font-size:12.5px;color:var(--muted)}
   .desc{font-size:12.5px;color:var(--muted);line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .clsrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .clsb{font:700 11px var(--font-b);padding:3px 9px;border-radius:7px;background:var(--accent-weak);color:var(--accent)}
+  .clsb.sistema{background:var(--ok-weak);color:var(--ok)}
+  .clst{font:600 10.5px var(--font-b);padding:3px 8px;border-radius:7px;border:1px solid var(--border);color:var(--muted)}
+  .clst.t-alta{color:var(--prospect);border-color:color-mix(in srgb,var(--prospect) 40%,transparent);background:var(--prospect-weak)}
+  .chip.pdf{background:var(--danger);border-color:var(--danger);color:#fff}
   .actions{display:flex;flex-wrap:wrap;gap:7px}
   .chip{display:inline-flex;align-items:center;gap:6px;font:600 12.5px var(--font-b);padding:7px 11px;border-radius:9px;text-decoration:none;border:1px solid var(--border);cursor:pointer;background:var(--surface)}
   .chip:hover{border-color:var(--accent)}
@@ -271,6 +277,14 @@
         </div>
         <label class="chk" style="margin-top:12px"><input type="checkbox" id="cfgNotify"> Avisarme cada lead nuevo a Telegram</label>
 
+        <div class="subhead">📄 Propuestas y demo</div>
+        <div class="form-grid tight">
+          <div class="fld"><label>Tu contacto (WhatsApp / correo / web)</label><input class="field" id="cfgContact" placeholder="WhatsApp +51 999 999 999 · correo@dominio.com"></div>
+          <div class="fld"><label>Link de tu demo — Web</label><input class="field" id="cfgDemoWeb" placeholder="https://tu-demo-web.com"></div>
+          <div class="fld"><label>Link de tu demo — Sistema</label><input class="field" id="cfgDemoSist" placeholder="https://tu-demo-sistema.com"></div>
+        </div>
+        <p class="help" style="margin-top:8px">El contacto y el <b>link de demo</b> se agregan al <b>mensaje de WhatsApp</b> y al <b>PDF</b>, para que el cliente entre y pruebe. Se elige el link según la clasificación del lead (Web o Sistema). Tu nombre sale del campo <b>“Tu nombre”</b> de arriba.</p>
+
         <div class="subhead">📍 Mis zonas guardadas</div>
         <div class="play-row" style="justify-content:flex-start">
           <button class="btn ghost" id="saveZone">📍 Guardar esta zona</button>
@@ -367,6 +381,7 @@
     <button class="btn primary" id="mCopy">📋 Copiar</button>
     <button class="btn" id="mWa" style="border-color:var(--wa);color:var(--wa)">WhatsApp</button>
     <button class="btn" id="mMail" style="border-color:var(--mail);color:var(--mail)">Email</button>
+    <button class="btn" id="mPdf">📄 Propuesta PDF</button>
     <button class="btn ghost" id="mClose" style="margin-left:auto">Cerrar</button>
   </div>
 </div></div>
@@ -388,6 +403,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 "use strict";
 const $=s=>document.querySelector(s);
@@ -432,6 +448,52 @@ const FOLLOWUP=(n,g)=>`Hola de nuevo 👋, le escribí hace unos días por ${g}.
 const VR=[[/farmac|botica/,"farmacia"],[/celular|reparaci|t[eé]cnico|phone|electr[oó]nic/,"taller_celulares"],[/restaur|comida|cevich|poller|caf[eé]|pizzer|chifa|men[uú]|parrill/,"restaurante"],[/dental|dentist|odont/,"dental"],[/inmobili|bienes ra|propiedad/,"inmobiliaria"],[/gimnas|gym|fitness|crossfit/,"gimnasio"],[/bodega|minimarket|abarrote|market|licorer/,"bodega"],[/ferret/,"ferreteria"],[/hotel|hostal|hosped|lodge/,"hotel"],[/peluquer|sal[oó]n|barber|belleza|spa|est[eé]tica|u[nñ]as/,"belleza"],[/veterin|mascota/,"veterinaria"],[/contab|contador/,"contable"],[/abogad|jur[ií]dic|legal|notari/,"juridico"]];
 const detectV=c=>{c=(c||"").toLowerCase();for(const[re,k]of VR)if(re.test(c))return k;return null;};
 const pitchBy=v=>{const g=v.slice(0,1),k=v.slice(2);return(g==="v"?PITCHES.verticals:PITCHES.servicios)[k];};
+// ---- Clasificación de leads ----
+const SYSTEM_V={farmacia:1,taller_celulares:1,restaurante:1,dental:1,gimnasio:1,bodega:1,ferreteria:1,hotel:1,belleza:1,veterinaria:1};
+function classify(l){const needsWeb=!realWeb(l);const v=detectV(l.category);const needsSystem=!!(v&&SYSTEM_V[v]);const offer=needsWeb?"web":(needsSystem?"sistema":"web");const s=scoreOf(l);const tier=s>=70?"alta":(s>=40?"media":"baja");return{offer,needsWeb,needsSystem,vertical:v,tier,score:Math.round(s)};}
+const OFFER_LABEL={web:"🌐 Web + presencia",sistema:"🧾 Sistema de gestión"};
+const TIER_LABEL={alta:"🔥 Prioridad alta",media:"⭐ Prioridad media",baja:"Prioridad baja"};
+const SYS_LINE={farmacia:"control de stock con alertas de vencimiento, ventas rápidas y recordatorios a clientes",taller_celulares:"órdenes de reparación con ticket, aviso por WhatsApp e inventario de repuestos",restaurante:"carta digital con QR, pedidos y reservas por WhatsApp, y control de caja",dental:"agenda de citas con recordatorios por WhatsApp y ficha de pacientes",gimnasio:"membresías, control de asistencia y avisos de pago por WhatsApp",bodega:"punto de venta (POS) con inventario y control de fiados",ferreteria:"catálogo con cotizaciones rápidas y control de stock",hotel:"reservas con confirmación por WhatsApp y control de habitaciones",belleza:"reservas online con recordatorios por WhatsApp",veterinaria:"citas, carnet de vacunas digital y recordatorios por WhatsApp"};
+function webProposal(biz,rubro){return{title:"Más ventas con una presencia web profesional",diag:`Hoy ${biz} no aparece con una página web propia. Cuando alguien busca "${rubro}" en Google, encuentra primero a la competencia. Una web profesional más tu ficha optimizada en Google te hacen visible las 24 horas, generan confianza y convierten esas búsquedas en clientes que te escriben.`,incluye:["Página web moderna y rápida (se ve perfecta en celular y en PC).","Ficha optimizada en Google (Maps y búsquedas) para tu zona.","Botón de WhatsApp y formularios que llegan directo a tu teléfono.","Catálogo de productos o servicios con fotos y precios.","Textos y SEO local para aparecer cuando te buscan cerca."],result:["Más clientes nuevos que te encuentran solos.","Más consultas y pedidos por WhatsApp.","Imagen profesional que transmite confianza.","Vendes aunque el local esté cerrado."],plan:["Reunión de 15 minutos para entender tu negocio (sin costo).","Diseño de la web con tus fotos y textos.","Publicación y optimización de tu Google.","Ajustes finales y soporte."]};}
+function sysProposal(biz,rubro,v){const extra=SYS_LINE[v]?(" Para tu rubro: "+SYS_LINE[v]+"."):"";return{title:"Más control de tu negocio con un sistema a medida",diag:`${biz} puede tener control total de sus ventas, inventario y cuentas con un sistema hecho a su medida: menos errores manuales, menos pérdidas y decisiones con números al día.${extra}`,incluye:["Registro de ventas y cierre de caja diario.","Inventario con alertas de stock bajo y vencimiento.","Control de cuentas y fiados, con cobros al día.","Reportes claros de qué se vende más y cuándo.","Avisos y recordatorios a clientes por WhatsApp."],result:["Menos pérdidas, robos y errores de conteo.","Sabes tus números en tiempo real.","Cobras a tiempo y mejoras tu flujo de caja.","Ahorras horas de trabajo manual cada semana."],plan:["Reunión de 15 minutos para mapear tu proceso (sin costo).","Configuración del sistema a tu medida.","Carga de tus productos y capacitación.","Puesta en marcha y soporte."]};}
+function proposalPDF(l){
+  const lib=window.jspdf&&window.jspdf.jsPDF;if(!lib){toast("Cargando el generador de PDF, reintenta en 1 segundo…");return;}
+  const c=classify(l);
+  const sender=(($("#myName")&&$("#myName").value)||store.get("bc3k_name","")||"").trim();
+  const contact=(($("#cfgContact")&&$("#cfgContact").value)||store.get("bc3k_contact","")||"").trim();
+  const biz=(l.title||"tu negocio").trim(),rubro=(l.category||"tu rubro").trim();
+  const doc=new lib({unit:"mm",format:"a4"});
+  const W=210,M=16,cw=W-2*M,ACC=[91,84,230],INK=[32,35,54],MUT=[110,120,140];let y=0;
+  doc.setFillColor(...ACC);doc.rect(0,0,W,34,"F");
+  doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(9);doc.text("PROPUESTA COMERCIAL",M,12);
+  doc.setFontSize(18);doc.text(doc.splitTextToSize(biz,cw),M,21);
+  doc.setFont("helvetica","normal");doc.setFontSize(9.5);
+  const dt=new Date().toLocaleDateString("es-PE",{day:"2-digit",month:"long",year:"numeric"});
+  doc.text((sender?("Preparado por "+sender+"   ·   "):"")+dt,M,30);
+  y=44;doc.setTextColor(...MUT);doc.setFont("helvetica","normal");doc.setFontSize(9.5);
+  const snap=[rubro,l.rating?("Rating "+l.rating.toFixed(1)+" · "+(l.reviews||0)+" reseñas"):null,realWeb(l)?"Con web":"Sin web propia"].filter(Boolean).join("    ·    ");
+  doc.text(doc.splitTextToSize(snap,cw),M,y);y+=5;
+  if(l.address){doc.text(doc.splitTextToSize("Dirección: "+l.address,cw),M,y);y+=5;}
+  if(l.about){const ab=doc.splitTextToSize(l.about,cw);doc.text(ab,M,y);y+=ab.length*4.6;}
+  y+=3;
+  const P=c.offer==="web"?webProposal(biz,rubro):sysProposal(biz,rubro,c.vertical);
+  const h2=t=>{y+=3;doc.setFillColor(236,235,253);doc.roundedRect(M,y-4.5,cw,7,1,1,"F");doc.setTextColor(...ACC);doc.setFont("helvetica","bold");doc.setFontSize(11);doc.text(t,M+2.5,y);y+=8;};
+  const para=t=>{doc.setTextColor(...INK);doc.setFont("helvetica","normal");doc.setFontSize(10.5);const ls=doc.splitTextToSize(t,cw);doc.text(ls,M,y);y+=ls.length*5+2;};
+  const bullets=arr=>{doc.setFontSize(10.5);doc.setFont("helvetica","normal");arr.forEach(b=>{doc.setFillColor(...ACC);doc.circle(M+1.6,y-1.3,0.8,"F");doc.setTextColor(...INK);const ls=doc.splitTextToSize(b,cw-7);doc.text(ls,M+5,y);y+=ls.length*5+1.8;});y+=1.5;};
+  h2(P.title);para(P.diag);
+  h2("Qué incluye");bullets(P.incluye);
+  h2("Resultados que puedes esperar");bullets(P.result);
+  h2("Cómo lo hacemos, en 4 pasos");bullets(P.plan);
+  let demo=(c.offer==="sistema")?(store.get("bc3k_demo_sist","")||store.get("bc3k_demo_web","")):(store.get("bc3k_demo_web","")||store.get("bc3k_demo_sist",""));demo=(demo||"").trim();
+  const boxH=demo?26:20;y=Math.max(y,255);if(y>289-boxH)y=289-boxH;
+  doc.setFillColor(...ACC);doc.roundedRect(M,y,cw,boxH,2,2,"F");
+  doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(12);doc.text("¿Vemos una demo sin compromiso?",M+4,y+8);
+  doc.setFont("helvetica","normal");doc.setFontSize(10);doc.text([sender,contact].filter(Boolean).join("    ·    ")||"Escríbeme y te muestro cómo quedaría.",M+4,y+15);
+  if(demo){doc.setFont("helvetica","bold");doc.text("Prueba la demo: ",M+4,y+21.5);const lw=doc.getTextWidth("Prueba la demo: ");doc.setFont("helvetica","normal");doc.text(demo,M+4+lw,y+21.5);}
+  doc.setTextColor(...MUT);doc.setFont("helvetica","normal");doc.setFontSize(8);doc.text("Propuesta generada con BUSCA-CHAMBA-3000",M,294);
+  const fn="Propuesta - "+biz.replace(/[\\/:*?"<>|]+/g,"").slice(0,60)+".pdf";
+  doc.save(fn);toast("PDF descargado ✓");
+}
 const RUBRO_GROUPS=[
   {name:"Comida y bebida",icon:"🍽️",items:["restaurante","pollería","chifa","cevichería","cafetería","juguería","panadería","pizzería"]},
   {name:"Salud",icon:"💊",items:["farmacia","botica","clínica dental","consultorio médico","veterinaria","óptica"]},
@@ -512,9 +574,9 @@ function parseCSV(t){const rows=[];let row=[],f="",q=false;for(let i=0;i<t.lengt
 function rowsToLeads(rows){if(!rows.length)return[];const H=rows[0].map(h=>h.trim().toLowerCase());const gi=n=>H.indexOf(n),g=(r,n)=>{const i=gi(n);return i>=0?(r[i]||"").trim():"";};const out=[];for(let k=1;k<rows.length;k++){const r=rows[k];if(r.length===1&&r[0]==="")continue;const t=g(r,"title");if(!t)continue;out.push({title:t,category:g(r,"category"),address:parseAddr2(g(r,"address"),g(r,"complete_address")).address,phone:g(r,"phone"),website:g(r,"website"),emails:emailsOf(g(r,"emails")),rating:parseFloat(g(r,"review_rating"))||0,reviews:parseInt(g(r,"review_count").replace(/\D/g,""))||0,lat:parseFloat(g(r,"latitude"))||0,lon:parseFloat(g(r,"longitude"))||0,link:g(r,"link"),place_id:g(r,"place_id")||g(r,"cid"),thumb:g(r,"thumbnail"),city:parseAddr2(g(r,"address"),g(r,"complete_address")).city,about:descFrom(g(r,"descriptions")||g(r,"about")),images:(g(r,"images")||"").split(/[|;,\s]+/).filter(u=>/^https?:/.test(u)).slice(0,6)});}return out;}
 
 // ---- Filtros / render ----
-const CHIPS=[["all","Todos",""],["today","📅 Para hoy",""],["noweb","🔥 Sin web","warn"],["wa","WhatsApp",""],["mail","Con correo",""],["web","Con web",""]];
+const CHIPS=[["all","Todos",""],["today","📅 Para hoy",""],["noweb","🔥 Sin web","warn"],["c-web","🌐 Prospecto web",""],["c-sist","🧾 Prospecto sistema",""],["wa","WhatsApp",""],["mail","Con correo",""],["web","Con web",""]];
 function renderChips(){$("#chips").innerHTML=CHIPS.map(([k,l,c])=>`<button class="chipf ${c} ${filter===k?"on":""}" data-f="${k}">${l}</button>`).join("");document.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{filter=b.dataset.f;renderChips();render();});}
-function passesChip(l){const m=getMeta(idOf(l));if(filter==="noweb")return !realWeb(l);if(filter==="wa")return !!waN(l.phone);if(filter==="mail")return l.emails.length>0;if(filter==="web")return !!realWeb(l);if(filter==="today")return m.state==="nuevo"||(m.follow&&m.follow<=todayStr());return true;}
+function passesChip(l){const m=getMeta(idOf(l));if(filter==="noweb")return !realWeb(l);if(filter==="c-web")return classify(l).offer==="web";if(filter==="c-sist")return classify(l).offer==="sistema";if(filter==="wa")return !!waN(l.phone);if(filter==="mail")return l.emails.length>0;if(filter==="web")return !!realWeb(l);if(filter==="today")return m.state==="nuevo"||(m.follow&&m.follow<=todayStr());return true;}
 function getFiltered(){
   const q=($("#searchInput").value||"").toLowerCase().trim(),cat=$("#catFilter").value,st=$("#stateFilter").value,city=$("#cityFilter").value,mr=parseFloat($("#minRating").value)||0,sort=$("#sortSel").value;
   let list=LEADS.filter(l=>{if(!passesChip(l))return false;if(cat&&l.category!==cat)return false;if(city&&cityOf(l)!==city)return false;if(mr&&(l.rating||0)<mr)return false;if(st&&getMeta(idOf(l)).state!==st)return false;if(q){const h=(l.title+" "+l.category+" "+l.address+" "+l.phone+" "+l.emails.join(" ")).toLowerCase();if(!h.includes(q))return false;}return true;});
@@ -540,6 +602,8 @@ function card(l){
   h+=`</div></div>`;
   if(!realWeb(l))h+=`<span class="flag">🔥 SIN WEB · prospecto ideal</span>`;
   h+=`<div class="badges"><span class="b2 ${realWeb(l)?"yes":"no"}">🌐 ${realWeb(l)?"Web":l.website?"Solo redes":"Sin web"}</span><span class="b2 ${wa?"yes":"no"}">${isMobile(l.phone)?"📱":"☎️"} ${wa?(isMobile(l.phone)?"WhatsApp":"Fijo"):"Sin tel."}</span><span class="b2 ${email?"yes":"no"}">✉️ ${email?"Correo":"Sin correo"}</span></div>`;
+  const cls=classify(l);
+  h+=`<div class="clsrow"><span class="clsb ${cls.offer}">💼 ${OFFER_LABEL[cls.offer]}</span><span class="clst t-${cls.tier}">${TIER_LABEL[cls.tier]}</span></div>`;
   if(l.address)h+=`<div class="addr">📍 ${esc(l.address)}</div>`;
   if(l.about)h+=`<div class="desc" title="${esc(l.about)}">📝 ${esc(l.about)}</div>`;
   h+=`<div class="actions">`;
@@ -547,12 +611,13 @@ function card(l){
   if(wa)h+=`<a class="chip wa" target="_blank" href="https://wa.me/${wa}">WhatsApp</a>`;
   if(email)h+=`<a class="chip mail" href="mailto:${esc(email)}">✉️</a>`;
   if(l.website)h+=`<a class="chip" target="_blank" href="${esc(l.website)}">🌐</a>`;
-  h+=`<button class="chip msg" data-msg>✍️ Mensaje</button></div>`;
+  h+=`<button class="chip pdf" data-pdf title="Descargar propuesta en PDF">📄 PDF</button><button class="chip msg" data-msg>✍️ Mensaje</button></div>`;
   h+=`<div class="card-foot"><select class="pipe" data-state style="color:${STATES[m.state].c}">`+Object.entries(STATES).map(([k,v])=>`<option value="${k}" ${m.state===k?"selected":""}>${v.l}</option>`).join("")+`</select>`;
   if(ds!=null)h+=`<span class="stale">hace ${ds}d</span>`;
   if(l.link)h+=`<a class="chip" style="margin-left:auto;border:none" target="_blank" href="${esc(l.link)}">Maps ↗</a>`;
   h+=`</div>`;el.innerHTML=h;
   el.querySelector("[data-msg]").onclick=()=>openModal(l);
+  const pb=el.querySelector("[data-pdf]");if(pb)pb.onclick=()=>proposalPDF(l);
   const sel=el.querySelector("[data-state]");sel.onchange=e=>{setMeta(id,{state:e.target.value});el.className="card st-"+e.target.value;sel.style.color=STATES[e.target.value].c;updateStats();renderMetrics();};
   return el;
 }
@@ -597,12 +662,13 @@ function renderMetrics(){
 
 // ---- Modal ----
 const myName=()=>($("#myName").value||"").trim()||"[tu nombre]";
-function buildMsg(){$("#mText").value=$("#mFollow").checked?FOLLOWUP(myName(),current.title):pitchBy($("#mService").value).build(myName(),current.title);}
+function demoLinkFor(l){const sv=$("#mService")?$("#mService").value:"";let off;if(sv)off=(/^v:/.test(sv)||/app/.test(sv))?"sistema":"web";else off=l?classify(l).offer:"web";const web=(store.get("bc3k_demo_web","")||"").trim(),sis=(store.get("bc3k_demo_sist","")||"").trim();return off==="sistema"?(sis||web):(web||sis);}
+function buildMsg(){let t=$("#mFollow").checked?FOLLOWUP(myName(),current.title):pitchBy($("#mService").value).build(myName(),current.title);const link=demoLinkFor(current);if(link)t+="\n\n👉 Míralo funcionando (demo): "+link;$("#mText").value=t;}
 function openModal(l){current=l;const id=idOf(l),m=getMeta(id);
   $("#mTitle").textContent=l.title;$("#mSub").textContent=((l.phone?("📞 "+l.phone):"")+(l.emails[0]?("   ✉️ "+l.emails[0]):""))||"Sin contacto directo";$("#mFollow").checked=false;
   const G=[["Vender un sistema (por rubro)","v",PITCHES.verticals],["Servicio general","s",PITCHES.servicios]];
   $("#mService").innerHTML=G.map(([lb,g,o])=>`<optgroup label="${lb}">`+Object.entries(o).map(([k,v])=>`<option value="${g}:${k}">${v.label}</option>`).join("")+`</optgroup>`).join("");
-  const vk=detectV(l.category);$("#mService").value=vk?("v:"+vk):"s:web";
+  const vk=detectV(l.category);$("#mService").value=classify(l).offer==="web"?"s:web":(vk?("v:"+vk):"s:app");
   $("#mState").innerHTML=Object.entries(STATES).map(([k,v])=>`<option value="${k}" ${m.state===k?"selected":""}>${v.l}</option>`).join("");
   $("#mFollowDate").value=m.follow||"";$("#mNotes").value=m.notes||"";buildMsg();$("#modalBg").classList.add("open");}
 function saveModal(){if(current)setMeta(idOf(current),{notes:$("#mNotes").value,state:$("#mState").value,follow:$("#mFollowDate").value});}
@@ -728,12 +794,15 @@ $("#profNorm").onclick=()=>{$("#cfgPmin").value=3;$("#cfgPmax").value=8;$("#cfgS
 $("#profTurbo").onclick=()=>{$("#cfgPmin").value=1;$("#cfgPmax").value=3;saveCfg();toast("Perfil Turbo (más rápido, más riesgo)");};
 $("#proxFetch").onclick=()=>{if(!confirm("Traer proxies públicas GRATIS y probar cuáles funcionan.\n\nOjo: son de terceros, poco confiables y pueden ver tu tráfico. Para volumen serio usa residenciales de pago.\n\n¿Continuar?"))return;const b=$("#proxFetch");b.disabled=true;b.textContent="Buscando…";toast("Buscando proxies vivas… puede tardar ~30s");fetch("/api/proxies/fetch",{method:"POST"}).then(r=>r.json()).then(j=>{$("#cfgProxies").value=j.proxies||"";toast(j.working?(j.working+" proxies vivas de "+j.total+" · guardadas y listas para el escaneo"):("0 vivas de "+j.total+" — reintenta o usa proxies de pago"));}).catch(()=>toast("No se pudo (¿sin internet o servidor?)")).finally(()=>{b.disabled=false;b.textContent="🌐 Proxies gratis";});};
 $("#viewBtn").onclick=()=>setView(!kanbanOn);
-$("#mService").onchange=buildMsg;$("#mFollow").onchange=buildMsg;$("#mClose").onclick=closeModal;$("#modalBg").onclick=e=>{if(e.target===$("#modalBg"))closeModal();};
+$("#mService").onchange=buildMsg;$("#mFollow").onchange=buildMsg;$("#mClose").onclick=closeModal;$("#mPdf").onclick=()=>{if(current)proposalPDF(current);};$("#modalBg").onclick=e=>{if(e.target===$("#modalBg"))closeModal();};
 $("#mCopy").onclick=()=>{if(current)setMeta(idOf(current),{lastContact:Date.now(),state:getMeta(idOf(current)).state==="nuevo"?"contactado":getMeta(idOf(current)).state});saveModal();copyTxt($("#mText").value,"Mensaje copiado ✓");};
 $("#mWa").onclick=()=>{const n=waN(current.phone);if(!n){toast("Sin teléfono");return;}setMeta(idOf(current),{lastContact:Date.now(),state:"contactado"});saveModal();window.open(`https://wa.me/${n}?text=${encodeURIComponent($("#mText").value)}`,"_blank");};
 $("#mMail").onclick=()=>{const e=current.emails[0];if(!e){toast("Sin correo");return;}setMeta(idOf(current),{lastContact:Date.now()});saveModal();window.open(`mailto:${e}?subject=${encodeURIComponent("Propuesta para "+current.title)}&body=${encodeURIComponent($("#mText").value)}`);};
 $("#guideBtn").onclick=()=>$("#guideBg").classList.add("open");$("#guideClose").onclick=()=>$("#guideBg").classList.remove("open");$("#guideBg").onclick=e=>{if(e.target===$("#guideBg"))$("#guideBg").classList.remove("open");};
 $("#myName").value=store.get("bc3k_name","");$("#myName").oninput=e=>store.set("bc3k_name",e.target.value);
+if($("#cfgContact")){$("#cfgContact").value=store.get("bc3k_contact","");$("#cfgContact").oninput=e=>store.set("bc3k_contact",e.target.value);}
+if($("#cfgDemoWeb")){$("#cfgDemoWeb").value=store.get("bc3k_demo_web","");$("#cfgDemoWeb").oninput=e=>store.set("bc3k_demo_web",e.target.value);}
+if($("#cfgDemoSist")){$("#cfgDemoSist").value=store.get("bc3k_demo_sist","");$("#cfgDemoSist").oninput=e=>store.set("bc3k_demo_sist",e.target.value);}
 function applyTheme(t){document.documentElement.setAttribute("data-theme",t);$("#themeBtn").textContent=t==="dark"?"☀️":"🌙";store.set("bc3k_theme",t);if(map){setTimeout(()=>map.invalidateSize(),60);}}
 $("#themeBtn").onclick=()=>applyTheme(document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark");
 const th=store.get("bc3k_theme",null);if(th)applyTheme(th);else $("#themeBtn").textContent=matchMedia("(prefers-color-scheme:dark)").matches?"☀️":"🌙";
