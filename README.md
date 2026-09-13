@@ -22,7 +22,7 @@ Panel visual para trabajar los leads. Funciona de **dos formas**:
 node server.js      # abre http://localhost:8090
 ```
 
-El botón **▶️ Iniciar** lanza el scraper y **los leads van apareciendo en vivo** en el panel; el servidor **guarda todo** (leads, estados, notas) aunque cierres. Para escanear necesita el binario `gms` (o define `SCRAPER_MODE=docker` para usar la imagen). Botón **Demo** para verlo funcionar sin escanear.
+En la pantalla de **Inicio** eliges la zona (selector **departamento/ciudad** del Perú) y pulsas **▶️ Iniciar**. Por defecto **barre TODOS los negocios del área, cuadrícula por cuadrícula** (o marca "Por rubro" para acotar). El **mapa se pinta en vivo** celda por celda (⬜ pendiente → 🟡 escaneando → 🟢 con negocios) y **los leads aparecen al instante**; puedes **pausar/reanudar**. El servidor **guarda todo** (leads, estados, notas) aunque cierres. Para escanear necesita el binario `gms` (o `SCRAPER_MODE=docker`). Botón **Demo** para verlo funcionar sin escanear.
 
 **B) Modo archivo** — abres `dashboard.html` con doble clic y cargas un `resultados.csv` a mano (sin escaneo en vivo).
 
@@ -36,7 +36,9 @@ En ambos modos tienes:
 - **🛠️ Herramientas**: copiar todos los teléfonos/correos, abrir WhatsApp Web, reiniciar contactados.
 - **📊 Exportar Excel `.xlsx`** con encabezados y columnas correctas (si abres sin internet, baja un CSV compatible con Excel).
 
-Además: **badges** por negocio (🌐 web / 💬 WhatsApp / ✉️ correo), aviso **🔥 SIN WEB** (prospecto ideal), **filtros rápidos**, **pipeline** con estados (Nuevo → Contactado → Respondió → Propuesta → Cliente) y **notas** por lead, y **mensajes de seguimiento**.
+Además: **mapa que se colorea celda por celda** con pines de negocios (pasa el mouse por un pin y ves **foto + datos**; clic para la ficha completa), **badges** por negocio (🌐 web / 💬 WhatsApp / ✉️ correo), aviso **🔥 SIN WEB** (prospecto ideal), **filtros rápidos**, filtro por **ciudad**, **pipeline** con estados (Nuevo → Contactado → Respondió → Propuesta → Cliente), **notas** y **score de prospecto**, mensajes por rubro y **de seguimiento**.
+
+> El plan completo de mejoras está en [`PLAN.md`](PLAN.md).
 
 El botón **Ejemplo** carga datos de muestra para ver el panel sin datos propios. La pestaña de mapa necesita internet (usa OpenStreetMap). En modo en vivo, el scraper debe poder correr en esa máquina (binario `gms` o Docker).
 

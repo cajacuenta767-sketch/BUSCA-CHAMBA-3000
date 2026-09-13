@@ -1,15 +1,12 @@
 #!/usr/bin/env node
 "use strict";
 /*
- * BUSCA-CHAMBA-3000 — servidor local
- * Sirve el panel, lanza el scraper de Google Maps y transmite los leads en vivo (SSE).
- * Sin dependencias externas: solo Node.
+ * BUSCA-CHAMBA-3000 — servidor local (sin dependencias)
+ * Orquesta el escaneo por CUADRÍCULA: divide un área en celdas y barre celda por celda,
+ * pintando el mapa en vivo y transmitiendo cada lead (SSE).
  *
- * Uso:   node server.js      (abre http://localhost:8090)
- * Config por variables de entorno:
- *   PORT           puerto (default 8090)
- *   SCRAPER_BIN    ruta al binario gms (default: ./gms o ../google-maps-scraper/gms)
- *   SCRAPER_MODE   "docker" para usar la imagen gosom/google-maps-scraper
+ * Uso:   node server.js            → http://localhost:8090
+ * Env:   PORT, SCRAPER_BIN (ruta a gms), SCRAPER_MODE=docker
  */
 const http = require("http");
 const fs = require("fs");
@@ -21,166 +18,138 @@ const ROOT = __dirname;
 const DATA = path.join(ROOT, "data");
 fs.mkdirSync(DATA, { recursive: true });
 const DB_FILE = path.join(DATA, "db.json");
-const LIVE_CSV = path.join(DATA, "live.csv");
-const QUERIES_RUN = path.join(DATA, "queries.run.txt");
+const Q_FILE = path.join(DATA, "q.txt");
+const CELL_CSV = path.join(DATA, "cell.csv");
 
-// ---------- DB (persistencia simple en JSON) ----------
+// Categorías por defecto para el modo "Todo" (barre estas en cada celda)
+const CATEGORIES = ["farmacia", "restaurante", "bodega", "ferretería", "gimnasio", "clínica dental",
+  "peluquería", "barbería", "hotel", "panadería", "librería", "veterinaria", "taller de celulares",
+  "estudio contable", "estudio jurídico", "inmobiliaria", "cevichería", "pollería", "chifa",
+  "tienda de ropa", "zapatería", "juguería", "cafetería", "óptica", "imprenta", "lavandería",
+  "cerrajería", "florería", "minimarket", "consultorio médico"];
+
+// ---------- DB ----------
 let db = load();
 function load() { try { return JSON.parse(fs.readFileSync(DB_FILE, "utf8")); } catch (e) { return { leads: {}, order: [] }; } }
 let saveT = null;
 function save() { clearTimeout(saveT); saveT = setTimeout(() => { try { fs.writeFileSync(DB_FILE, JSON.stringify(db)); } catch (e) {} }, 250); }
-function idOf(l) { return l.link || (l.title + "|" + l.address); }
 
 // ---------- SSE ----------
 const clients = new Set();
-function broadcast(type, data) {
-  const msg = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
-  for (const res of clients) { try { res.write(msg); } catch (e) {} }
-}
-setInterval(() => { for (const res of clients) { try { res.write(": ping\n\n"); } catch (e) {} } }, 25000);
+function broadcast(type, data) { const m = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`; for (const r of clients) { try { r.write(m); } catch (e) {} } }
+setInterval(() => { for (const r of clients) { try { r.write(": ping\n\n"); } catch (e) {} } }, 25000);
 
 // ---------- CSV ----------
-function parseCSV(text) {
-  const rows = []; let row = [], field = "", inQ = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (inQ) { if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQ = false; } else field += c; }
-    else { if (c === '"') inQ = true; else if (c === ",") { row.push(field); field = ""; } else if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; } else if (c !== "\r") field += c; }
-  }
-  if (field.length || row.length) { row.push(field); rows.push(row); }
-  return rows;
-}
-function emails(s) { if (!s) return []; const m = s.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || []; return [...new Set(m.map(x => x.toLowerCase()))]; }
-function rowToLead(H, r) {
-  const gi = n => H.indexOf(n); const g = n => { const i = gi(n); return i >= 0 ? (r[i] || "").trim() : ""; };
-  const title = g("title"); if (!title) return null;
-  return {
-    title, category: g("category"), address: g("complete_address") || g("address"),
-    phone: g("phone"), website: g("website"), emails: emails(g("emails")),
-    rating: parseFloat(g("review_rating")) || 0, reviews: parseInt((g("review_count") || "").replace(/\D/g, "")) || 0,
-    lat: parseFloat(g("latitude")) || 0, lon: parseFloat(g("longitude")) || 0,
-    link: g("link"), thumb: g("thumbnail")
-  };
-}
+function parseCSV(t) { const rows = []; let row = [], f = "", q = false; for (let i = 0; i < t.length; i++) { const c = t[i]; if (q) { if (c === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; } else { if (c === '"') q = true; else if (c === ",") { row.push(f); f = ""; } else if (c === "\n") { row.push(f); rows.push(row); row = []; f = ""; } else if (c !== "\r") f += c; } } if (f.length || row.length) { row.push(f); rows.push(row); } return rows; }
+function emails(s) { if (!s) return []; const m = ("" + s).match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || []; return [...new Set(m.map(x => x.toLowerCase()))]; }
+function rowToLead(H, r) { const gi = n => H.indexOf(n), g = n => { const i = gi(n); return i >= 0 ? (r[i] || "").trim() : ""; }; const t = g("title"); if (!t) return null; return { title: t, category: g("category"), address: g("complete_address") || g("address"), phone: g("phone"), website: g("website"), emails: emails(g("emails")), rating: parseFloat(g("review_rating")) || 0, reviews: parseInt((g("review_count") || "").replace(/\D/g, "")) || 0, lat: parseFloat(g("latitude")) || 0, lon: parseFloat(g("longitude")) || 0, link: g("link"), thumb: g("thumbnail"), about: g("about") || g("descriptions"), images: (g("images") || "").split(/[|;,\s]+/).filter(u => /^https?:/.test(u)).slice(0, 6) }; }
 
-// ---------- Escaneo ----------
-let child = null, pollT = null, demoT = null, emitted = 0;
-let status = { running: false, mode: null, found: 0, started: null };
+function idOf(l) { const ph = (l.phone || "").replace(/\D/g, ""); return l.link || (ph ? "tel:" + ph : (l.title + "|" + l.address)); }
+function addLead(l) { const id = idOf(l); if (!db.leads[id]) { db.leads[id] = l; db.order.push(id); if (scan) scan.found++; if (curCell) curCell.found++; broadcast("lead", l); save(); return true; } else { const meta = db.leads[id]._meta; db.leads[id] = Object.assign(l, { _meta: meta }); return false; } }
 
-function addLead(lead) {
-  const id = idOf(lead);
-  if (!db.leads[id]) { db.leads[id] = lead; db.order.push(id); }
-  else db.leads[id] = Object.assign({}, lead, { _meta: db.leads[id]._meta }); // conserva estado/notas
-  status.found++;
-  broadcast("lead", db.leads[id]); save();
+// ---------- Escaneo por cuadrícula ----------
+let scan = null, child = null, pollT = null, demoT = null, curCell = null, curEmitted = 0;
+function statusObj() { if (!scan) return { running: false }; const done = scan.cells.filter(c => c.state === "done" || c.state === "empty" || c.state === "error").length; return { running: scan.running, paused: scan.paused, mode: scan.mode, cellsTotal: scan.cells.length, cellsDone: done, found: scan.found }; }
+function computeCells(area, cellKm) { const [s, w, n, e] = area, latC = (s + n) / 2, dLat = cellKm / 111, dLon = cellKm / (111 * Math.cos(latC * Math.PI / 180)), cells = []; for (let lat = s; lat < n; lat += dLat) for (let lon = w; lon < e; lon += dLon) { const top = Math.min(lat + dLat, n), right = Math.min(lon + dLon, e); cells.push({ key: lat.toFixed(4) + "_" + lon.toFixed(4), bbox: [lat, lon, top, right], state: "pending", found: 0 }); } return cells; }
+function startScan(cfg) {
+  if (scan && scan.running) return { error: "Ya hay un escaneo en curso." };
+  const area = cfg.area; if (!area || area.length !== 4) return { error: "Falta el área a escanear." };
+  const cellKm = Math.max(0.2, cfg.cellKm || 1);
+  const cells = computeCells(area, cellKm);
+  if (!cells.length) return { error: "El área es muy pequeña." };
+  if (cells.length > 600) return { error: "Demasiadas celdas (" + cells.length + "). Sube el tamaño de celda o achica el área." };
+  const queries = (cfg.mode === "rubros" && Array.isArray(cfg.rubros) && cfg.rubros.length) ? cfg.rubros : CATEGORIES;
+  scan = { mode: cfg.mode === "rubros" ? "rubros" : "all", demo: !!cfg.demo, cells, idx: 0, cellKm, queries, email: !!cfg.email, running: true, paused: false, found: 0, area };
+  broadcast("cells", { cells: cells.map(c => ({ key: c.key, bbox: c.bbox, state: c.state })), area, total: cells.length });
+  broadcast("status", statusObj());
+  processNext();
+  return { ok: true, cells: cells.length, mode: scan.mode };
 }
-function ingest() {
-  let text; try { text = fs.readFileSync(LIVE_CSV, "utf8"); } catch (e) { return; }
-  if (!text) return;
-  const endsNL = /\n$/.test(text);
-  let rows = parseCSV(text);
-  if (!endsNL && rows.length) rows = rows.slice(0, -1);
-  if (rows.length < 2) return;
-  const H = rows[0].map(h => h.trim().toLowerCase());
-  for (let i = 1 + emitted; i < rows.length; i++) {
-    const lead = rowToLead(H, rows[i]); if (lead) addLead(lead);
-  }
-  emitted = rows.length - 1;
+function processNext() {
+  if (!scan || !scan.running || scan.paused) return;
+  const cell = scan.cells[scan.idx];
+  if (!cell) return finish();
+  cell.state = "scanning"; broadcast("cell", { key: cell.key, state: "scanning", found: 0 }); broadcast("status", statusObj());
+  if (scan.demo) return demoCell(cell);
+  runCell(cell);
 }
-function findBin() {
-  if (process.env.SCRAPER_BIN && fs.existsSync(process.env.SCRAPER_BIN)) return process.env.SCRAPER_BIN;
-  for (const p of [path.join(ROOT, "gms"), path.join(ROOT, "..", "google-maps-scraper", "gms")]) if (fs.existsSync(p)) return p;
-  return null;
+function nextCell() { if (!scan) return; scan.idx++; broadcast("progress", { cellsDone: scan.idx, cellsTotal: scan.cells.length, found: scan.found }); processNext(); }
+function finishCell(cell) { cell.state = cell.found > 0 ? "done" : "empty"; broadcast("cell", { key: cell.key, state: cell.state, found: cell.found }); nextCell(); }
+function runCell(cell) {
+  fs.writeFileSync(Q_FILE, scan.queries.join("\n") + "\n");
+  try { fs.writeFileSync(CELL_CSV, ""); } catch (e) {}
+  curCell = cell; curEmitted = 0;
+  const bb = cell.bbox.map(x => x.toFixed(5)).join(",");
+  const cmd = buildCmd({ gridBbox: bb });
+  if (cmd.error) { broadcast("error", { message: cmd.error }); scan.running = false; broadcast("status", statusObj()); return; }
+  try { child = spawn(cmd.cmd, cmd.args, { cwd: ROOT }); }
+  catch (e) { cell.state = "error"; broadcast("cell", { key: cell.key, state: "error" }); return nextCell(); }
+  child.stderr.on("data", d => { const s = d.toString(); if (/blocked|denied|forbidden/i.test(s)) broadcast("log", { line: s.slice(0, 200) }); });
+  pollT = setInterval(() => ingestCell(), 700);
+  child.on("exit", () => { clearInterval(pollT); ingestCell(); child = null; finishCell(cell); });
+  child.on("error", () => { clearInterval(pollT); child = null; cell.state = "error"; broadcast("cell", { key: cell.key, state: "error" }); nextCell(); });
+}
+function ingestCell() {
+  let text; try { text = fs.readFileSync(CELL_CSV, "utf8"); } catch (e) { return; }
+  if (!text) return; const endsNL = /\n$/.test(text); let rows = parseCSV(text); if (!endsNL && rows.length) rows = rows.slice(0, -1);
+  if (rows.length < 2) return; const H = rows[0].map(h => h.trim().toLowerCase());
+  for (let i = 1 + curEmitted; i < rows.length; i++) { const l = rowToLead(H, rows[i]); if (l) addLead(l); }
+  curEmitted = rows.length - 1;
 }
 function buildCmd(o) {
-  const grid = o.gridBbox ? ["-grid-bbox", o.gridBbox, "-grid-cell", String(o.gridCell || 1), "-zoom", String(o.zoom || 15)] : [];
-  const extra = []; if (o.email) extra.push("-email"); if (o.depth) extra.push("-depth", String(o.depth));
+  const grid = ["-grid-bbox", o.gridBbox, "-grid-cell", String(scan.cellKm), "-zoom", "15"];
+  const extra = scan.email ? ["-email"] : [];
   if (process.env.SCRAPER_MODE === "docker") {
-    const a = ["run", "--rm", "-v", `${DATA}:/out`, "-v", `${QUERIES_RUN}:/queries.txt:ro`,
-      "gosom/google-maps-scraper", "-input", "/queries.txt", "-results", "/out/live.csv",
-      "-lang", "es", "-exit-on-inactivity", "3m", ...extra];
-    if (o.gridBbox) a.push("-grid-bbox", o.gridBbox, "-grid-cell", String(o.gridCell || 1), "-zoom", String(o.zoom || 15));
+    const a = ["run", "--rm", "-v", `${DATA}:/out`, "-v", `${Q_FILE}:/queries.txt:ro`, "gosom/google-maps-scraper", "-input", "/queries.txt", "-results", "/out/cell.csv", "-lang", "es", "-exit-on-inactivity", "20s", ...extra, "-grid-bbox", o.gridBbox, "-grid-cell", String(scan.cellKm), "-zoom", "15"];
     return { cmd: "docker", args: a };
   }
-  const bin = findBin();
-  if (!bin) return { error: "No encuentro el binario 'gms'. Compílalo (go build) y ponlo aquí, define SCRAPER_BIN, o usa SCRAPER_MODE=docker." };
-  return { cmd: bin, args: ["-input", QUERIES_RUN, "-results", LIVE_CSV, "-lang", "es", "-exit-on-inactivity", "3m", ...extra, ...grid] };
+  const bin = findBin(); if (!bin) return { error: "No encuentro 'gms'. Compílalo (go build), define SCRAPER_BIN, o usa SCRAPER_MODE=docker." };
+  return { cmd: bin, args: ["-input", Q_FILE, "-results", CELL_CSV, "-lang", "es", "-exit-on-inactivity", "20s", ...extra, ...grid] };
 }
-function start(o) {
-  if (status.running) return { error: "Ya hay un escaneo en curso." };
-  try { fs.writeFileSync(LIVE_CSV, ""); } catch (e) {}
-  fs.writeFileSync(QUERIES_RUN, ((o.queries || "").trim()) + "\n");
-  emitted = 0; status = { running: true, mode: o.demo ? "demo" : "scrape", found: 0, started: Date.now() };
-  broadcast("status", status);
-  if (o.demo) { startDemo(); return { ok: true, demo: true }; }
-  const c = buildCmd(o);
-  if (c.error) { status.running = false; broadcast("status", status); return { error: c.error }; }
-  try { child = spawn(c.cmd, c.args, { cwd: ROOT }); }
-  catch (e) { status.running = false; broadcast("status", status); return { error: String(e) }; }
-  child.stderr.on("data", d => { const s = d.toString(); if (/error|blocked|failed/i.test(s)) broadcast("log", { line: s.slice(0, 300) }); });
-  pollT = setInterval(ingest, 800);
-  child.on("exit", code => { clearInterval(pollT); ingest(); status.running = false; broadcast("status", status); broadcast("done", { code, found: status.found }); child = null; });
-  child.on("error", e => { clearInterval(pollT); status.running = false; broadcast("status", status); broadcast("error", { message: String(e) }); child = null; });
-  return { ok: true, cmd: c.cmd };
-}
-function stop() {
-  if (demoT) { clearInterval(demoT); demoT = null; }
-  if (pollT) { clearInterval(pollT); pollT = null; }
-  if (child) { try { child.kill("SIGTERM"); } catch (e) {} child = null; }
-  status.running = false; broadcast("status", status); broadcast("done", { found: status.found });
-  return { ok: true };
-}
-const DEMO = [
-  { title: "Botica San Martín", category: "Farmacia", address: "Calle Mercaderes 210, Arequipa", phone: "054 234567", website: "", emails: [], rating: 4.2, reviews: 88, lat: -16.3985, lon: -71.5370, link: "https://maps.google.com", thumb: "" },
-  { title: "TecniCell Reparaciones", category: "Servicio técnico de celulares", address: "Av. Larco 345, Trujillo", phone: "+51 987 654 321", website: "", emails: ["ventas@tecnicell.com"], rating: 4.1, reviews: 57, lat: -8.1120, lon: -79.0280, link: "https://maps.google.com", thumb: "" },
-  { title: "Dentalia Clínica Dental", category: "Clínica dental", address: "Av. Ejército 710, Arequipa", phone: "+51 954 123 456", website: "https://dentalia.pe", emails: ["contacto@dentalia.pe"], rating: 4.6, reviews: 132, lat: -16.3989, lon: -71.5350, link: "https://maps.google.com", thumb: "" },
-  { title: "Sabores del Sur", category: "Restaurante", address: "Calle Santa Catalina 120, Arequipa", phone: "+51 999 888 777", website: "", emails: [], rating: 4.3, reviews: 489, lat: -16.3960, lon: -71.5375, link: "https://maps.google.com", thumb: "" },
-  { title: "FitZone Gym", category: "Gimnasio", address: "Jr. de la Unión 800, Lima", phone: "01 4567890", website: "https://fitzone.pe", emails: [], rating: 4.8, reviews: 921, lat: -12.0500, lon: -77.0330, link: "https://maps.google.com", thumb: "" },
-  { title: "Bodega Doña Rosa", category: "Bodega", address: "Av. Brasil 1200, Lima", phone: "", website: "", emails: [], rating: 4.0, reviews: 23, lat: -12.0720, lon: -77.0530, link: "https://maps.google.com", thumb: "" },
-  { title: "Ferretería El Tornillo", category: "Ferretería", address: "Av. Aviación 2100, Lima", phone: "01 3345566", website: "", emails: [], rating: 4.4, reviews: 76, lat: -12.0850, lon: -77.0000, link: "https://maps.google.com", thumb: "" },
-  { title: "Barbería Don Pepe", category: "Barbería", address: "Calle Lima 45, Cusco", phone: "+51 984 112 233", website: "", emails: [], rating: 4.7, reviews: 210, lat: -13.5170, lon: -71.9780, link: "https://maps.google.com", thumb: "" }
-];
-function startDemo() {
-  let i = 0;
-  demoT = setInterval(() => {
-    if (i >= DEMO.length) { clearInterval(demoT); demoT = null; status.running = false; broadcast("status", status); broadcast("done", { found: status.found }); return; }
-    addLead(DEMO[i++]);
-  }, 1000);
+function findBin() { if (process.env.SCRAPER_BIN && fs.existsSync(process.env.SCRAPER_BIN)) return process.env.SCRAPER_BIN; for (const p of [path.join(ROOT, "gms"), path.join(ROOT, "..", "google-maps-scraper", "gms")]) if (fs.existsSync(p)) return p; return null; }
+function finish() { if (!scan) return; scan.running = false; broadcast("status", statusObj()); broadcast("done", { found: scan.found, cells: scan.cells.length }); }
+function pause() { if (scan) { scan.paused = true; broadcast("status", statusObj()); } return { ok: true }; }
+function resume() { if (scan && !scan.running) return { error: "no hay escaneo" }; if (scan) { scan.paused = false; broadcast("status", statusObj()); processNext(); } return { ok: true }; }
+function stop() { if (demoT) { clearInterval(demoT); demoT = null; } if (pollT) { clearInterval(pollT); pollT = null; } if (child) { try { child.kill("SIGTERM"); } catch (e) {} child = null; } if (scan) { scan.running = false; broadcast("status", statusObj()); broadcast("done", { found: scan.found, cells: scan.cells.length }); } return { ok: true }; }
+
+// ---- Demo (sin scraper): colorea celdas y suelta leads falsos dentro de cada una ----
+const DNAMES = [["Botica ", "Farmacia", 0], ["Restaurante ", "Restaurante", 1], ["Barbería ", "Barbería", 0], ["Ferretería ", "Ferretería", 0], ["Gimnasio ", "Gimnasio", 1], ["Bodega ", "Bodega", 0], ["Dental ", "Clínica dental", 1], ["TecniCell ", "Taller de celulares", 0]];
+const SUF = ["San Martín", "Central", "Los Andes", "El Sol", "Perú", "Miraflores", "Norte", "Express"];
+let demoN = 0;
+function demoCell(cell) {
+  demoT = setTimeout(() => {
+    curCell = cell;
+    const k = 1 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < k; i++) {
+      const [pre, cat, web] = DNAMES[demoN % DNAMES.length];
+      const lat = cell.bbox[0] + Math.random() * (cell.bbox[2] - cell.bbox[0]);
+      const lon = cell.bbox[1] + Math.random() * (cell.bbox[3] - cell.bbox[1]);
+      demoN++;
+      addLead({ title: pre + SUF[demoN % SUF.length], category: cat, address: "Calle Demo " + (100 + demoN) + ", Lima", phone: "+51 9" + (10000000 + demoN * 137 % 89999999), website: web ? "https://demo" + demoN + ".pe" : "", emails: web ? ["demo" + demoN + "@mail.com"] : [], rating: (3.8 + Math.random() * 1.2), reviews: 10 + (demoN * 37 % 900), lat, lon, link: "https://maps.google.com/demo/" + demoN, thumb: "", about: "Negocio de ejemplo para probar el panel.", images: [] });
+    }
+    finishCell(cell);
+  }, 500);
 }
 
-// ---------- Update lead (pipeline / notas / contactado) ----------
-function updateLead(id, patch) {
-  const l = db.leads[id]; if (!l) return { error: "no existe" };
-  l._meta = Object.assign({}, l._meta, patch); save();
-  broadcast("update", { id, meta: l._meta });
-  return { ok: true };
-}
+// ---- Update lead (pipeline / notas) ----
+function updateLead(id, patch) { const l = db.leads[id]; if (!l) return { error: "no existe" }; l._meta = Object.assign({}, l._meta, patch); save(); broadcast("update", { id, meta: l._meta }); return { ok: true }; }
 
 // ---------- HTTP ----------
-function body(req) { return new Promise(res => { let b = ""; req.on("data", d => b += d); req.on("end", () => { try { res(JSON.parse(b || "{}")); } catch (e) { res({}); } }); }); }
-function json(res, obj, code = 200) { res.writeHead(code, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }); res.end(JSON.stringify(obj)); }
-
+function body(req) { return new Promise(r => { let b = ""; req.on("data", d => b += d); req.on("end", () => { try { r(JSON.parse(b || "{}")); } catch (e) { r({}); } }); }); }
+function json(res, o, code = 200) { res.writeHead(code, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }); res.end(JSON.stringify(o)); }
 const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url, "http://x");
-  const p = url.pathname;
+  const p = new URL(req.url, "http://x").pathname;
   if (req.method === "OPTIONS") { res.writeHead(204, { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET,POST", "Access-Control-Allow-Headers": "Content-Type" }); return res.end(); }
-
-  if (p === "/" || p === "/dashboard.html") {
-    let html; try { html = fs.readFileSync(path.join(ROOT, "dashboard.html")); } catch (e) { res.writeHead(404); return res.end("dashboard.html no encontrado"); }
-    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" }); return res.end(html);
-  }
-  if (p === "/api/status") return json(res, status);
-  if (p === "/api/leads") return json(res, { status, leads: db.order.map(id => db.leads[id]).filter(Boolean) });
-  if (p === "/api/stream") {
-    res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive", "Access-Control-Allow-Origin": "*" });
-    res.write("retry: 3000\n\n"); res.write(`event: status\ndata: ${JSON.stringify(status)}\n\n`);
-    clients.add(res); req.on("close", () => clients.delete(res)); return;
-  }
-  if (p === "/api/scrape/start" && req.method === "POST") return json(res, start(await body(req)));
-  if (p === "/api/scrape/stop" && req.method === "POST") return json(res, stop());
+  if (p === "/" || p === "/dashboard.html") { let h; try { h = fs.readFileSync(path.join(ROOT, "dashboard.html")); } catch (e) { res.writeHead(404); return res.end("dashboard.html no encontrado"); } res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" }); return res.end(h); }
+  if (p === "/api/status") return json(res, statusObj());
+  if (p === "/api/leads") return json(res, { status: statusObj(), leads: db.order.map(id => db.leads[id]).filter(Boolean), cells: scan ? scan.cells.map(c => ({ key: c.key, bbox: c.bbox, state: c.state, found: c.found })) : [], categories: CATEGORIES });
+  if (p === "/api/stream") { res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive", "Access-Control-Allow-Origin": "*" }); res.write("retry: 3000\n\n"); res.write(`event: status\ndata: ${JSON.stringify(statusObj())}\n\n`); clients.add(res); req.on("close", () => clients.delete(res)); return; }
+  if (p === "/api/scan/start" && req.method === "POST") return json(res, startScan(await body(req)));
+  if (p === "/api/scan/pause" && req.method === "POST") return json(res, pause());
+  if (p === "/api/scan/resume" && req.method === "POST") return json(res, resume());
+  if (p === "/api/scan/stop" && req.method === "POST") return json(res, stop());
   if (p === "/api/lead/update" && req.method === "POST") { const b = await body(req); return json(res, updateLead(b.id, b.patch || {})); }
-  if (p === "/api/reset" && req.method === "POST") { db = { leads: {}, order: [] }; save(); broadcast("reset", {}); return json(res, { ok: true }); }
-
+  if (p === "/api/reset" && req.method === "POST") { db = { leads: {}, order: [] }; scan = null; save(); broadcast("reset", {}); return json(res, { ok: true }); }
   res.writeHead(404, { "Access-Control-Allow-Origin": "*" }); res.end("not found");
 });
 server.listen(PORT, () => console.log(`BUSCA-CHAMBA-3000 → http://localhost:${PORT}  (${db.order.length} leads guardados)`));
