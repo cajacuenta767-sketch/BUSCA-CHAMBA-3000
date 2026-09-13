@@ -22,7 +22,7 @@ Panel visual para trabajar los leads. Funciona de **dos formas**:
 node server.js      # abre http://localhost:8090
 ```
 
-En la pantalla de **Inicio**, ordenada en **3 pasos** (zona → qué buscar → iniciar), eliges **país → departamento/ciudad** (empieza en **Perú** con sus 24 departamentos + Callao, y se expande a Bolivia, Colombia, Ecuador, Chile, Argentina, México y demás países de habla hispana, más el mercado hispano de **EE. UU.**) y pulsas **▶️ Iniciar**. Por defecto **barre TODOS los negocios del área, cuadrícula por cuadrícula**; o marca **Por rubro** y eliges **grupos de rubros** (Comida y bebida, Salud, Belleza, Tiendas, Servicios técnicos, Profesionales, Hospedaje) — un clic en el título del grupo marca todo el grupo. El **mapa se pinta en vivo** celda por celda (⬜ pendiente → 🟡 escaneando → 🟢 con negocios) y **los leads aparecen al instante**; puedes **pausar/reanudar**. El servidor **guarda todo** (leads, estados, notas) aunque cierres. Para escanear necesita el binario `gms` (o `SCRAPER_MODE=docker`). Botón **Demo** para verlo funcionar sin escanear.
+En la pantalla de **Inicio**, ordenada en **3 pasos** (zona → qué buscar → iniciar), eliges **país → departamento/ciudad** (empieza en **Perú** con sus 24 departamentos + Callao, y se expande a Bolivia, Colombia, Ecuador, Chile, Argentina, México y demás países de habla hispana, más el mercado hispano de **EE. UU.**) y pulsas **▶️ Iniciar**. Por defecto **barre TODOS los negocios del área, cuadrícula por cuadrícula**; o marca **Por rubro** y eliges **grupos de rubros** (Comida y bebida, Salud, Belleza, Tiendas, Servicios técnicos, Profesionales, Hospedaje) — un clic en el título del grupo marca todo el grupo. El **mapa se pinta en vivo** celda por celda (⬜ pendiente → 🟡 escaneando → 🟢 con negocios) y **los leads aparecen al instante**; puedes **pausar/reanudar**. El servidor **guarda todo** (leads, estados, notas) aunque cierres. Para escanear necesita el binario `gms` (o `SCRAPER_MODE=docker`).
 
 **B) Modo archivo** — abres `dashboard.html` con doble clic y cargas un `resultados.csv` a mano (sin escaneo en vivo).
 
@@ -40,7 +40,7 @@ Además: **mapa que se colorea celda por celda** con pines de negocios (pasa el 
 
 > El plan completo de mejoras está en [`PLAN.md`](PLAN.md).
 
-El botón **Ejemplo** carga datos de muestra para ver el panel sin datos propios. La pestaña de mapa necesita internet (usa OpenStreetMap). En modo en vivo, el scraper debe poder correr en esa máquina (binario `gms` o Docker).
+El panel solo muestra **datos reales** que escaneas (o un CSV que cargues); no hay datos de ejemplo. La pestaña de mapa necesita internet (usa OpenStreetMap). En modo en vivo, el scraper debe poder correr en esa máquina (binario `gms` o Docker).
 
 ## Requisitos
 
@@ -117,7 +117,9 @@ go build -o gms .
 Activado por defecto en **⚙️ Ajustes**. Para que Google no bloquee tu IP al escanear:
 
 - **Pausas aleatorias entre celdas** (3–8 s, configurables) + concurrencia baja (`-c 1`), para no martillar.
-- **Rotación de proxies (round-robin)**: pon varias en **⚙️ Ajustes → Proxies** (una por línea; acepta `ip:puerto:usuario:clave` o `http://usuario:clave@ip:puerto`). El escáner las **baraja y usa una distinta por celda**, dando la vuelta a toda la lista antes de repetir (así **no quema ninguna**) y **cambia de proxy si detecta bloqueo**. Los logs enmascaran el usuario/clave. El botón **🌐 Traer proxies gratis** trae listas públicas y **prueba cuáles funcionan** (las guarda y las usa el escáner). ⚠️ Las proxies gratis son poco confiables y de terceros que podrían ver tu tráfico; para volumen serio usa **residenciales de pago**. Tus credenciales quedan solo en `data/` (no se versiona).
+- **Rotación de proxies (round-robin)**: el escáner **baraja y usa una distinta por celda**, dando la vuelta a toda la lista antes de repetir (así **no quema ninguna**) y **cambia de proxy si detecta bloqueo**. Acepta `ip:puerto:usuario:clave` o `http://usuario:clave@ip:puerto`. Los logs enmascaran el usuario/clave.
+- **Proxies desde el backend (recomendado, no hace falta el panel):** crea un archivo **`proxies.txt`** junto a `server.js` (copia [`proxies.example.txt`](proxies.example.txt)) con **una proxy por línea**, o define la variable de entorno **`PROXIES`**. El servidor las carga solas al arrancar. `proxies.txt` está en `.gitignore` → **tus credenciales de pago NUNCA se suben a GitHub** (si el repo se filtra, no te las roban). También puedes pegarlas en **⚙️ Ajustes → Proxies**; se guardan en `data/` (tampoco se versiona). El botón **🌐 Traer proxies gratis** trae listas públicas y **prueba cuáles funcionan**. ⚠️ Las proxies gratis son poco confiables y de terceros que podrían ver tu tráfico; para volumen serio usa **residenciales de pago**.
+- **Área grande = auto-ajuste**: si eliges una zona muy amplia, el escáner **sube solo el tamaño de celda** hasta que el área entre (en vez de bloquearte con "demasiadas celdas"), y te avisa a cuántos km la ajustó. Para más detalle, baja el tamaño de celda y escanea por partes.
 - **Detección de bloqueos** (ERR_TUNNEL, 429, 403, captcha) con **backoff exponencial** y **auto-pausa**: si varias celdas seguidas salen bloqueadas, el escaneo se **pausa solo** y te avisa. Configura proxies o espera un rato y pulsa **Reanudar**.
 - **Empieza suave**: celdas de 2–3 km y modo "Por rubro" generan menos búsquedas y menos bloqueos que "Todo el área".
 

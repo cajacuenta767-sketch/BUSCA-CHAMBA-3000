@@ -128,10 +128,14 @@ function splitCell(c) { const [s, w, n, e] = c.bbox, mLat = (s + n) / 2, mLon = 
 function startScan(cfgIn) {
   if (scan && scan.running) return { error: "Ya hay un escaneo en curso." };
   const area = cfgIn.area; if (!area || area.length !== 4) return { error: "Falta el área a escanear." };
-  const cellKm = Math.max(0.2, cfgIn.cellKm || 1);
+  let cellKm = Math.max(0.2, cfgIn.cellKm || 1);
   let cells = computeCells(area, cellKm);
   if (!cells.length) return { error: "El área es muy pequeña." };
-  if (cells.length > 600) return { error: "Demasiadas celdas (" + cells.length + "). Sube el tamaño de celda o achica el área." };
+  // Área grande: en vez de bloquear con "demasiadas celdas", subimos solos el
+  // tamaño de celda hasta que el área entre. Así siempre se puede escanear.
+  const CAP = 550; const askedKm = cellKm; let adjusted = false;
+  while (cells.length > CAP && cellKm < 25) { cellKm = Math.round((cellKm + (cellKm < 3 ? 0.3 : 1)) * 10) / 10; cells = computeCells(area, cellKm); adjusted = true; }
+  if (cells.length > CAP) return { error: "Esa área es enorme. Elige una ciudad o zona más específica." };
   const cLat = (area[0] + area[2]) / 2, cLon = (area[1] + area[3]) / 2;
   cells.sort((a, b) => Math.hypot((a.bbox[0] + a.bbox[2]) / 2 - cLat, (a.bbox[1] + a.bbox[3]) / 2 - cLon) - Math.hypot((b.bbox[0] + b.bbox[2]) / 2 - cLat, (b.bbox[1] + b.bbox[3]) / 2 - cLon)); // espiral: del centro hacia afuera
   if (cfgIn.skipScanned && Array.isArray(db.scanned) && db.scanned.length) { const done = new Set(db.scanned); cells = cells.filter(c => !done.has(c.key)); }
@@ -141,10 +145,11 @@ function startScan(cfgIn) {
   const exclude = (Array.isArray(cfgIn.exclude) ? cfgIn.exclude : String(cfgIn.exclude != null ? cfgIn.exclude : (cfg.exclude || "")).split(",")).map(s => ("" + s).trim().toLowerCase()).filter(Boolean);
   scan = { mode: cfgIn.mode === "rubros" ? "rubros" : "all", demo: !!cfgIn.demo, cells, idx: 0, cellKm, queries, email: !!cfgIn.email, proxyList, proxyIdx: 0, exclude, maxLeads: +cfgIn.maxLeads || +cfg.maxLeads || 0, running: true, paused: false, found: 0, area, consecBlocks: 0, retried: false, curProxy: null };
   log(`Inicio ${scan.mode} · ${cells.length} celdas · celda ${cellKm}km${scan.demo ? " (demo)" : ""}`);
+  if (adjusted) { const m = `Área grande: ajusté la celda de ${askedKm} a ${cellKm} km para cubrirla en ${cells.length} celdas.`; log(m); broadcast("notice", { msg: m }); }
   broadcast("cells", { cells: cells.map(c => ({ key: c.key, bbox: c.bbox, state: c.state })), area, total: cells.length });
   broadcast("status", statusObj());
   processNext();
-  return { ok: true, cells: cells.length, mode: scan.mode };
+  return { ok: true, cells: cells.length, mode: scan.mode, cellKm, adjusted, askedKm };
 }
 function processNext() { if (!scan || !scan.running || scan.paused) return; const cell = scan.cells[scan.idx]; if (!cell) return finish(); cell.state = "scanning"; broadcast("cell", { key: cell.key, state: "scanning", found: 0 }); broadcast("status", statusObj()); if (scan.demo) return demoCell(cell); runCell(cell); }
 function scheduleNext() { if (!scan || !scan.running || scan.paused) return; let lo = cfg.safeMode ? (cfg.pauseMin || 3) : 0, hi = cfg.safeMode ? (cfg.pauseMax || 8) : 0; if (hi < lo) hi = lo; if (scan.consecBlocks > 0) { lo = Math.max(lo, 12 * scan.consecBlocks); hi = Math.max(hi, 25 * scan.consecBlocks); } const ms = scan.demo ? 250 : Math.round((lo + Math.random() * (hi - lo)) * 1000); nextT = setTimeout(processNext, ms); }
@@ -244,4 +249,16 @@ const server = http.createServer(async (req, res) => {
   if (p === "/api/reset" && req.method === "POST") { db = { leads: {}, order: [], history: db.history || [], scanned: db.scanned || [] }; scan = null; save(); broadcast("reset", {}); return json(res, { ok: true }); }
   res.writeHead(404, { "Access-Control-Allow-Origin": "*" }); res.end("not found");
 });
+// Proxies desde el backend (sin pegarlas en el frontend). Prioridad: env PROXIES,
+// luego proxies.txt (una por línea). proxies.txt está en .gitignore → tus
+// credenciales de pago NUNCA se suben a GitHub. Solo siembra si config está vacía.
+function seedProxies() {
+  if (cfg.proxies && cfg.proxies.trim()) return;
+  let seed = "";
+  if (process.env.PROXIES && process.env.PROXIES.trim()) seed = process.env.PROXIES.replace(/[;,]+/g, "\n");
+  else { try { const f = path.join(ROOT, "proxies.txt"); if (fs.existsSync(f)) seed = fs.readFileSync(f, "utf8"); } catch (e) {} }
+  seed = (seed || "").split(/\r?\n/).map(s => s.trim()).filter(s => s && !s.startsWith("#")).join("\n");
+  if (seed) { cfg.proxies = seed; saveCfg(); log("Proxies cargadas del backend (" + seed.split("\n").length + ") desde " + (process.env.PROXIES ? "env PROXIES" : "proxies.txt")); }
+}
+seedProxies();
 server.listen(PORT, () => console.log(`BUSCA-CHAMBA-3000 → http://localhost:${PORT}  (${db.order.length} leads${AUTH ? ", con login" : ""})`));

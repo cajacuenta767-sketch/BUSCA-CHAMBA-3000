@@ -1,0 +1,19 @@
+# Copia este archivo como  proxies.txt  (en la misma carpeta que server.js) y
+# pega tus proxies, UNA POR LÍNEA. El servidor las carga solo al arrancar:
+# no necesitas pegarlas en el panel. Se rotan una por celda (round-robin).
+#
+# IMPORTANTE: proxies.txt está en .gitignore → tus credenciales NUNCA se suben
+# a GitHub. Nunca pongas proxies reales en ESTE archivo de ejemplo.
+#
+# Formatos aceptados (elige uno):
+#   ip:puerto:usuario:clave
+#   http://usuario:clave@ip:puerto
+#
+# Ejemplos (ficticios):
+203.0.113.10:6754:usuario:clave
+198.51.100.20:6014:usuario:clave
+# http://usuario:clave@203.0.113.30:6462
+#
+# Alternativa sin archivo: variable de entorno PROXIES (separadas por coma o salto de línea).
+#   Windows (PowerShell):  $env:PROXIES="ip:puerto:usuario:clave, ip:puerto:usuario:clave"; node server.js
+#   Linux/Mac:             PROXIES="ip:puerto:usuario:clave,ip:puerto:usuario:clave" node server.js

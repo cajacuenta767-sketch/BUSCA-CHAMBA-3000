@@ -186,7 +186,6 @@
     <input class="field name-input" id="myName" placeholder="Tu nombre">
     <button class="btn ghost" id="themeBtn" title="Tema">🌙</button>
     <button class="btn ghost" id="guideBtn" title="Uso responsable">ℹ️</button>
-    <button class="btn ghost" id="sampleBtn">Ejemplo</button>
     <label class="btn" for="fileInput">📂 CSV<input type="file" id="fileInput" accept=".csv,text/csv" hidden></label>
   </header>
 
@@ -205,7 +204,7 @@
         <h2>Escanea negocios y consíguelos como clientes</h2>
         <p>Por defecto barre <b>TODOS los negocios</b> del área, cuadrícula por cuadrícula. Elige la zona, dale a Iniciar, y míralos aparecer en vivo.</p>
       </div>
-      <div id="serverWarn" class="help" hidden>⚠️ Sin servidor: para escanear en vivo corre <code>node server.js</code> y abre <code>http://localhost:8090</code>. Aquí (archivo suelto) puedes cargar un CSV o pulsar <b>Ejemplo</b>.</div>
+      <div id="serverWarn" class="help" hidden>⚠️ Sin servidor: para escanear en vivo corre <code>node server.js</code> y abre <code>http://localhost:8090</code>. Aquí (archivo suelto) solo puedes cargar un <code>CSV</code> ya escaneado.</div>
       <div class="section first">
         <div class="section-head"><span class="step-num">1</span><div><h3>Elige la zona</h3><p>País, departamento y ciudad, y qué tan fino barrer el mapa. Empezamos por Perú y se expande a más países.</p></div></div>
         <div class="form-grid">
@@ -233,7 +232,6 @@
           <button class="btn amber" id="pauseBtn" hidden>⏸️ Pausar</button>
           <button class="btn primary" id="resumeBtn" hidden>▶️ Reanudar</button>
           <button class="btn danger" id="stopBtn" hidden>⏹️ Detener</button>
-          <button class="btn ghost" id="demoBtn">Ver demo</button>
         </div>
         <div class="progress"><div id="progFill"></div></div>
         <div class="prog-txt" id="progTxt">Listo para escanear.</div>
@@ -322,7 +320,7 @@
     <p class="count-note" id="countNote" hidden></p>
     <div class="grid" id="grid"></div>
     <div class="kanban" id="kanban" hidden></div>
-    <div class="empty" id="empty"><div class="big">🧲</div><h2>Sin negocios todavía</h2><p>Ve a <b>▶️ Inicio</b> y pulsa <b>Iniciar</b> (o <b>Demo</b>), o carga un <code>CSV</code>.</p></div>
+    <div class="empty" id="empty"><div class="big">🧲</div><h2>Sin negocios todavía</h2><p>Ve a <b>▶️ Inicio</b> y pulsa <b>Iniciar escaneo</b>, o carga un <code>CSV</code> ya escaneado.</p></div>
   </section>
 
   <!-- MÉTRICAS -->
@@ -615,7 +613,7 @@ function loadAll(arr){LEADS=[];byId={};$("#grid").innerHTML="";arr.forEach(l=>ad
 function importCSV(text){const before=LEADS.length;rowsToLeads(parseCSV(text)).forEach(l=>addLead(l,false));render();if(pinLayer){pinLayer.clearLayers();LEADS.forEach(addPin);}toast((LEADS.length-before)+" nuevos · "+LEADS.length+" en total (fusionado)");}
 
 // ---- Servidor / SSE ----
-function setMode(on){$("#modeDot").className="dot"+(on?" on":"");$("#modeTxt").textContent=on?"En vivo (servidor)":"Modo archivo";$("#serverWarn").hidden=on;["playBtn","pauseBtn","resumeBtn","stopBtn","demoBtn"].forEach(id=>$("#"+id).disabled=!on);}
+function setMode(on){$("#modeDot").className="dot"+(on?" on":"");$("#modeTxt").textContent=on?"En vivo (servidor)":"Modo archivo";$("#serverWarn").hidden=on;["playBtn","pauseBtn","resumeBtn","stopBtn"].forEach(id=>{const el=$("#"+id);if(el)el.disabled=!on;});}
 function connectSSE(){try{es=new EventSource("/api/stream");}catch(e){return;}
   es.addEventListener("lead",e=>addLead(JSON.parse(e.data),true));
   es.addEventListener("cells",e=>{const d=JSON.parse(e.data);scanWarn=0;scanStart=Date.now();$("#scanMsg").innerHTML="";drawServerCells(d.cells,d.area);setProg(0,d.total,0,true);});
@@ -631,7 +629,7 @@ function connectSSE(){try{es=new EventSource("/api/stream");}catch(e){return;}
   es.addEventListener("blocked",e=>{let d={};try{d=JSON.parse(e.data);}catch(x){}toast("🛡️ Auto-pausado: posible bloqueo de Google tras "+(d.consec||"varias")+" celdas.");$("#scanMsg").innerHTML='🛡️ <b>Pausado por posible bloqueo de Google.</b> Configura proxies en ⚙️ Ajustes o espera un rato y pulsa <b>Reanudar</b>. <a href="/api/logs" target="_blank">Ver logs</a>';});
 }
 function onStatus(st){const run=!!st.running,pau=!!st.paused;
-  $("#playBtn").hidden=run;$("#demoBtn").hidden=run;
+  $("#playBtn").hidden=run;
   $("#stopBtn").hidden=!run;$("#pauseBtn").hidden=!run||pau;$("#resumeBtn").hidden=!run||!pau;
   $("#modeDot").className="dot"+(SERVER?(run?" live":" on"):"");
   if(st.cellsTotal)setProg(st.cellsDone||0,st.cellsTotal,st.found||0,run,pau);}
@@ -644,14 +642,20 @@ function detectServer(){fetch("/api/status").then(r=>r.ok?r.json():Promise.rejec
 // ---- Escaneo ----
 const selectedRubros=()=>[...document.querySelectorAll(".rub.on")].map(x=>x.dataset.r);
 function scanArea(){if(!map)return null;const b=map.getBounds();return[b.getSouth(),b.getWest(),b.getNorth(),b.getEast()];}
-function startScan(demo){if(!SERVER){toast("Inicia el servidor (node server.js) para escanear");return;}
+function startScan(){if(!SERVER){toast("Inicia el servidor (node server.js) para escanear");return;}
   const mode=(document.querySelector('input[name="scanmode"]:checked')||{}).value||"all";
   const rubros=mode==="rubros"?selectedRubros():[];
   if(mode==="rubros"&&!rubros.length){toast("Elige al menos un rubro");return;}
   const area=scanArea();if(!area){toast("Cargando mapa…");return;}
-  fetch("/api/scan/start",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({demo:!!demo,mode,rubros,area,cellKm:cellKm(),email:$("#scanEmail").checked,skipScanned:$("#skipScanned").checked})}).then(r=>r.json()).then(j=>{if(j.error)toast(j.error);else toast((demo?"Demo":"Escaneo")+" iniciado: "+j.cells+" celdas");}).catch(()=>toast("No se pudo conectar"));}
+  fetch("/api/scan/start",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode,rubros,area,cellKm:cellKm(),email:$("#scanEmail").checked,skipScanned:$("#skipScanned").checked})}).then(r=>r.json()).then(j=>{if(j.error)toast(j.error);else toast("Escaneo iniciado: "+j.cells+" celdas"+(j.adjusted?" · celda ajustada a "+j.cellKm+" km":""));}).catch(()=>toast("No se pudo conectar"));}
 const post=u=>fetch(u,{method:"POST"}).catch(()=>{});
-function estimate(){if(!map){$("#estTxt").textContent="";return;}const b=map.getBounds(),km=cellKm(),latC=(b.getSouth()+b.getNorth())/2,dLat=km/111,dLon=km/(111*Math.cos(latC*Math.PI/180));const n=Math.max(1,Math.ceil((b.getNorth()-b.getSouth())/dLat)*Math.ceil((b.getEast()-b.getWest())/dLon));const min=Math.ceil(n*(($('input[name=scanmode]:checked')||{}).value==="rubros"?selectedRubros().length||1:8)*0.3);$("#estTxt").textContent=`≈ ${n} celdas · tiempo aprox. ${min<60?min+" min":(Math.round(min/6)/10)+" h"} (depende de proxies/conexión)`;}
+function estimate(){if(!map){$("#estTxt").textContent="";return;}
+  const b=map.getBounds(),latC=(b.getSouth()+b.getNorth())/2,spanLat=b.getNorth()-b.getSouth(),spanLon=b.getEast()-b.getWest();
+  const CAP=550;const calc=k=>{const dLat=k/111,dLon=k/(111*Math.cos(latC*Math.PI/180));return Math.max(1,Math.ceil(spanLat/dLat)*Math.ceil(spanLon/dLon));};
+  let km=cellKm(),n=calc(km),adj=false;
+  while(n>CAP&&km<25){km=Math.round((km+(km<3?0.3:1))*10)/10;n=calc(km);adj=true;}
+  const rubN=($('input[name=scanmode]:checked')||{}).value==="rubros"?(selectedRubros().length||1):8;const min=Math.ceil(n*rubN*0.3);
+  $("#estTxt").textContent=`≈ ${n} celdas`+(adj?` · celda auto-ajustada a ${km} km`:"")+` · tiempo aprox. ${min<60?min+" min":(Math.round(min/6)/10)+" h"} (depende de proxies/conexión)`;}
 
 // ---- Config ----
 function saveCfg(){const b={telegramChat:$("#cfgChat").value.trim(),proxies:$("#cfgProxies").value.trim(),webhookUrl:$("#cfgWebhook").value.trim(),notify:$("#cfgNotify").checked,safeMode:$("#cfgSafe").checked,pauseMin:+$("#cfgPmin").value||0,pauseMax:+$("#cfgPmax").value||0,exclude:$("#cfgExclude").value,maxLeads:+$("#cfgMaxLeads").value||0,retryFailed:$("#cfgRetry").checked};const tok=$("#cfgToken").value.trim();if(tok)b.telegramToken=tok;fetch("/api/config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}).then(()=>toast("Ajustes guardados ✓")).catch(()=>toast("No se pudo guardar"));}
@@ -710,7 +714,7 @@ $("#fileInput").onchange=e=>{if(e.target.files[0]){const fr=new FileReader();fr.
 ["searchInput","cityFilter","catFilter","stateFilter","minRating","sortSel"].forEach(id=>{const el=$("#"+id);el.addEventListener(id==="searchInput"?"input":"change",render);});
 document.querySelectorAll('input[name="scanmode"]').forEach(r=>r.onchange=()=>{$("#rubros").hidden=(document.querySelector('input[name="scanmode"]:checked')||{}).value!=="rubros";estimate();});
 $("#cellKm").oninput=estimate;
-$("#playBtn").onclick=()=>startScan(false);$("#demoBtn").onclick=()=>startScan(true);
+$("#playBtn").onclick=()=>startScan();
 $("#pauseBtn").onclick=()=>post("/api/scan/pause");$("#resumeBtn").onclick=()=>post("/api/scan/resume");$("#stopBtn").onclick=()=>post("/api/scan/stop");
 $("#countrySel").onchange=()=>{fillZones();goZone();};$("#zoneSel").onchange=goZone;$("#saveZone").onclick=saveMyZone;$("#myZones").onchange=goMyZone;
 $("#fitPins").onclick=fitPins;$("#heatBtn").onclick=toggleHeat;
@@ -731,15 +735,6 @@ $("#themeBtn").onclick=()=>applyTheme(document.documentElement.getAttribute("dat
 const th=store.get("bc3k_theme",null);if(th)applyTheme(th);else $("#themeBtn").textContent=matchMedia("(prefers-color-scheme:dark)").matches?"☀️":"🌙";
 document.addEventListener("dragover",e=>{if(!e.target.closest(".kcol"))e.preventDefault();});document.addEventListener("drop",e=>{if(e.target.closest(".kcol"))return;e.preventDefault();const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f){const fr=new FileReader();fr.onload=ev=>importCSV(ev.target.result);fr.readAsText(f);}});
 
-const SAMPLE=[
- {title:"Botica San Martín",category:"Farmacia",address:"Calle Mercaderes 210, Arequipa",phone:"054 234567",website:"",emails:[],rating:4.2,reviews:88,lat:-16.3985,lon:-71.537,link:"m/1",thumb:"",about:"Botica de barrio con amplio stock.",images:[]},
- {title:"TecniCell Reparaciones",category:"Servicio técnico de celulares",address:"Av. Larco 345, Trujillo",phone:"+51 987 654 321",website:"",emails:["ventas@tecnicell.com"],rating:4.1,reviews:57,lat:-8.112,lon:-79.028,link:"m/2",thumb:"",about:"Reparación de celulares y accesorios.",images:[]},
- {title:"Dentalia Clínica Dental",category:"Clínica dental",address:"Av. Ejército 710, Arequipa",phone:"+51 954 123 456",website:"https://dentalia.pe",emails:["contacto@dentalia.pe"],rating:4.6,reviews:132,lat:-16.3989,lon:-71.535,link:"m/3",thumb:"",about:"Clínica dental con especialidades.",images:[]},
- {title:"Sabores del Sur",category:"Restaurante",address:"Calle Santa Catalina 120, Arequipa",phone:"+51 999 888 777",website:"",emails:[],rating:4.3,reviews:489,lat:-16.396,lon:-71.5375,link:"m/4",thumb:"",about:"Comida regional arequipeña.",images:[]},
- {title:"FitZone Gym",category:"Gimnasio",address:"Jr. de la Unión 800, Lima",phone:"01 4567890",website:"https://fitzone.pe",emails:[],rating:4.8,reviews:921,lat:-12.05,lon:-77.033,link:"m/5",thumb:"",about:"Gimnasio con clases grupales.",images:[]},
- {title:"Bodega Doña Rosa",category:"Bodega",address:"Av. Brasil 1200, Lima",phone:"",website:"",emails:[],rating:4.0,reviews:23,lat:-12.072,lon:-77.053,link:"m/6",thumb:"",about:"Bodega de barrio.",images:[]}
-];
-$("#sampleBtn").onclick=()=>{loadAll(SAMPLE);toast("Datos de ejemplo cargados");document.querySelector('.tab[data-tab="resultados"]').click();};
 $("#rubros").innerHTML=RUBRO_GROUPS.map(g=>`<div class="rub-group"><button type="button" class="rub-group-label" title="Marcar/desmarcar todo el grupo"><span>${g.icon} ${g.name}</span><span class="rgl-count">${g.items.length}</span></button><div class="rub-wrap">${g.items.map(r=>`<button type="button" class="rub" data-r="${esc(r)}">${esc(r)}</button>`).join("")}</div></div>`).join("");
 function syncGroupLabels(){document.querySelectorAll("#rubros .rub-group").forEach(gr=>{const chips=[...gr.querySelectorAll(".rub")];const lab=gr.querySelector(".rub-group-label");lab.classList.toggle("on",chips.length>0&&chips.every(c=>c.classList.contains("on")));});}
 document.querySelectorAll("#rubros .rub").forEach(b=>b.onclick=()=>{b.classList.toggle("on");syncGroupLabels();estimate();});
