@@ -31,8 +31,8 @@ const CATEGORIES = ["farmacia", "restaurante", "bodega", "ferretería", "gimnasi
   "cerrajería", "florería", "minimarket", "consultorio médico"];
 
 // ---------- DB & Config ----------
-let db = load(DB_FILE, { leads: {}, order: [], history: [] });
-let cfg = load(CFG_FILE, { telegramToken: "", telegramChat: "", webhookUrl: "", proxies: "", leadsdbKey: "", notify: false, safeMode: true, pauseMin: 3, pauseMax: 8, depth: 0, maxBlocks: 4, subdivide: true, subdivideAt: 90 });
+let db = load(DB_FILE, { leads: {}, order: [], history: [], scanned: [] });
+let cfg = load(CFG_FILE, { telegramToken: "", telegramChat: "", webhookUrl: "", proxies: "", leadsdbKey: "", notify: false, safeMode: true, pauseMin: 3, pauseMax: 8, depth: 0, maxBlocks: 4, subdivide: true, subdivideAt: 90, exclude: "", maxLeads: 0, retryFailed: true });
 function load(f, d) { try { return Object.assign({}, d, JSON.parse(fs.readFileSync(f, "utf8"))); } catch (e) { return d; } }
 let saveT = null;
 function save() { clearTimeout(saveT); saveT = setTimeout(() => { try { fs.writeFileSync(DB_FILE, JSON.stringify(db)); } catch (e) {} }, 250); }
@@ -76,9 +76,17 @@ function pumpTg() {
 function parseCSV(t) { const rows = []; let row = [], f = "", q = false; for (let i = 0; i < t.length; i++) { const c = t[i]; if (q) { if (c === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; } else { if (c === '"') q = true; else if (c === ",") { row.push(f); f = ""; } else if (c === "\n") { row.push(f); rows.push(row); row = []; f = ""; } else if (c !== "\r") f += c; } } if (f.length || row.length) { row.push(f); rows.push(row); } return rows; }
 function emails(s) { if (!s) return []; const m = ("" + s).match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || []; return [...new Set(m.map(x => x.toLowerCase()))]; }
 function cleanDesc(s) { s = ("" + (s || "")).trim(); return /^[\[{]/.test(s) ? "" : s; } // descarta about en JSON
-function rowToLead(H, r) { const gi = n => H.indexOf(n), g = n => { const i = gi(n); return i >= 0 ? (r[i] || "").trim() : ""; }; const t = g("title"); if (!t) return null; return { title: t, category: g("category"), address: g("complete_address") || g("address"), phone: g("phone"), website: g("website"), emails: emails(g("emails")), rating: parseFloat(g("review_rating")) || 0, reviews: parseInt((g("review_count") || "").replace(/\D/g, "")) || 0, lat: parseFloat(g("latitude")) || 0, lon: parseFloat(g("longitude")) || 0, link: g("link"), thumb: g("thumbnail"), about: cleanDesc(g("descriptions") || g("about")), images: (g("images") || "").split(/[|;,\s]+/).filter(u => /^https?:/.test(u)).slice(0, 6) }; }
-function idOf(l) { const ph = (l.phone || "").replace(/\D/g, ""); return l.link || (ph ? "tel:" + ph : (l.title + "|" + l.address)); }
-function addLead(l) { const id = idOf(l); if (!db.leads[id]) { db.leads[id] = l; db.order.push(id); if (scan) scan.found++; if (curCell) curCell.found++; broadcast("lead", l); notifyLead(l); save(); return true; } else { const meta = db.leads[id]._meta; db.leads[id] = Object.assign(l, { _meta: meta }); return false; } }
+function rowToLead(H, r) { const gi = n => H.indexOf(n), g = n => { const i = gi(n); return i >= 0 ? (r[i] || "").trim() : ""; }; const t = g("title"); if (!t) return null; return { title: t, category: g("category"), address: g("complete_address") || g("address"), phone: g("phone"), website: g("website"), emails: emails(g("emails")), rating: parseFloat(g("review_rating")) || 0, reviews: parseInt((g("review_count") || "").replace(/\D/g, "")) || 0, lat: parseFloat(g("latitude")) || 0, lon: parseFloat(g("longitude")) || 0, link: g("link"), place_id: g("place_id") || g("cid"), thumb: g("thumbnail"), about: cleanDesc(g("descriptions") || g("about")), images: (g("images") || "").split(/[|;,\s]+/).filter(u => /^https?:/.test(u)).slice(0, 6) }; }
+function idOf(l) { const ph = (l.phone || "").replace(/\D/g, ""); return l.place_id || l.link || (ph ? "tel:" + ph : (l.title + "|" + l.address)); }
+function addLead(l) {
+  if (scan && scan.exclude && scan.exclude.length) { const t = (l.title || "").toLowerCase(); if (scan.exclude.some(x => t.includes(x))) return false; }
+  const id = idOf(l);
+  if (!db.leads[id]) {
+    db.leads[id] = l; db.order.push(id); if (scan) scan.found++; if (curCell) curCell.found++; broadcast("lead", l); notifyLead(l); save();
+    if (scan && scan.maxLeads && scan.found >= scan.maxLeads && scan.running && !scan.paused) { scan.paused = true; log("Auto-pausa: tope de " + scan.maxLeads + " leads"); broadcast("notice", { msg: "Alcanzaste el tope de " + scan.maxLeads + " leads — escaneo en pausa." }); broadcast("status", statusObj()); }
+    return true;
+  } else { const meta = db.leads[id]._meta; db.leads[id] = Object.assign(l, { _meta: meta }); return false; }
+}
 
 // ---------- Escaneo por cuadrícula ----------
 let scan = null, child = null, pollT = null, demoT = null, nextT = null, curCell = null, curEmitted = 0, lastLogB = 0;
@@ -90,11 +98,17 @@ function startScan(cfgIn) {
   if (scan && scan.running) return { error: "Ya hay un escaneo en curso." };
   const area = cfgIn.area; if (!area || area.length !== 4) return { error: "Falta el área a escanear." };
   const cellKm = Math.max(0.2, cfgIn.cellKm || 1);
-  const cells = computeCells(area, cellKm);
+  let cells = computeCells(area, cellKm);
   if (!cells.length) return { error: "El área es muy pequeña." };
   if (cells.length > 600) return { error: "Demasiadas celdas (" + cells.length + "). Sube el tamaño de celda o achica el área." };
+  const cLat = (area[0] + area[2]) / 2, cLon = (area[1] + area[3]) / 2;
+  cells.sort((a, b) => Math.hypot((a.bbox[0] + a.bbox[2]) / 2 - cLat, (a.bbox[1] + a.bbox[3]) / 2 - cLon) - Math.hypot((b.bbox[0] + b.bbox[2]) / 2 - cLat, (b.bbox[1] + b.bbox[3]) / 2 - cLon)); // espiral: del centro hacia afuera
+  if (cfgIn.skipScanned && Array.isArray(db.scanned) && db.scanned.length) { const done = new Set(db.scanned); cells = cells.filter(c => !done.has(c.key)); }
+  if (!cells.length) return { error: "Toda esa zona ya fue escaneada (desmarca 'solo lo nuevo')." };
   const queries = (cfgIn.mode === "rubros" && Array.isArray(cfgIn.rubros) && cfgIn.rubros.length) ? cfgIn.rubros : CATEGORIES;
-  scan = { mode: cfgIn.mode === "rubros" ? "rubros" : "all", demo: !!cfgIn.demo, cells, idx: 0, cellKm, queries, email: !!cfgIn.email, proxies: cfgIn.proxies || cfg.proxies || "", running: true, paused: false, found: 0, area, consecBlocks: 0 };
+  const proxyList = String(cfgIn.proxies || cfg.proxies || "").split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+  const exclude = (Array.isArray(cfgIn.exclude) ? cfgIn.exclude : String(cfgIn.exclude != null ? cfgIn.exclude : (cfg.exclude || "")).split(",")).map(s => ("" + s).trim().toLowerCase()).filter(Boolean);
+  scan = { mode: cfgIn.mode === "rubros" ? "rubros" : "all", demo: !!cfgIn.demo, cells, idx: 0, cellKm, queries, email: !!cfgIn.email, proxyList, proxyIdx: 0, exclude, maxLeads: +cfgIn.maxLeads || +cfg.maxLeads || 0, running: true, paused: false, found: 0, area, consecBlocks: 0, retried: false };
   log(`Inicio ${scan.mode} · ${cells.length} celdas · celda ${cellKm}km${scan.demo ? " (demo)" : ""}`);
   broadcast("cells", { cells: cells.map(c => ({ key: c.key, bbox: c.bbox, state: c.state })), area, total: cells.length });
   broadcast("status", statusObj());
@@ -108,7 +122,7 @@ function nextCell() { advance(); }
 function finishCell(cell) {
   cell.state = cell.found > 0 ? "done" : (cell._blocked ? "error" : "empty");
   broadcast("cell", { key: cell.key, state: cell.state, found: cell.found });
-  if (cell._blocked) scan.consecBlocks = (scan.consecBlocks || 0) + 1; else if (cell.found > 0) scan.consecBlocks = 0;
+  if (cell._blocked) { scan.consecBlocks = (scan.consecBlocks || 0) + 1; if (scan.proxyList && scan.proxyList.length > 1) { scan.proxyIdx++; log("Cambio de proxy tras bloqueo"); } } else if (cell.found > 0) scan.consecBlocks = 0;
   if (cfg.safeMode && scan.consecBlocks >= (cfg.maxBlocks || 4)) { log("Auto-pausa anti-baneo tras " + scan.consecBlocks + " celdas con posible bloqueo"); broadcast("blocked", { consec: scan.consecBlocks }); scan.paused = true; scan.idx++; broadcast("progress", { cellsDone: scan.idx, cellsTotal: scan.cells.length, found: scan.found }); broadcast("status", statusObj()); return; }
   if (!scan.demo && cfg.subdivide !== false && cell.found >= (cfg.subdivideAt || 90) && ((cell.km || scan.cellKm) > 0.35) && (cell.depth || 0) < 2) { const subs = splitCell(cell); scan.cells.splice(scan.idx + 1, 0, ...subs); broadcast("cellsadd", { cells: subs.map(c => ({ key: c.key, bbox: c.bbox, state: "pending" })) }); log("Celda densa subdividida en 4 (" + cell.found + " negocios)"); }
   advance();
@@ -130,7 +144,7 @@ function ingestCell() { let text; try { text = fs.readFileSync(CELL_CSV, "utf8")
 function findBin() { if (process.env.SCRAPER_BIN && fs.existsSync(process.env.SCRAPER_BIN)) return process.env.SCRAPER_BIN; for (const p of [path.join(ROOT, "gms"), path.join(ROOT, "..", "google-maps-scraper", "gms")]) if (fs.existsSync(p)) return p; return null; }
 function buildCmd(bb) {
   const grid = ["-grid-bbox", bb, "-grid-cell", String((curCell && curCell.km) || scan.cellKm), "-zoom", "15"];
-  const extra = ["-c", "1"]; if (scan.email) extra.push("-email"); const px = (scan.proxies || "").split(/[\n,]+/).map(s => s.trim()).filter(Boolean); if (px.length) extra.push("-proxies", px.join(",")); if (cfg.leadsdbKey) extra.push("-leadsdb-api-key", cfg.leadsdbKey); if (cfg.depth > 0) extra.push("-depth", String(cfg.depth));
+  const extra = ["-c", "1"]; if (scan.email) extra.push("-email"); const px = scan.proxyList || []; if (px.length) extra.push("-proxies", px[scan.proxyIdx % px.length]); if (cfg.leadsdbKey) extra.push("-leadsdb-api-key", cfg.leadsdbKey); if (cfg.depth > 0) extra.push("-depth", String(cfg.depth));
   if (process.env.SCRAPER_MODE === "docker") {
     const a = ["run", "--rm", "-v", `${DATA}:/out`, "-v", `${Q_FILE}:/queries.txt:ro`, "gosom/google-maps-scraper", "-input", "/queries.txt", "-results", "/out/cell.csv", "-lang", "es", "-exit-on-inactivity", "20s", ...extra, ...grid];
     return { cmd: "docker", args: a };
@@ -138,7 +152,16 @@ function buildCmd(bb) {
   const bin = findBin(); if (!bin) return { error: "No encuentro 'gms'. Compílalo (go build), define SCRAPER_BIN o usa SCRAPER_MODE=docker." };
   return { cmd: bin, args: ["-input", Q_FILE, "-results", CELL_CSV, "-lang", "es", "-exit-on-inactivity", "20s", ...extra, ...grid] };
 }
-function finish() { if (!scan) return; scan.running = false; db.history.unshift({ ts: Date.now(), found: scan.found, cells: scan.cells.length, mode: scan.mode, area: scan.area }); db.history = db.history.slice(0, 50); save(); broadcast("status", statusObj()); broadcast("done", { found: scan.found, cells: scan.cells.length }); log(`Fin · ${scan.found} negocios`); }
+function finish() {
+  if (!scan) return;
+  const errs = scan.cells.filter(c => c.state === "error");
+  if (cfg.retryFailed !== false && !scan.retried && errs.length && !scan.paused) { scan.retried = true; scan.idx = scan.cells.length; errs.forEach(c => scan.cells.push(Object.assign({}, c, { state: "pending", _blocked: false }))); log("Reintentando " + errs.length + " celdas con error"); broadcast("status", statusObj()); return scheduleNext(); }
+  scan.running = false;
+  db.scanned = [...new Set((db.scanned || []).concat(scan.cells.filter(c => c.state === "done" || c.state === "empty").map(c => c.key)))].slice(-5000);
+  db.history.unshift({ ts: Date.now(), found: scan.found, cells: scan.cells.length, mode: scan.mode, area: scan.area }); db.history = db.history.slice(0, 50); save();
+  broadcast("status", statusObj()); broadcast("done", { found: scan.found, cells: scan.cells.length }); log(`Fin · ${scan.found} negocios`);
+  if (cfg.notify && cfg.telegramToken && cfg.telegramChat) tgSend("✅ Escaneo terminado: <b>" + scan.found + "</b> negocios en " + scan.cells.length + " celdas.");
+}
 function pause() { if (scan) { scan.paused = true; broadcast("status", statusObj()); } return { ok: true }; }
 function resume() { if (scan) { scan.paused = false; scan.consecBlocks = 0; broadcast("status", statusObj()); processNext(); } return { ok: true }; }
 function stop() { if (demoT) { clearTimeout(demoT); demoT = null; } if (nextT) { clearTimeout(nextT); nextT = null; } if (pollT) { clearInterval(pollT); pollT = null; } if (child) { try { child.kill("SIGTERM"); } catch (e) {} child = null; } if (scan) { scan.running = false; broadcast("status", statusObj()); broadcast("done", { found: scan.found, cells: scan.cells.length }); } return { ok: true }; }
@@ -174,8 +197,8 @@ const server = http.createServer(async (req, res) => {
   if (p === "/api/scan/resume" && req.method === "POST") return json(res, resume());
   if (p === "/api/scan/stop" && req.method === "POST") return json(res, stop());
   if (p === "/api/lead/update" && req.method === "POST") { const b = await body(req); return json(res, updateLead(b.id, b.patch || {})); }
-  if (p === "/api/config" && req.method === "GET") return json(res, { telegramChat: cfg.telegramChat, hasToken: !!cfg.telegramToken, webhookUrl: cfg.webhookUrl, proxies: cfg.proxies, notify: !!cfg.notify, leadsdb: !!cfg.leadsdbKey, safeMode: cfg.safeMode !== false, pauseMin: cfg.pauseMin, pauseMax: cfg.pauseMax });
-  if (p === "/api/config" && req.method === "POST") { const b = await body(req); ["telegramToken", "telegramChat", "webhookUrl", "proxies", "leadsdbKey"].forEach(k => { if (typeof b[k] === "string") cfg[k] = b[k]; }); ["pauseMin", "pauseMax", "depth", "maxBlocks", "subdivideAt"].forEach(k => { if (typeof b[k] === "number" && b[k] >= 0) cfg[k] = b[k]; }); if (b.notify !== undefined) cfg.notify = !!b.notify; if (b.safeMode !== undefined) cfg.safeMode = !!b.safeMode; if (b.subdivide !== undefined) cfg.subdivide = !!b.subdivide; saveCfg(); return json(res, { ok: true }); }
+  if (p === "/api/config" && req.method === "GET") return json(res, { telegramChat: cfg.telegramChat, hasToken: !!cfg.telegramToken, webhookUrl: cfg.webhookUrl, proxies: cfg.proxies, notify: !!cfg.notify, leadsdb: !!cfg.leadsdbKey, safeMode: cfg.safeMode !== false, pauseMin: cfg.pauseMin, pauseMax: cfg.pauseMax, exclude: cfg.exclude || "", maxLeads: cfg.maxLeads || 0, retryFailed: cfg.retryFailed !== false });
+  if (p === "/api/config" && req.method === "POST") { const b = await body(req); ["telegramToken", "telegramChat", "webhookUrl", "proxies", "leadsdbKey", "exclude"].forEach(k => { if (typeof b[k] === "string") cfg[k] = b[k]; }); ["pauseMin", "pauseMax", "depth", "maxBlocks", "subdivideAt", "maxLeads"].forEach(k => { if (typeof b[k] === "number" && b[k] >= 0) cfg[k] = b[k]; }); if (b.notify !== undefined) cfg.notify = !!b.notify; if (b.safeMode !== undefined) cfg.safeMode = !!b.safeMode; if (b.subdivide !== undefined) cfg.subdivide = !!b.subdivide; if (b.retryFailed !== undefined) cfg.retryFailed = !!b.retryFailed; saveCfg(); return json(res, { ok: true }); }
   if (p === "/api/test-telegram" && req.method === "POST") { const b = await body(req); if (b && typeof b.telegramToken === "string" && b.telegramToken) { cfg.telegramToken = b.telegramToken; cfg.telegramChat = b.telegramChat || cfg.telegramChat; saveCfg(); } return json(res, await tgSend("✅ BUSCA-CHAMBA-3000 conectado. Aquí te llegarán los leads nuevos.")); }
   if (p === "/api/logs") { res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8", "Access-Control-Allow-Origin": "*" }); return res.end(logs.join("\n") || "(sin logs)"); }
   if (p === "/api/reset" && req.method === "POST") { db = { leads: {}, order: [], history: db.history || [] }; scan = null; save(); broadcast("reset", {}); return json(res, { ok: true }); }
