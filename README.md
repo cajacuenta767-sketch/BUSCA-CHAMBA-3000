@@ -19,9 +19,12 @@ Después de scrapear, abre **`dashboard.html`** en tu navegador (doble clic) y c
 - Buscador, filtros por rubro y orden por rating / número de reseñas.
 - Botones directos de **WhatsApp**, **correo**, **llamar** y **web** por cada negocio.
 - **Mensaje de venta listo para copiar** — **por rubro** (farmacia, taller de celulares, restaurante, dental, gimnasio, bodega, etc., cada uno con el sistema ideal para venderle) o por servicio general. Detecta el rubro automáticamente y arma el mensaje con el nombre del negocio; botón directo para abrir **WhatsApp** con el texto puesto.
-- Marca de "contactado" que se recuerda entre sesiones, tema claro/oscuro y exportación a CSV.
+- Marca de "contactado" que se recuerda entre sesiones y tema claro/oscuro.
+- **🗺️ Mapa y cobertura**: dibuja una **cuadrícula por celdas (km)** sobre el área que elijas; las celdas con negocios ya escaneados salen en verde (y puedes marcar/desmarcar con clic) para **no saltarte ninguna zona**. Muestra tus leads como pines y **genera el comando `-grid-bbox` exacto** para barrer esa área celda por celda.
+- **🛠️ Herramientas**: copiar todos los teléfonos/correos, abrir WhatsApp Web, reiniciar contactados.
+- **📊 Exportar Excel `.xlsx`** con encabezados y columnas correctas (si abres sin internet, baja un CSV compatible con Excel).
 
-No instala nada: es un solo archivo HTML. Ábrelo con **Datos de ejemplo** para ver cómo se ve sin datos propios.
+No instala nada: es un solo archivo HTML. Ábrelo con **Datos de ejemplo** para ver cómo se ve sin datos propios. La pestaña de mapa necesita internet (usa mapas de OpenStreetMap).
 
 ## Requisitos
 
