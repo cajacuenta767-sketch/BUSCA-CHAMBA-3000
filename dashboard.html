@@ -260,6 +260,8 @@
         <div class="form-grid tight" style="margin-top:12px">
           <div class="fld"><label>Modo seguro</label><label class="chk" style="padding:8px 0"><input type="checkbox" id="cfgSafe" checked> Pausas + auto-pausa al detectar bloqueo</label></div>
           <div class="fld"><label>Pausa entre celdas (seg, mín–máx)</label><div style="display:flex;gap:6px"><input class="field num" id="cfgPmin" type="number" min="0" value="3"><input class="field num" id="cfgPmax" type="number" min="0" value="8"></div></div>
+          <div class="fld"><label>Velocidad (búsquedas a la vez)</label><input class="field num" id="cfgConc" type="number" min="1" max="8" value="1" title="1 = lo más seguro. 2-3 va bien si tienes proxies."></div>
+          <div class="fld"><label>Cortar celda tras (seg sin resultados)</label><input class="field num" id="cfgInact" type="number" min="5" max="120" value="20"></div>
           <div class="fld"><label>Reintentos</label><label class="chk" style="padding:8px 0"><input type="checkbox" id="cfgRetry" checked> Reintentar celdas con error</label></div>
         </div>
         <div class="play-row" style="justify-content:flex-start;margin-top:10px">
@@ -371,6 +373,7 @@
       <button class="btn" data-act="xlsx-nc">🟢 Excel: solo sin contactar</button>
       <button class="btn" data-act="today">📅 Excel "para hoy"</button>
       <button class="btn" data-act="pdf-all">📄 Propuestas PDF (filtradas)</button>
+      <button class="btn" data-act="enrich">✨ Enriquecer: correos y redes desde su web</button>
       <button class="btn" data-act="mark-contacted">✅ Marcar filtrados como contactado</button>
       <button class="btn" data-act="phones">📞 Copiar teléfonos (filtrados)</button>
       <button class="btn" data-act="emails">✉️ Copiar correos (filtrados)</button>
@@ -378,6 +381,7 @@
       <button class="btn" data-act="logs">📄 Ver logs del escaneo</button>
       <button class="btn ghost" data-act="reset">♻️ Borrar todos los leads</button>
     </div>
+    <div id="enrBox" class="help" hidden></div>
     <div class="help">El Excel incluye Ciudad, Estado y Notas. Sin internet baja un CSV compatible con Excel (separador <code>;</code>). El plan completo está en <code>PLAN.md</code>.</div>
   </section>
 </div>
@@ -762,6 +766,11 @@ function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");se
 
 // ---- Ingesta ----
 function addLead(l,live){l=fixLead(l);l.emails=emailsOf(l.emails);const id=idOf(l);if(!byId[id]){byId[id]=l;LEADS.push(l);if(l._meta&&!meta[id])meta[id]=l._meta;if(live){appendCardLive(l);updateStats();catsSoon();}addPin(l);}else Object.assign(byId[id],l);}
+let ENR=null,enrT=null;
+function renderEnr(){const b=$("#enrBox");if(!b||!ENR)return;b.hidden=false;const pct=ENR.total?Math.round(ENR.done/ENR.total*100):0;
+  b.innerHTML=ENR.running?`✨ Enriqueciendo… <b>${ENR.done}/${ENR.total}</b> (${pct}%) · ${ENR.mails} con correo · ${ENR.socs} con redes`
+    :`✅ Enriquecido: <b>${ENR.done}</b> webs revisadas · <b>${ENR.mails}</b> correos nuevos · <b>${ENR.socs}</b> con redes`;}
+function enrSoon(){clearTimeout(enrT);enrT=setTimeout(()=>{render();},700);}
 let FEED=[],liveT=null;
 function renderLive(){
   const w=$("#liveWrap");if(!w)return;
@@ -789,6 +798,8 @@ function connectSSE(){try{es=new EventSource("/api/stream");}catch(e){return;}
   es.addEventListener("status",e=>onStatus(JSON.parse(e.data)));
   es.addEventListener("done",e=>{const d=JSON.parse(e.data);onStatus({running:false});toast((d.found||0)>0?("Escaneo terminado: "+d.found+" negocios"):("Terminó sin resultados"+(scanWarn?" · revisa Herramientas ▸ Ver logs":"")));$("#scanMsg").innerHTML=scanWarn?('⚠️ Terminó con '+scanWarn+' avisos del scraper. <a href="/api/logs" target="_blank">Ver logs</a>'):((d.found||0)===0?'Sin resultados: probable bloqueo de IP. Usa proxies (⚙️ Ajustes). <a href="/api/logs" target="_blank">Ver logs</a>':'✅ Escaneo terminado.');});
   es.addEventListener("update",e=>{const d=JSON.parse(e.data);meta[d.id]=d.meta;});
+  es.addEventListener("leadup",e=>{const l=fixLead(JSON.parse(e.data));const id=idOf(l);if(byId[id]){Object.assign(byId[id],l);}else{addLead(l,false);}enrSoon();});
+  es.addEventListener("enrich",e=>{const d=JSON.parse(e.data);ENR=d;renderEnr();if(!d.running)enrSoon();});
   es.addEventListener("reset",()=>{LEADS=[];byId={};FEED=[];renderLive();render();if(pinLayer)pinLayer.clearLayers();if(gridLayer)gridLayer.clearLayers();});
   es.addEventListener("log",()=>{scanWarn++;});
   es.addEventListener("blocked",e=>{let d={};try{d=JSON.parse(e.data);}catch(x){}toast("🛡️ Auto-pausado: posible bloqueo de Google tras "+(d.consec||"varias")+" celdas.");$("#scanMsg").innerHTML='🛡️ <b>Pausado por posible bloqueo de Google.</b> Configura proxies en ⚙️ Ajustes o espera un rato y pulsa <b>Reanudar</b>. <a href="/api/logs" target="_blank">Ver logs</a>';});
@@ -807,7 +818,7 @@ function setProg(done,total,found,run,pau){found=Math.max(found||0,LEADS.length)
     : $("#estTxt").textContent;const pg=document.querySelector(".progress");if(pg)pg.classList.toggle("live",!!run&&!pau);}
 function detectServer(){fetch("/api/status").then(r=>r.ok?r.json():Promise.reject()).then(()=>{SERVER=true;setMode(true);
   fetch("/api/leads").then(r=>r.json()).then(d=>{(d.leads||[]).forEach(l=>{if(l._meta)meta[idOf(l)]=l._meta;});loadAll(d.leads||[]);if(d.cells&&d.cells.length)drawServerCells(d.cells);if(d.history)renderHistory(d.history);onStatus(d.status||{});});
-  fetch("/api/config").then(r=>r.json()).then(c=>{$("#cfgChat").value=c.telegramChat||"";$("#cfgProxies").value=c.proxies||"";$("#cfgWebhook").value=c.webhookUrl||"";$("#cfgNotify").checked=!!c.notify;$("#cfgSafe").checked=c.safeMode!==false;if(c.pauseMin!=null)$("#cfgPmin").value=c.pauseMin;if(c.pauseMax!=null)$("#cfgPmax").value=c.pauseMax;$("#cfgExclude").value=c.exclude||"";if(c.maxLeads!=null)$("#cfgMaxLeads").value=c.maxLeads;$("#cfgRetry").checked=c.retryFailed!==false;if(c.hasToken)$("#cfgToken").placeholder="(token guardado)";}).catch(()=>{});
+  fetch("/api/config").then(r=>r.json()).then(c=>{$("#cfgChat").value=c.telegramChat||"";$("#cfgProxies").value=c.proxies||"";$("#cfgWebhook").value=c.webhookUrl||"";$("#cfgNotify").checked=!!c.notify;$("#cfgSafe").checked=c.safeMode!==false;if(c.conc!=null)$("#cfgConc").value=c.conc;if(c.inactivity!=null)$("#cfgInact").value=c.inactivity;if(c.pauseMin!=null)$("#cfgPmin").value=c.pauseMin;if(c.pauseMax!=null)$("#cfgPmax").value=c.pauseMax;$("#cfgExclude").value=c.exclude||"";if(c.maxLeads!=null)$("#cfgMaxLeads").value=c.maxLeads;$("#cfgRetry").checked=c.retryFailed!==false;if(c.hasToken)$("#cfgToken").placeholder="(token guardado)";}).catch(()=>{});
   connectSSE();}).catch(()=>{SERVER=false;setMode(false);meta=store.get("bc3k_meta",{});render();});}
 
 // ---- Escaneo ----
@@ -825,7 +836,7 @@ function estimate(){if(!map){$("#estTxt").textContent="";return;}
   $("#estTxt").textContent=`≈ ${n} celdas`+(adj?` · celda auto-ajustada a ${km} km`:"")+` · tiempo aprox. ${min<60?min+" min":(Math.round(min/6)/10)+" h"} (depende de proxies/conexión)`;}
 
 // ---- Config ----
-function saveCfg(){const b={telegramChat:$("#cfgChat").value.trim(),proxies:$("#cfgProxies").value.trim(),webhookUrl:$("#cfgWebhook").value.trim(),notify:$("#cfgNotify").checked,safeMode:$("#cfgSafe").checked,pauseMin:+$("#cfgPmin").value||0,pauseMax:+$("#cfgPmax").value||0,exclude:$("#cfgExclude").value,maxLeads:+$("#cfgMaxLeads").value||0,retryFailed:$("#cfgRetry").checked};const tok=$("#cfgToken").value.trim();if(tok)b.telegramToken=tok;fetch("/api/config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}).then(()=>toast("Ajustes guardados ✓")).catch(()=>toast("No se pudo guardar"));}
+function saveCfg(){const b={telegramChat:$("#cfgChat").value.trim(),proxies:$("#cfgProxies").value.trim(),webhookUrl:$("#cfgWebhook").value.trim(),notify:$("#cfgNotify").checked,safeMode:$("#cfgSafe").checked,conc:+$("#cfgConc").value||1,inactivity:+$("#cfgInact").value||20,pauseMin:+$("#cfgPmin").value||0,pauseMax:+$("#cfgPmax").value||0,exclude:$("#cfgExclude").value,maxLeads:+$("#cfgMaxLeads").value||0,retryFailed:$("#cfgRetry").checked};const tok=$("#cfgToken").value.trim();if(tok)b.telegramToken=tok;fetch("/api/config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}).then(()=>toast("Ajustes guardados ✓")).catch(()=>toast("No se pudo guardar"));}
 function testTg(){fetch("/api/test-telegram",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({telegramToken:$("#cfgToken").value.trim(),telegramChat:$("#cfgChat").value.trim()})}).then(r=>r.json()).then(j=>{toast(j.status===200?"✅ Mensaje enviado a Telegram":"❌ "+((j.body||j.error||"").slice(0,60)));}).catch(()=>toast("Error de conexión"));}
 
 // ---- Herramientas ----
@@ -838,6 +849,7 @@ async function copyTxt(t,m){try{await navigator.clipboard.writeText(t);}catch(e)
 document.querySelectorAll("[data-act]").forEach(b=>b.onclick=()=>{const a=b.dataset.act;
   if(a==="xlsx")exportExcel("all");else if(a==="xlsx-nc")exportExcel("nc");else if(a==="today")exportExcel("today");
   else if(a==="pdf-all"){const list=getFiltered();if(list.length>60){if(!confirm("Vas a generar "+list.length+" propuestas en un PDF. ¿Continuar?"))return;}bulkProposalsPDF(list);}
+  else if(a==="enrich"){fetch("/api/enrich",{method:"POST"}).then(r=>r.json()).then(j=>toast(j.error||"Enriqueciendo… mira el avance abajo")).catch(()=>toast("No se pudo conectar"));}
   else if(a==="mark-contacted"){const list=getFiltered();if(!list.length){toast("No hay leads filtrados");return;}if(confirm("¿Marcar "+list.length+" leads como contactado?")){list.forEach(l=>setMeta(idOf(l),{state:"contactado",lastContact:Date.now()}));render();toast(list.length+" marcados como contactado");}}
   else if(a==="phones"){const p=[...new Set(getFiltered().map(l=>l.phone).filter(Boolean))];if(!p.length){toast("Sin teléfonos");return;}copyTxt(p.join("\n"),p.length+" teléfonos ✓");}
   else if(a==="emails"){const e=[...new Set(getFiltered().flatMap(l=>l.emails))];if(!e.length){toast("Sin correos");return;}copyTxt(e.join("\n"),e.length+" correos ✓");}

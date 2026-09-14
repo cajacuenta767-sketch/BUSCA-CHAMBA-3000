@@ -39,7 +39,7 @@ const CATEGORIES = [...new Set(CATEGORY_GROUPS.flatMap(g => g.items))];
 
 // ---------- DB & Config ----------
 let db = load(DB_FILE, { leads: {}, order: [], history: [], scanned: [] });
-let cfg = load(CFG_FILE, { telegramToken: "", telegramChat: "", webhookUrl: "", proxies: "", leadsdbKey: "", notify: false, safeMode: true, pauseMin: 3, pauseMax: 8, depth: 0, maxBlocks: 4, subdivide: true, subdivideAt: 90, exclude: "", maxLeads: 0, retryFailed: true, cellMax: 6 });
+let cfg = load(CFG_FILE, { telegramToken: "", telegramChat: "", webhookUrl: "", proxies: "", leadsdbKey: "", notify: false, safeMode: true, pauseMin: 3, pauseMax: 8, depth: 0, maxBlocks: 4, subdivide: true, subdivideAt: 90, exclude: "", maxLeads: 0, retryFailed: true, cellMax: 6, conc: 1, inactivity: 20 });
 function load(f, d) { try { return Object.assign({}, d, JSON.parse(fs.readFileSync(f, "utf8"))); } catch (e) { return d; } }
 let saveT = null;
 function save() { clearTimeout(saveT); saveT = setTimeout(() => { try { fs.writeFileSync(DB_FILE, JSON.stringify(db)); } catch (e) {} }, 250); }
@@ -225,13 +225,13 @@ function ingestCell() { let text; try { text = fs.readFileSync(CELL_CSV, "utf8")
 function findBin() { if (process.env.SCRAPER_BIN && fs.existsSync(process.env.SCRAPER_BIN)) return process.env.SCRAPER_BIN; for (const p of [path.join(ROOT, "gms"), path.join(ROOT, "..", "google-maps-scraper", "gms")]) if (fs.existsSync(p)) return p; return null; }
 function buildCmd(bb) {
   const grid = ["-grid-bbox", bb, "-grid-cell", String((curCell && curCell.km) || scan.cellKm), "-zoom", "15"];
-  const extra = ["-c", "1"]; if (scan.email) extra.push("-email"); if (scan.curProxy) extra.push("-proxies", scan.curProxy); if (cfg.leadsdbKey) extra.push("-leadsdb-api-key", cfg.leadsdbKey); if (cfg.depth > 0) extra.push("-depth", String(cfg.depth));
+  const extra = ["-c", String(Math.max(1, Math.min(8, +cfg.conc || 1)))]; if (scan.email) extra.push("-email"); if (scan.curProxy) extra.push("-proxies", scan.curProxy); if (cfg.leadsdbKey) extra.push("-leadsdb-api-key", cfg.leadsdbKey); if (cfg.depth > 0) extra.push("-depth", String(cfg.depth));
   if (process.env.SCRAPER_MODE === "docker") {
-    const a = ["run", "--rm", "-v", `${DATA}:/out`, "-v", `${Q_FILE}:/queries.txt:ro`, "gosom/google-maps-scraper", "-input", "/queries.txt", "-results", "/out/cell.csv", "-lang", "es", "-exit-on-inactivity", "20s", ...extra, ...grid];
+    const a = ["run", "--rm", "-v", `${DATA}:/out`, "-v", `${Q_FILE}:/queries.txt:ro`, "gosom/google-maps-scraper", "-input", "/queries.txt", "-results", "/out/cell.csv", "-lang", "es", "-exit-on-inactivity", Math.max(5, Math.min(120, +cfg.inactivity || 20)) + "s", ...extra, ...grid];
     return { cmd: "docker", args: a };
   }
   const bin = findBin(); if (!bin) return { error: "No encuentro 'gms'. Compílalo (go build), define SCRAPER_BIN o usa SCRAPER_MODE=docker." };
-  return { cmd: bin, args: ["-input", Q_FILE, "-results", CELL_CSV, "-lang", "es", "-exit-on-inactivity", "20s", ...extra, ...grid] };
+  return { cmd: bin, args: ["-input", Q_FILE, "-results", CELL_CSV, "-lang", "es", "-exit-on-inactivity", Math.max(5, Math.min(120, +cfg.inactivity || 20)) + "s", ...extra, ...grid] };
 }
 function finish() {
   if (!scan) return;
@@ -262,6 +262,58 @@ function demoCell(cell) {
 }
 function updateLead(id, patch) { const l = db.leads[id]; if (!l) return { error: "no existe" }; l._meta = Object.assign({}, l._meta, patch); save(); broadcast("update", { id, meta: l._meta }); return { ok: true }; }
 
+
+// ---------- Enriquecer: correos y redes desde la web del propio negocio ----------
+const SOCIAL_HOSTS = /facebook\.|fb\.me|instagram\.|instagr\.am|tiktok\.|linktr|beacons|wa\.me|api\.whatsapp|twitter\.|x\.com|youtube\./i;
+const esWebPropia = u => !!u && /^https?:\/\//i.test(u) && !SOCIAL_HOSTS.test(u);
+const MAIL_JUNK = /sentry|wixpress|wix\.com|example\.|yourdomain|yourmail|domain\.com|email\.com|@2x|\.(png|jpg|jpeg|gif|svg|webp|css|js)$/i;
+function limpiaMails(list) { return [...new Set((list || []).filter(m => m.length < 80 && !MAIL_JUNK.test(m)))].slice(0, 5); }
+function fetchPage(url, redir) {
+  return new Promise(res => {
+    if ((redir || 0) > 3) return res("");
+    let u; try { u = new URL(url); } catch (e) { return res(""); }
+    const lib = u.protocol === "https:" ? https : http;
+    try {
+      const req = lib.request({ hostname: u.hostname, port: u.port || (u.protocol === "https:" ? 443 : 80), path: (u.pathname || "/") + (u.search || ""), method: "GET", timeout: 9000,
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; BuscaChamba/1.0)", "Accept": "text/html,*/*" } }, r => {
+        if ([301, 302, 303, 307, 308].includes(r.statusCode) && r.headers.location) { r.destroy(); return res(fetchPage(new URL(r.headers.location, url).href, (redir || 0) + 1)); }
+        if (r.statusCode !== 200) { r.destroy(); return res(""); }
+        let b = "", n = 0;
+        r.on("data", d => { n += d.length; if (n > 300000) { r.destroy(); return; } b += d; });
+        r.on("end", () => res(b)); r.on("close", () => res(b));
+      });
+      req.on("error", () => res("")); req.on("timeout", () => { req.destroy(); res(""); }); req.end();
+    } catch (e) { res(""); }
+  });
+}
+let enrich = null;
+async function enrichRun() {
+  const pend = db.order.map(i => db.leads[i]).filter(Boolean).filter(l => esWebPropia(l.website) && !l._enr);
+  enrich = { total: pend.length, done: 0, mails: 0, socs: 0, running: true };
+  broadcast("enrich", enrich);
+  log("Enriquecer: " + pend.length + " negocios con web propia");
+  const WORKERS = 4;
+  let idx = 0;
+  async function worker() {
+    while (enrich && enrich.running && idx < pend.length) {
+      const l = pend[idx++];
+      const html = await fetchPage(l.website);
+      if (html) {
+        const em = limpiaMails(emails(html));
+        if (em.length) { l.emails = [...new Set((l.emails || []).concat(em))].slice(0, 5); enrich.mails++; }
+        const so = socialFrom([html]);
+        if (so.fb || so.ig || so.tt) { l.social = Object.assign({}, l.social, so); enrich.socs++; }
+        if (em.length || so.fb || so.ig || so.tt) broadcast("leadup", l);
+      }
+      l._enr = 1; enrich.done++;
+      if (enrich.done % 5 === 0 || enrich.done === pend.length) { broadcast("enrich", enrich); save(); }
+    }
+  }
+  await Promise.all(new Array(Math.min(WORKERS, pend.length || 1)).fill(0).map(worker));
+  if (enrich) { enrich.running = false; broadcast("enrich", enrich); }
+  save(); log("Enriquecer listo: " + (enrich ? enrich.mails : 0) + " con correo, " + (enrich ? enrich.socs : 0) + " con redes");
+}
+
 // ---------- HTTP ----------
 function body(req) { return new Promise(r => { let b = ""; req.on("data", d => b += d); req.on("end", () => { try { r(JSON.parse(b || "{}")); } catch (e) { r({}); } }); }); }
 function json(res, o, code = 200) { res.writeHead(code, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }); res.end(JSON.stringify(o)); }
@@ -279,11 +331,13 @@ const server = http.createServer(async (req, res) => {
   if (p === "/api/scan/resume" && req.method === "POST") return json(res, resume());
   if (p === "/api/scan/stop" && req.method === "POST") return json(res, stop());
   if (p === "/api/lead/update" && req.method === "POST") { const b = await body(req); return json(res, updateLead(b.id, b.patch || {})); }
-  if (p === "/api/config" && req.method === "GET") return json(res, { telegramChat: cfg.telegramChat, hasToken: !!cfg.telegramToken, webhookUrl: cfg.webhookUrl, proxies: cfg.proxies, notify: !!cfg.notify, leadsdb: !!cfg.leadsdbKey, safeMode: cfg.safeMode !== false, pauseMin: cfg.pauseMin, pauseMax: cfg.pauseMax, exclude: cfg.exclude || "", maxLeads: cfg.maxLeads || 0, retryFailed: cfg.retryFailed !== false });
-  if (p === "/api/config" && req.method === "POST") { const b = await body(req); ["telegramToken", "telegramChat", "webhookUrl", "proxies", "leadsdbKey", "exclude"].forEach(k => { if (typeof b[k] === "string") cfg[k] = b[k]; }); ["pauseMin", "pauseMax", "depth", "maxBlocks", "subdivideAt", "maxLeads", "cellMax"].forEach(k => { if (typeof b[k] === "number" && b[k] >= 0) cfg[k] = b[k]; }); if (b.notify !== undefined) cfg.notify = !!b.notify; if (b.safeMode !== undefined) cfg.safeMode = !!b.safeMode; if (b.subdivide !== undefined) cfg.subdivide = !!b.subdivide; if (b.retryFailed !== undefined) cfg.retryFailed = !!b.retryFailed; saveCfg(); return json(res, { ok: true }); }
+  if (p === "/api/config" && req.method === "GET") return json(res, { telegramChat: cfg.telegramChat, hasToken: !!cfg.telegramToken, webhookUrl: cfg.webhookUrl, proxies: cfg.proxies, notify: !!cfg.notify, leadsdb: !!cfg.leadsdbKey, safeMode: cfg.safeMode !== false, pauseMin: cfg.pauseMin, pauseMax: cfg.pauseMax, exclude: cfg.exclude || "", maxLeads: cfg.maxLeads || 0, retryFailed: cfg.retryFailed !== false, conc: cfg.conc || 1, inactivity: cfg.inactivity || 20, cellMax: cfg.cellMax || 6 });
+  if (p === "/api/config" && req.method === "POST") { const b = await body(req); ["telegramToken", "telegramChat", "webhookUrl", "proxies", "leadsdbKey", "exclude"].forEach(k => { if (typeof b[k] === "string") cfg[k] = b[k]; }); ["pauseMin", "pauseMax", "depth", "maxBlocks", "subdivideAt", "maxLeads", "cellMax", "conc", "inactivity"].forEach(k => { if (typeof b[k] === "number" && b[k] >= 0) cfg[k] = b[k]; }); if (b.notify !== undefined) cfg.notify = !!b.notify; if (b.safeMode !== undefined) cfg.safeMode = !!b.safeMode; if (b.subdivide !== undefined) cfg.subdivide = !!b.subdivide; if (b.retryFailed !== undefined) cfg.retryFailed = !!b.retryFailed; saveCfg(); return json(res, { ok: true }); }
   if (p === "/api/test-telegram" && req.method === "POST") { const b = await body(req); if (b && typeof b.telegramToken === "string" && b.telegramToken) { cfg.telegramToken = b.telegramToken; cfg.telegramChat = b.telegramChat || cfg.telegramChat; saveCfg(); } return json(res, await tgSend("✅ BUSCA-CHAMBA-3000 conectado. Aquí te llegarán los leads nuevos.")); }
   if (p === "/api/logs") { res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8", "Access-Control-Allow-Origin": "*" }); return res.end(logs.join("\n") || "(sin logs)"); }
   if (p === "/api/proxies/fetch" && req.method === "POST") { const r = await fetchAndTestProxies(); if (r.working.length) { cfg.proxies = r.working.join("\n"); saveCfg(); } return json(res, { total: r.total, working: r.working.length, proxies: r.working.join("\n") }); }
+  if (p === "/api/enrich" && req.method === "POST") { if (enrich && enrich.running) return json(res, { error: "Ya se está enriqueciendo." }); enrichRun(); return json(res, { ok: true }); }
+  if (p === "/api/enrich/stop" && req.method === "POST") { if (enrich) enrich.running = false; return json(res, { ok: true }); }
   if (p === "/api/reset" && req.method === "POST") { db = { leads: {}, order: [], history: db.history || [], scanned: db.scanned || [] }; scan = null; save(); broadcast("reset", {}); return json(res, { ok: true }); }
   res.writeHead(404, { "Access-Control-Allow-Origin": "*" }); res.end("not found");
 });
