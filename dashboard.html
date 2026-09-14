@@ -139,6 +139,9 @@
   .b2{font:600 11.5px var(--font-b);padding:4px 9px;border-radius:8px;border:1px solid var(--border);display:inline-flex;gap:5px;align-items:center;color:var(--muted)}
   .b2.yes{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,transparent);background:var(--ok-weak)}.b2.no{opacity:.65}
   .addr{font-size:12.5px;color:var(--muted)}
+  .statrow{font-size:12px;color:var(--muted);background:var(--surface-2);border:1px solid var(--border);border-radius:7px;padding:5px 8px;line-height:1.45}
+  .statrow b{color:var(--accent)}
+  .statrow .lider{color:var(--ok);font-weight:700}
   .desc{font-size:12.5px;color:var(--muted);line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
   .chip.fb{background:#1877f2;border-color:#1877f2;color:#fff}
   .chip.ig{background:linear-gradient(45deg,#f09433,#dc2743,#bc1888);border-color:transparent;color:#fff}
@@ -317,7 +320,7 @@
       <span><i class="sq" style="background:var(--ok)"></i> Con negocios</span>
       <span><i class="sq" style="background:var(--ok);opacity:.3"></i> Vacía</span>
       <span><i class="sq" style="background:var(--danger)"></i> Error</span>
-      <span style="margin-left:auto">🔵 negocio · <b style="color:var(--prospect)">🟠 sin web (prospecto)</b> — pasa el mouse por un pin</span>
+      <span style="margin-left:auto">🔵 negocio · <b style="color:var(--prospect)">🟠 sin sistema (prospecto)</b> — pasa el mouse por un pin</span>
     </div>
     <div id="map"></div>
   </section>
@@ -326,7 +329,7 @@
   <section id="tab-resultados" hidden>
     <div class="stats">
       <div class="stat"><div class="n" id="sTotal">0</div><div class="l">Negocios</div></div>
-      <div class="stat warn"><div class="n" id="sNoWeb">0</div><div class="l">🔥 Sin web</div></div>
+      <div class="stat warn"><div class="n" id="sNoWeb">0</div><div class="l">🔥 Sin sistema</div></div>
       <div class="stat info"><div class="n" id="sPhone">0</div><div class="l">Con teléfono</div></div>
       <div class="stat info"><div class="n" id="sMail">0</div><div class="l">Con correo</div></div>
       <div class="stat ok"><div class="n" id="sDone">0</div><div class="l">En proceso</div></div>
@@ -338,7 +341,7 @@
       <select class="field" id="catFilter"><option value="">Todos los rubros</option></select>
       <select class="field" id="stateFilter"><option value="">Todos los estados</option></select>
       <select class="field" id="minRating"><option value="0">Cualquier rating</option><option value="4">★ 4.0+</option><option value="4.5">★ 4.5+</option><option value="3">★ 3.0+</option></select>
-      <select class="field" id="sortSel"><option value="score">Mejor prospecto</option><option value="name">Nombre</option><option value="rating">Rating</option><option value="reviews">Reseñas</option></select>
+      <select class="field" id="sortSel"><option value="score">Mejor prospecto</option><option value="name">Nombre</option><option value="rating">Rating</option><option value="reviews">Reseñas</option><option value="zona">Líderes de su zona</option></select>
       <button class="btn ghost" id="viewBtn">🗂️ Tablero</button>
     </div>
     <p class="count-note" id="countNote" hidden></p>
@@ -386,7 +389,7 @@
 </div>
 
 <div class="modal-bg" id="modalBg"><div class="modal">
-  <h3 id="mTitle">Mensaje</h3><p class="sub" id="mSub"></p>
+  <h3 id="mTitle">Mensaje</h3><p class="sub" id="mSub"></p><div id="mStats" class="statrow" style="margin:-4px 0 10px" hidden></div>
   <label>Qué ofrecer</label><select class="field" id="mService"></select>
   <label class="chk" style="margin-top:10px;text-transform:none"><input type="checkbox" id="mFollow"> Mensaje de seguimiento (2º toque)</label>
   <label>Mensaje</label><textarea class="field" id="mText"></textarea>
@@ -478,28 +481,44 @@ const OFFER_LABEL={sistema:"🧾 Sistema de gestión"};
 const TIER_LABEL={alta:"🔥 Prioridad alta",media:"⭐ Prioridad media",baja:"Prioridad baja"};
 const SYS_LINE={farmacia:"control de stock con alertas de vencimiento, ventas rápidas y recordatorios a clientes",taller_celulares:"órdenes de reparación con ticket, aviso por WhatsApp e inventario de repuestos",restaurante:"carta digital con QR, pedidos y reservas por WhatsApp, y control de caja",dental:"agenda de citas con recordatorios por WhatsApp y ficha de pacientes",gimnasio:"membresías, control de asistencia y avisos de pago por WhatsApp",bodega:"punto de venta (POS) con inventario y control de fiados",ferreteria:"catálogo con cotizaciones rápidas y control de stock",hotel:"reservas con confirmación por WhatsApp y control de habitaciones",belleza:"reservas online con recordatorios por WhatsApp",veterinaria:"citas, carnet de vacunas digital y recordatorios por WhatsApp"};
 // ---- Estadísticas REALES por negocio (se calculan con TUS leads escaneados) ----
+// Se indexa una sola vez por base y se reutiliza: así el cálculo también sirve en las tarjetas.
+let SIDX=null,SIDXN=-1;
+function statsIndex(){
+  if(SIDX&&SIDXN===LEADS.length)return SIDX;
+  const byCat=new Map(),byCatCity=new Map(),byCity=new Map();
+  const put=(m,k,l)=>{let g=m.get(k);if(!g){g=[];m.set(k,g);}g.push(l);};
+  for(const l of LEADS){const c=normCat(l.category||""),ci=(cityOf(l)||"").trim().toLowerCase();
+    if(c)put(byCat,c,l);if(ci)put(byCity,ci,l);if(c&&ci)put(byCatCity,c+"|"+ci,l);}
+  SIDX={byCat,byCatCity,byCity,agg:new Map()};SIDXN=LEADS.length;return SIDX;
+}
+function aggOf(ix,key,peers){
+  let a=ix.agg.get(key);if(a)return a;
+  const n=peers.length;let sumR=0,cntR=0,sumRev=0,noWeb=0,soc=0,tel=0;const revs=new Array(n);
+  for(let i=0;i<n;i++){const x=peers[i],r=+x.rating||0,v=+x.reviews||0;
+    if(r>0){sumR+=r;cntR++;}revs[i]=v;sumRev+=v;
+    if(!realWeb(x))noWeb++;if(hasSoc(x))soc++;if(waN(x.phone))tel++;}
+  revs.sort((p,q)=>p-q);
+  a={n,revs,avgR:cntR?sumR/cntR:0,avgRev:sumRev/n,top:revs[n-1]||0,
+     pctNoWeb:Math.round(100*noWeb/n),pctSoc:Math.round(100*soc/n),pctTel:Math.round(100*tel/n)};
+  ix.agg.set(key,a);return a;
+}
+const cntGT=(a,v)=>{let lo=0,hi=a.length;while(lo<hi){const m=(lo+hi)>>1;if(a[m]<=v)lo=m+1;else hi=m;}return a.length-lo;};
+const cntLT=(a,v)=>{let lo=0,hi=a.length;while(lo<hi){const m=(lo+hi)>>1;if(a[m]<v)lo=m+1;else hi=m;}return lo;};
 function statsFor(l){
-  if(!LEADS||LEADS.length<6)return null;
-  const key=normCat(l.category||""),cat=key||"tu rubro",city=(cityOf(l)||"").trim();
-  const sameCat=key?LEADS.filter(x=>normCat(x.category||"")===key):[];
-  let peers=[],scope="";
-  if(city&&sameCat.length){const cl=city.toLowerCase();peers=sameCat.filter(x=>(cityOf(x)||"").trim().toLowerCase()===cl);scope=cat+" en "+city;}
-  if(peers.length<5&&sameCat.length){peers=sameCat;scope=cat+" (toda su base escaneada)";}
-  if(peers.length<5&&city){const cl=city.toLowerCase();peers=LEADS.filter(x=>(cityOf(x)||"").trim().toLowerCase()===cl);scope="negocios de "+city;}
-  if(peers.length<5){peers=LEADS;scope="negocios de su base";}
+  if(!l||!LEADS||LEADS.length<6)return null;
+  const ix=statsIndex();
+  const cat=normCat(l.category||""),city=(cityOf(l)||"").trim(),cl=city.toLowerCase();
+  let peers=null,key="",scope="";
+  if(cat&&cl){const k=cat+"|"+cl,g=ix.byCatCity.get(k);if(g&&g.length>=5){peers=g;key="cc:"+k;scope=cat+" en "+city;}}
+  if(!peers&&cat){const g=ix.byCat.get(cat);if(g&&g.length>=5){peers=g;key="c:"+cat;scope=cat+" (toda su base escaneada)";}}
+  if(!peers&&cl){const g=ix.byCity.get(cl);if(g&&g.length>=5){peers=g;key="t:"+cl;scope="negocios de "+city;}}
+  if(!peers){peers=LEADS;key="all";scope="negocios de su base";}
   if(peers.length<5)return null;
-  const n=peers.length;
-  const rated=peers.filter(x=>+x.rating>0);
-  const avgR=rated.length?rated.reduce((a,b)=>a+(+b.rating||0),0)/rated.length:0;
-  const revs=peers.map(x=>+x.reviews||0);
-  const avgRev=revs.reduce((a,b)=>a+b,0)/n;
+  const a=aggOf(ix,key,peers);
   const mine=+l.reviews||0,myR=+l.rating||0;
-  const rank=revs.filter(v=>v>mine).length+1;
-  let top=0;for(const v of revs)if(v>top)top=v;
-  const noWeb=peers.filter(x=>!realWeb(x)).length,soc=peers.filter(x=>hasSoc(x)).length,tel=peers.filter(x=>!!waN(x.phone)).length;
-  return{n,scope,cat,city,avgR,avgRev,mine,myR,rank,top,
-    pctNoWeb:Math.round(100*noWeb/n),pctSoc:Math.round(100*soc/n),pctTel:Math.round(100*tel/n),
-    pctBetter:Math.round(100*revs.filter(v=>v<mine).length/n)};
+  return{n:a.n,scope,cat:cat||"su rubro",city,avgR:a.avgR,avgRev:a.avgRev,mine,myR,
+    rank:cntGT(a.revs,mine)+1,top:a.top,pctNoWeb:a.pctNoWeb,pctSoc:a.pctSoc,pctTel:a.pctTel,
+    pctBetter:Math.round(100*cntLT(a.revs,mine)/a.n)};
 }
 function insightsFor(l,S){
   const o=[];if(!S)return o;
@@ -791,13 +810,14 @@ function parseCSV(t){const rows=[];let row=[],f="",q=false;for(let i=0;i<t.lengt
 function rowsToLeads(rows){if(!rows.length)return[];const H=rows[0].map(h=>h.trim().toLowerCase());const gi=n=>H.indexOf(n),g=(r,n)=>{const i=gi(n);return i>=0?(r[i]||"").trim():"";};const out=[];for(let k=1;k<rows.length;k++){const r=rows[k];if(r.length===1&&r[0]==="")continue;const t=g(r,"title");if(!t)continue;out.push({title:t,category:g(r,"category"),address:parseAddr2(g(r,"address"),g(r,"complete_address")).address,phone:g(r,"phone"),website:g(r,"website"),emails:emailsOf(g(r,"emails")),rating:parseFloat(g(r,"review_rating"))||0,reviews:parseInt(g(r,"review_count").replace(/\D/g,""))||0,lat:parseFloat(g(r,"latitude"))||0,lon:parseFloat(g(r,"longitude"))||0,link:g(r,"link"),place_id:g(r,"place_id")||g(r,"cid"),thumb:g(r,"thumbnail"),city:parseAddr2(g(r,"address"),g(r,"complete_address")).city,country:parseAddr2(g(r,"address"),g(r,"complete_address")).country,about:descFrom(g(r,"descriptions")||g(r,"about")),images:(g(r,"images")||"").split(/[|;,\s]+/).filter(u=>/^https?:/.test(u)).slice(0,6)});}return out;}
 
 // ---- Filtros / render ----
-const CHIPS=[["all","Todos",""],["today","📅 Para hoy",""],["noweb","🔥 Sin web","warn"],["fb","Facebook",""],["ig","Instagram",""],["tt","TikTok",""],["nosoc","Sin redes",""],["wa","WhatsApp",""],["mail","Con correo",""],["web","Con web",""]];
+const CHIPS=[["all","Todos",""],["today","📅 Para hoy",""],["noweb","🔥 Sin sistema","warn"],["fb","Facebook",""],["ig","Instagram",""],["tt","TikTok",""],["nosoc","Sin redes",""],["wa","WhatsApp",""],["mail","Con correo",""],["web","Ya tiene web",""]];
 function renderChips(){$("#chips").innerHTML=CHIPS.map(([k,l,c])=>`<button class="chipf ${c} ${filter===k?"on":""}" data-f="${k}">${l}</button>`).join("");document.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{filter=b.dataset.f;renderChips();render();});}
 function passesChip(l){const m=getMeta(idOf(l));if(filter==="noweb")return !realWeb(l);if(filter==="fb")return !!socialOf(l).fb;if(filter==="ig")return !!socialOf(l).ig;if(filter==="tt")return !!socialOf(l).tt;if(filter==="nosoc")return !hasSoc(l);if(filter==="wa")return !!waN(l.phone);if(filter==="mail")return l.emails.length>0;if(filter==="web")return !!realWeb(l);if(filter==="today")return m.state==="nuevo"||(m.follow&&m.follow<=todayStr());return true;}
 function getFiltered(){
   const q=($("#searchInput").value||"").toLowerCase().trim(),cat=$("#catFilter").value,st=$("#stateFilter").value,city=$("#cityFilter").value,mr=parseFloat($("#minRating").value)||0,sort=$("#sortSel").value;
   let list=LEADS.filter(l=>{if(!passesChip(l))return false;if(cat&&normCat(l.category)!==cat)return false;if(city&&cityOf(l)!==city)return false;if(mr&&(l.rating||0)<mr)return false;if(st&&getMeta(idOf(l)).state!==st)return false;if(q){const h=(l.title+" "+l.category+" "+l.address+" "+cityOf(l)+" "+(l.about||"")+" "+l.phone+" "+l.emails.join(" ")).toLowerCase();if(!h.includes(q))return false;}return true;});
-  list.sort((a,b)=>sort==="rating"?b.rating-a.rating:sort==="reviews"?b.reviews-a.reviews:sort==="name"?a.title.localeCompare(b.title):scoreOf(b)-scoreOf(a));
+  if(sort==="zona"){const rk=l=>{const S=statsFor(l);return S?S.rank:1e9;};const R=new Map();list.forEach(l=>R.set(l,rk(l)));list.sort((a,b)=>R.get(a)-R.get(b)||b.reviews-a.reviews);}
+  else list.sort((a,b)=>sort==="rating"?b.rating-a.rating:sort==="reviews"?b.reviews-a.reviews:sort==="name"?a.title.localeCompare(b.title):scoreOf(b)-scoreOf(a));
   return list;
 }
 const PAGE=300;let shownN=0,lastList=[];
@@ -813,6 +833,11 @@ function render(){
   const grid=$("#grid");grid.innerHTML="";appendChunk(0,shownN);updateNote();
   $("#empty").hidden=LEADS.length>0;updateStats();refreshCats();refreshStates();refreshCities();renderMetrics();
 }
+function statLine(l){const S=statsFor(l);if(!S)return null;
+  const pos=S.rank===1?'<span class="lider">1.º de '+S.n+'</span>':('<b>'+S.rank+'</b> de '+S.n);
+  return{S,txt:'📊 Puesto '+pos+' en '+esc(S.scope)+' · '+S.mine+' reseñas (prom. '+Math.round(S.avgRev)+')'+(S.myR?' · ★ '+S.myR.toFixed(1)+' vs '+S.avgR.toFixed(1):'')+' · '+S.pctNoWeb+'% de su rubro sin sistema'};}
+function statRowHTML(l){const r=statLine(l);if(!r)return"";
+  return `<div class="statrow" title="Calculado con los ${r.S.n} negocios de ${esc(r.S.scope)} que ya escaneaste">${r.txt}</div>`;}
 function card(l){
   const id=idOf(l),m=getMeta(id),wa=waN(l.phone,l.country),email=l.emails[0]||"",ds=daysSince(m.lastContact);
   const el=document.createElement("div");el.className="card st-"+m.state;
@@ -827,6 +852,7 @@ function card(l){
   h+=`<div class="badges"><span class="b2 ${realWeb(l)?"yes":"no"}">🌐 ${realWeb(l)?"Web propia":(hasSoc(l)?"Solo redes":"Sin web")}</span>${(()=>{const o=socialOf(l),n=[o.fb?"FB":"",o.ig?"IG":"",o.tt?"TikTok":""].filter(Boolean);return n.length?`<span class="b2 yes">📱 ${n.join(" · ")}</span>`:"";})()}<span class="b2 ${wa?"yes":"no"}">${isMobile(l.phone)?"📱":"☎️"} ${wa?(isMobile(l.phone)?"WhatsApp":"Fijo"):"Sin tel."}</span><span class="b2 ${email?"yes":"no"}">✉️ ${email?"Correo":"Sin correo"}</span></div>`;
   const cls=classify(l);
   h+=`<div class="clsrow"><span class="clsb ${cls.offer}">💼 ${OFFER_LABEL[cls.offer]}</span><span class="clst t-${cls.tier}">${TIER_LABEL[cls.tier]}</span></div>`;
+  h+=statRowHTML(l);
   if(l.address)h+=`<div class="addr">📍 ${esc(l.address)}</div>`;
   if(l.about)h+=`<div class="desc" title="${esc(l.about)}">📝 ${esc(l.about)}</div>`;
   h+=`<div class="actions">`;
@@ -903,6 +929,7 @@ function cardMailHref(l){const email=(l.emails&&l.emails[0])||"";if(!email)retur
 function buildMsg(){const link=demoLinkFor(current);let t;if($("#mFollow").checked){t=FOLLOWUP(myName(),current.title);if(link)t+="\n\n👉 Aquí lo puede probar usted mismo (demo): "+link;}else{const tpl=(store.get("bc3k_tpl","")||"").trim();if(tpl)t=applyTpl(tpl,current,link);else{t=pitchBy($("#mService").value).build(myName(),current.title);if(link)t+="\n\n👉 Aquí lo puede probar usted mismo (demo): "+link;}}$("#mText").value=t;}
 function openModal(l){current=l;const id=idOf(l),m=getMeta(id);
   $("#mTitle").textContent=l.title;$("#mSub").textContent=((l.phone?("📞 "+l.phone):"")+(l.emails[0]?("   ✉️ "+l.emails[0]):""))||"Sin contacto directo";$("#mFollow").checked=false;
+  const ms=$("#mStats");if(ms){const r=statLine(l);ms.hidden=!r;ms.innerHTML=r?r.txt:"";}
   const G=[["Vender un sistema (por rubro)","v",PITCHES.verticals],["Servicio general","s",PITCHES.servicios]];
   $("#mService").innerHTML=G.map(([lb,g,o])=>`<optgroup label="${lb}">`+Object.entries(o).map(([k,v])=>`<option value="${g}:${k}">${v.label}</option>`).join("")+`</optgroup>`).join("");
   const vk=detectV(l.category);$("#mService").value=vk?("v:"+vk):"s:sistema";
