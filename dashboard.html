@@ -204,7 +204,7 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="brand"><div class="logo"><svg viewBox="0 0 48 48" width="34" height="34" aria-label="Sky Tech"><rect width="48" height="48" rx="11" fill="#0B3C68"/><rect x="9" y="27" width="6" height="11" rx="1.2" fill="#fff"/><rect x="18" y="22" width="6" height="16" rx="1.2" fill="#fff"/><rect x="27" y="17" width="6" height="21" rx="1.2" fill="#fff"/><path d="M24 22 L35 13" stroke="#1FA2FF" stroke-width="4" stroke-linecap="round" fill="none"/><path d="M39 9 L39 20 L29 12 Z" fill="#1FA2FF"/></svg></div><div><h1>BUSCA-CHAMBA-3000</h1><p>Radar de negocios → clientes</p><p class="firma">por SKY <b>TECH</b></p></div></div>
+    <div class="brand"><div class="logo"><svg viewBox="0 0 48 48" width="34" height="34" aria-label="Sky Tech"><rect width="48" height="48" rx="11" fill="#0B3C68"/><g fill="#FFFFFF"><circle cx="15.4" cy="21.1" r="6"/><circle cx="24" cy="17.8" r="7.9"/><circle cx="32.6" cy="21.6" r="5.5"/><rect x="15.4" y="21.1" width="17.2" height="5.5"/></g><path d="M24.5 25 L19.1 34.7 L23.5 34.7 L22.4 42.2 L28.9 32.5 L24.5 32.5 Z" fill="#1FA2FF"/></svg></div><div><h1>BUSCA-CHAMBA-3000</h1><p>Radar de negocios → clientes</p><p class="firma">por SKY <b>TECH</b></p></div></div>
     <span class="mode" id="modeTag"><span class="dot" id="modeDot"></span><span id="modeTxt">…</span></span>
     <input class="field name-input" id="myName" placeholder="Tu nombre" title="Sale en los mensajes y en el PDF">
     <button class="btn ghost" id="themeBtn" title="Tema">🌙</button>
@@ -294,13 +294,13 @@
 
         <div class="subhead">📄 Propuestas y demo</div>
         <div class="form-grid tight">
-          <div class="fld"><label>Tu contacto (WhatsApp / correo / web)</label><input class="field" id="cfgContact" placeholder="WhatsApp +51 999 999 999 · correo@dominio.com"></div>
+          <div class="fld"><label>Tu contacto — el QR del PDF lleva aquí (pon tu WhatsApp primero)</label><input class="field" id="cfgContact" placeholder="WhatsApp +51 999 999 999 · correo@dominio.com"></div>
           <div class="fld"><label>Link de tu demo — Sistema (para que lo prueben sin compromiso)</label><input class="field" id="cfgDemoSist" placeholder="https://tu-demo-sistema.com"></div>
           <div class="fld"><label>Tu precio (solo para ti, no sale en el mensaje ni en el PDF)</label><input class="field" id="cfgPrecio" placeholder="Ej: 150 (la moneda se pone sola según el país)"></div>
           <div class="fld"><label>Tu precio por país (solo para ti) — cada negocio en su moneda</label><input class="field" id="cfgPrecios" placeholder="PE:150, BO:200, CL:20000, CO:60000"></div>
         </div>
         <div class="fld" style="margin-top:12px"><label>Mensaje base para WhatsApp (opcional) — usa {negocio}, {nombre}, {demo}</label><textarea class="field" id="cfgTpl" rows="3" style="resize:vertical;line-height:1.5" placeholder="Déjalo vacío para el mensaje inteligente por rubro. Ej: Hola {negocio} 👋, soy {nombre}. Te muestro cómo vender más: {demo}"></textarea></div>
-        <p class="help" style="margin-top:8px">El contacto y el <b>link de demo</b> se agregan al <b>mensaje de WhatsApp</b>, al <b>correo</b> y al <b>PDF</b> (con <b>QR</b> para que lo escaneen desde el celular). Al cliente <b>nunca se le dice un precio</b>: primero lo prueba sin compromiso, y si le gusta, se habla. Tu precio queda como <b>chuleta tuya</b> en la ficha del negocio, con la <b>moneda que corresponde</b> a su país (Perú → S/, Bolivia → Bs, Chile → $ CLP…), para que sepas en qué cobrar cuando te pregunten. Si escribes un <b>mensaje base</b>, se usa ese (con {negocio}/{nombre}/{demo}); si lo dejas vacío, se arma el mensaje ideal por rubro. Tu nombre sale del campo <b>“Tu nombre”</b> de arriba.</p>
+        <p class="help" style="margin-top:8px">El contacto y el <b>link de demo</b> se agregan al <b>mensaje de WhatsApp</b>, al <b>correo</b> y al <b>PDF</b>. El <b>QR del PDF lleva a escribirte a ti</b>: si en “tu contacto” hay un número, abre tu <b>WhatsApp con el mensaje puesto</b>; si solo hay correo, abre el correo. La demo va aparte, como enlace. Al cliente <b>nunca se le dice un precio</b>: primero lo prueba sin compromiso, y si le gusta, se habla. Tu precio queda como <b>chuleta tuya</b> en la ficha del negocio, con la <b>moneda que corresponde</b> a su país (Perú → S/, Bolivia → Bs, Chile → $ CLP…), para que sepas en qué cobrar cuando te pregunten. Si escribes un <b>mensaje base</b>, se usa ese (con {negocio}/{nombre}/{demo}); si lo dejas vacío, se arma el mensaje ideal por rubro. Tu nombre sale del campo <b>“Tu nombre”</b> de arriba.</p>
 
         <div class="subhead">📍 Mis zonas guardadas</div>
         <div class="play-row" style="justify-content:flex-start">
@@ -654,17 +654,18 @@ const SKY={
 };
 // Logo: distintivo con tres barras que suben y una flecha de crecimiento.
 function skyBadge(doc,x,y,s,onDark){
-  doc.setFillColor(...(onDark?[255,255,255]:SKY.navy));
-  doc.roundedRect(x,y,s,s,s*0.23,s*0.23,"F");
-  const bar=onDark?SKY.navy:[255,255,255];
-  const bw=s*0.125,gap=s*0.07,base=y+s*0.80,x0=x+s*0.15,hs=[s*0.18,s*0.30,s*0.42];
-  doc.setFillColor(...bar);
-  for(let i=0;i<3;i++)doc.rect(x0+i*(bw+gap),base-hs[i],bw,hs[i],"F");
-  doc.setDrawColor(...SKY.sky);doc.setLineWidth(s*0.085);doc.setLineCap("round");
-  doc.line(x+s*0.50,y+s*0.46,x+s*0.74,y+s*0.26);
+  const fondo=onDark?[255,255,255]:SKY.navy, nube=onDark?SKY.navy:[255,255,255];
+  doc.setFillColor(...fondo);doc.roundedRect(x,y,s,s,s*0.23,s*0.23,"F");
+  // la nube (sky)
+  doc.setFillColor(...nube);
+  doc.circle(x+s*0.32,y+s*0.44,s*0.125,"F");
+  doc.circle(x+s*0.50,y+s*0.37,s*0.165,"F");
+  doc.circle(x+s*0.68,y+s*0.45,s*0.115,"F");
+  doc.rect(x+s*0.32,y+s*0.44,s*0.36,s*0.115,"F");
+  // el rayo (tech)
+  const k=s*0.36/16,bx=x+s*0.50-4.5*k,by=y+s*0.52;
   doc.setFillColor(...SKY.sky);
-  doc.triangle(x+s*0.80,y+s*0.17,x+s*0.80,y+s*0.40,x+s*0.58,y+s*0.20,"F");
-  doc.setLineCap("butt");
+  doc.lines([[-5*k,9*k],[4*k,0],[-1*k,7*k],[6*k,-9*k],[-4*k,0],[0,-7*k]],bx+5*k,by,[1,1],"F",true);
 }
 function skyWordmark(doc,x,baseline,size,onDark){
   doc.setFont("helvetica","normal");doc.setFontSize(size);
@@ -673,6 +674,16 @@ function skyWordmark(doc,x,baseline,size,onDark){
   doc.setFont("helvetica","bold");doc.setTextColor(...(onDark?SKY.sky:SKY.navy));
   doc.text("TECH",x+w,baseline);
   return w+doc.getTextWidth("TECH");
+}
+// El QR lleva al cliente DIRECTO a escribirle (WhatsApp o correo), nunca a la demo.
+function qrContacto(biz){
+  const c=(($("#cfgContact")&&$("#cfgContact").value)||store.get("bc3k_contact","")||"").trim();
+  const tel=(c.match(/\+?\d[\d\s().-]{7,}/)||[""])[0].replace(/\D/g,"");
+  const txt="Hola, vi la propuesta para "+(biz||"mi negocio")+" y quiero probar el sistema.";
+  if(tel.length>=8)return{url:"https://wa.me/"+tel+"?text="+encodeURIComponent(txt),label:"Escanee y escríbame por WhatsApp"};
+  const mail=(c.match(/[\w.+-]+@[\w-]+\.[\w.-]+/)||[""])[0];
+  if(mail)return{url:"mailto:"+mail+"?subject="+encodeURIComponent("Quiero probar el sistema — "+(biz||""))+"&body="+encodeURIComponent(txt),label:"Escanee y escríbame"};
+  return null;
 }
 function drawProposal(doc,l){
   const c=classify(l),S=statsFor(l),INS=insightsFor(l,S),B=benefOf(c.vertical);
@@ -877,9 +888,10 @@ function drawProposal(doc,l){
     ls.forEach(t=>{doc.setFont("helvetica","normal");doc.setFontSize(8.4);doc.setTextColor(...INK);
       doc.text(t,M+6,yy);yy+=t.length*4+3;});
     y+=hh+6;})();}
-  // ---- Cierre: nada se corta, todo se mide antes ----
+  // ---- Cierre: el QR es para escribirme, no para la demo ----
+  const qr=qrContacto(biz);
   (()=>{
-    const qs=demo?36:0, txtW=demo?cw-qs-20:cw-12;
+    const qs=qr?36:0, txtW=qr?cw-qs-20:cw-12;
     doc.setFont("helvetica","normal");doc.setFontSize(9.4);
     const l1=doc.splitTextToSize("Se lo dejo andando con sus propios datos. Lo usa unos días y, si le gusta, seguimos. Si no le sirve, no paga nada y no pasa nada.",txtW);
     doc.setFont("helvetica","normal");doc.setFontSize(8);
@@ -890,7 +902,7 @@ function drawProposal(doc,l){
     doc.setFont("helvetica","normal");doc.setFontSize(7.6);
     const l4=demo?doc.splitTextToSize(demo,txtW):[];
     const alto=13+l1.length*4.4+3+l2.length*3.7+3.5+(l3.length?l3.length*4.4+3:0)+(demo?11+l4.length*3.4:0)+7;
-    const h=Math.max(alto,demo?qs+14:26);
+    const h=Math.max(alto,qr?qs+16:26);
     need(h+4);
     doc.setFillColor(...NAVY);doc.roundedRect(M,y,cw,h,3,3,"F");
     doc.setFillColor(...SKY.sky);doc.roundedRect(M,y,cw,2.4,1.2,1.2,"F");
@@ -901,11 +913,13 @@ function drawProposal(doc,l){
     doc.setTextColor(186,212,236);doc.setFontSize(8);doc.text(l2,M+6,yy);yy+=l2.length*3.7+3.5;
     if(l3.length){doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(9.6);
       doc.text(l3,M+6,yy);yy+=l3.length*4.4+3;}
-    if(demo){
-      const qx=M+cw-qs-7,qy=y+(h-qs-6)/2;
-      if(drawQR(doc,demo,qx,qy,qs)){doc.link(qx-2.5,qy-2.5,qs+5,qs+5,{url:demo});
+    if(qr){
+      const qx=M+cw-qs-7,qy=y+(h-qs-7)/2;
+      if(drawQR(doc,qr.url,qx,qy,qs)){doc.link(qx-2.5,qy-2.5,qs+5,qs+5,{url:qr.url});
         doc.setFont("helvetica","bold");doc.setFontSize(7.2);doc.setTextColor(255,255,255);
-        doc.text("Escanee con su celular",qx+qs/2,qy+qs+5,{align:"center"});}
+        const et=doc.splitTextToSize(qr.label,qs+8);
+        doc.text(et,qx+qs/2,qy+qs+5,{align:"center"});}}
+    if(demo){
       doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(10);
       doc.textWithLink("Abrir la demo ahora",M+6,yy+2,{url:demo});
       const lw=doc.getTextWidth("Abrir la demo ahora");
@@ -918,7 +932,7 @@ function drawProposal(doc,l){
 function pdfName(l){return "Propuesta - "+((l.title||"negocio").trim()).replace(/[\\/:*?"<>|]+/g,"").slice(0,60)+".pdf";}
 function proposalPDF(l){const lib=window.jspdf&&window.jspdf.jsPDF;if(!lib){openProposalPrint([l]);return;}const doc=new lib({unit:"mm",format:"a4"});drawProposal(doc,l);doc.save(pdfName(l));toast("PDF descargado ✓");}
 function bulkProposalsPDF(list){if(!list||!list.length){toast("No hay leads para exportar");return;}const lib=window.jspdf&&window.jspdf.jsPDF;if(!lib){openProposalPrint(list);return;}const doc=new lib({unit:"mm",format:"a4"});list.forEach((l,i)=>{if(i>0)doc.addPage();drawProposal(doc,l);});doc.save("Propuestas ("+list.length+").pdf");toast(list.length+" propuestas en un PDF ✓");}
-const LOGO_SVG='<svg viewBox="0 0 48 48" width="30" height="30" aria-label="Sky Tech"><rect width="48" height="48" rx="11" fill="#fff"/><rect x="9" y="27" width="6" height="11" rx="1.2" fill="#0B3C68"/><rect x="18" y="22" width="6" height="16" rx="1.2" fill="#0B3C68"/><rect x="27" y="17" width="6" height="21" rx="1.2" fill="#0B3C68"/><path d="M24 22 L35 13" stroke="#1FA2FF" stroke-width="4" stroke-linecap="round" fill="none"/><path d="M39 9 L39 20 L29 12 Z" fill="#1FA2FF"/></svg>';
+const LOGO_SVG='<svg viewBox="0 0 48 48" width="30" height="30" aria-label="Sky Tech"><rect width="48" height="48" rx="11" fill="#FFFFFF"/><g fill="#0B3C68"><circle cx="15.4" cy="21.1" r="6"/><circle cx="24" cy="17.8" r="7.9"/><circle cx="32.6" cy="21.6" r="5.5"/><rect x="15.4" y="21.1" width="17.2" height="5.5"/></g><path d="M24.5 25 L19.1 34.7 L23.5 34.7 L22.4 42.2 L28.9 32.5 L24.5 32.5 Z" fill="#1FA2FF"/></svg>';
 function qrSVG(url,cell){
   if(typeof qrcode!=="function")return "";
   try{const q=qrcode(0,"M");q.addData(url);q.make();return q.createSvgTag({cellSize:cell||4,margin:0,scalable:true});}catch(e){return "";}
@@ -1436,8 +1450,8 @@ $("#mCopy").onclick=()=>{if(current)setMeta(idOf(current),{lastContact:Date.now(
 $("#mWa").onclick=()=>{const n=waN(current.phone,current.country);if(!n){toast("Sin teléfono");return;}setMeta(idOf(current),{lastContact:Date.now(),state:"contactado"});saveModal();window.open(`https://wa.me/${n}?text=${encodeURIComponent($("#mText").value)}`,"_blank");};
 $("#mMail").onclick=()=>{const e=current.emails[0];if(!e){toast("Sin correo");return;}setMeta(idOf(current),{lastContact:Date.now()});saveModal();window.open(`mailto:${e}?subject=${encodeURIComponent("Propuesta para "+current.title)}&body=${encodeURIComponent($("#mText").value)}`);};
 $("#guideBtn").onclick=()=>$("#guideBg").classList.add("open");$("#guideClose").onclick=()=>$("#guideBg").classList.remove("open");$("#guideBg").onclick=e=>{if(e.target===$("#guideBg"))$("#guideBg").classList.remove("open");};
-$("#myName").value=store.get("bc3k_name","")||"Bryan de Sky Tech";if(!store.get("bc3k_name",""))store.set("bc3k_name",$("#myName").value);$("#myName").oninput=e=>store.set("bc3k_name",e.target.value);
-if($("#cfgContact")){$("#cfgContact").value=store.get("bc3k_contact","");$("#cfgContact").oninput=e=>store.set("bc3k_contact",e.target.value);}
+$("#myName").value=store.get("bc3k_name","")||"Bryan Salirrosas";if(!store.get("bc3k_name",""))store.set("bc3k_name",$("#myName").value);$("#myName").oninput=e=>store.set("bc3k_name",e.target.value);
+if($("#cfgContact")){if(!store.get("bc3k_contact",""))store.set("bc3k_contact","salirrosasbryan18@gmail.com");$("#cfgContact").value=store.get("bc3k_contact","");$("#cfgContact").oninput=e=>store.set("bc3k_contact",e.target.value);}
 if($("#cfgDemoSist")){$("#cfgDemoSist").value=store.get("bc3k_demo_sist","");$("#cfgDemoSist").oninput=e=>store.set("bc3k_demo_sist",e.target.value);}
 if($("#cfgTpl")){$("#cfgTpl").value=store.get("bc3k_tpl","");$("#cfgTpl").oninput=e=>store.set("bc3k_tpl",e.target.value);}
 if($("#cfgPrecio")){$("#cfgPrecio").value=store.get("bc3k_precio","");$("#cfgPrecio").oninput=e=>store.set("bc3k_precio",e.target.value);}

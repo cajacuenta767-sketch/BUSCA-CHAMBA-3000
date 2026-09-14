@@ -11,9 +11,10 @@
 
 Se lee bien desde **24 px**, así que sirve igual de favicon que de cabecera.
 
-El distintivo son **tres barras que suben** con una **flecha de crecimiento**: el negocio
-ordenado que crece. Se dibuja también en el PDF de la propuesta (vectorial, sin imágenes
-externas), así que el panel, la propuesta y el logo son exactamente el mismo dibujo.
+El distintivo es una **nube con un rayo**: *sky* (el sistema vive en la nube, se abre desde
+cualquier celular) + *tech* (la energía que le pone al negocio). Se dibuja también en el PDF
+de la propuesta (vectorial, sin imágenes externas), así que el panel, la propuesta y el logo
+son exactamente el mismo dibujo.
 
 ## Colores
 

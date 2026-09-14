@@ -30,7 +30,7 @@ En ambos modos tienes:
 
 - Buscador, filtros por rubro y orden por rating / número de reseñas.
 - Botones directos de **WhatsApp**, **correo**, **llamar** y **web** por cada negocio.
-- **🎨 Identidad Sky Tech** — logo propio (tres barras que suben con una flecha de crecimiento) y paleta azul, en el panel, en el PDF y como archivos sueltos en [`marca/`](marca/MARCA.md). El mismo dibujo se traza **vectorial dentro del PDF**, sin imágenes externas.
+- **🎨 Identidad Sky Tech** — logo propio (una nube con un rayo: *sky* + *tech*) y paleta azul, en el panel, en el PDF y como archivos sueltos en [`marca/`](marca/MARCA.md). El mismo dibujo se traza **vectorial dentro del PDF**, sin imágenes externas.
 - **📄 Propuesta en PDF de un clic — visual, de 2 páginas y con QR**. Está armada para que el dueño la entienda en 15 segundos desde el celular, y apunta a lo único que le importa: **menos estrés y más dinero**.
   - Arranca con las **dos promesas** grandes (😌 menos estrés / 💰 más dinero).
   - **Gráfica de barras** con colores primarios: **azul** usted, **gris** el promedio de su zona, **rojo** el primero de su zona, cada barra con su número al lado.
@@ -38,7 +38,7 @@ En ambos modos tienes:
   - Los cuatro colores de las gráficas pasan los **seis chequeos de color** (contraste ≥ 3:1 y separación bajo daltonismo), así que la propuesta se lee impresa en blanco y negro y por alguien que no distingue rojo y verde.
   - **Lo que gana cada mes** en tres tarjetas: ⏱️ tiempo, 💰 dinero y 😌 tranquilidad, escritas para **su rubro** (las horas van marcadas como estimación).
   - **Hoy, a mano ❌ | Con el sistema ✅** en dos columnas de color, no un párrafo.
-  - **QR escaneable** para que abra la demo desde el celular, más el link **tocable** dentro del PDF.
+  - **QR para que te escriban a ti**: si en tu contacto hay un número, el QR abre **tu WhatsApp con el mensaje ya puesto**; si solo hay correo, abre el correo. El **link de la demo va aparte**, como enlace tocable dentro del PDF.
   - **Sin precio.** Ni en el PDF ni en el mensaje se dice un número: se cierra con **«Pruébelo sin compromiso. Lo usa unos días y, si le gusta, seguimos. Si no le sirve, no paga nada»**. El precio se habla después, cuando ya lo probó.
   - **Tu precio queda como chuleta tuya** en la ficha del negocio, con la **moneda de su país** (Cusco → S/, La Paz → Bs, Santiago → $ 20.000, Miami → US$), deducida del país que trae Google o, si no viene, **de la ciudad**. Así sabes en qué cobrar cuando te pregunten. Puedes poner **un precio por país** en Ajustes.
   - Si no carga la librería del PDF (sin internet), la versión para imprimir trae **el mismo diseño, con QR incluido** — el generador de QR va incrustado en el archivo, no depende de internet.
