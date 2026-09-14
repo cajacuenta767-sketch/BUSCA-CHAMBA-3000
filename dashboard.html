@@ -288,12 +288,11 @@
         <div class="subhead">📄 Propuestas y demo</div>
         <div class="form-grid tight">
           <div class="fld"><label>Tu contacto (WhatsApp / correo / web)</label><input class="field" id="cfgContact" placeholder="WhatsApp +51 999 999 999 · correo@dominio.com"></div>
-          <div class="fld"><label>Link de tu demo — Web</label><input class="field" id="cfgDemoWeb" placeholder="https://tu-demo-web.com"></div>
-          <div class="fld"><label>Link de tu demo — Sistema</label><input class="field" id="cfgDemoSist" placeholder="https://tu-demo-sistema.com"></div>
+          <div class="fld"><label>Link de tu demo — Sistema (para que lo prueben sin compromiso)</label><input class="field" id="cfgDemoSist" placeholder="https://tu-demo-sistema.com"></div>
           <div class="fld"><label>Precio desde (opcional) — tu gancho de bajo costo</label><input class="field" id="cfgPrecio" placeholder="Ej: S/ 150 · Bs 200 · $50"></div>
         </div>
         <div class="fld" style="margin-top:12px"><label>Mensaje base para WhatsApp (opcional) — usa {negocio}, {nombre}, {demo}</label><textarea class="field" id="cfgTpl" rows="3" style="resize:vertical;line-height:1.5" placeholder="Déjalo vacío para el mensaje inteligente por rubro. Ej: Hola {negocio} 👋, soy {nombre}. Te muestro cómo vender más: {demo}"></textarea></div>
-        <p class="help" style="margin-top:8px">El contacto y el <b>link de demo</b> se agregan al <b>mensaje de WhatsApp</b>, al <b>correo</b> y al <b>PDF</b>, para que el cliente entre y pruebe. Se elige el link según la clasificación del lead (Web o Sistema). Si escribes un <b>mensaje base</b>, se usa ese (con {negocio}/{nombre}/{demo}); si lo dejas vacío, se arma el mensaje ideal por rubro. Tu nombre sale del campo <b>“Tu nombre”</b> de arriba.</p>
+        <p class="help" style="margin-top:8px">El contacto y el <b>link de demo</b> se agregan al <b>mensaje de WhatsApp</b>, al <b>correo</b> y al <b>PDF</b>, para que el cliente entre y pruebe. Si escribes un <b>mensaje base</b>, se usa ese (con {negocio}/{nombre}/{demo}); si lo dejas vacío, se arma el mensaje ideal por rubro. Tu nombre sale del campo <b>“Tu nombre”</b> de arriba.</p>
 
         <div class="subhead">📍 Mis zonas guardadas</div>
         <div class="play-row" style="justify-content:flex-start">
@@ -449,75 +448,225 @@ function daysSince(ts){if(!ts)return null;return Math.floor((Date.now()-ts)/8640
 const STATES={nuevo:{l:"Nuevo",c:"var(--muted)"},contactado:{l:"Contactado",c:"var(--mail)"},respondio:{l:"Respondió",c:"var(--star)"},propuesta:{l:"Propuesta",c:"var(--accent)"},cliente:{l:"Cliente ✅",c:"var(--ok)"},descartado:{l:"Descartado",c:"var(--prospect)"}};
 const PRECIO=()=>{const v=(store.get("bc3k_precio","")||"").trim();return v?` desde ${v}`:" a un precio accesible";};
 const PITCHES={verticals:{
-  farmacia:{label:"Farmacia / botica",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para boticas: venta rápida, control de stock con alerta de vencimiento y reporte de caja del día. Es a medida y${PRECIO()}, pensado para que un negocio como el suyo lo pueda pagar sin complicarse. ¿Le muestro cómo funciona?`},
-  taller_celulares:{label:"Taller de celulares",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas para talleres: orden de reparación con ticket, aviso automático al cliente por WhatsApp e inventario de repuestos. Sencillo y${PRECIO()}, al alcance de un taller. ¿Le muestro cómo funciona?`},
-  restaurante:{label:"Restaurante / comida",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para restaurantes: comandas, control de caja y pedidos por WhatsApp sin pagar comisión a las apps. Es${PRECIO()}, hecho para que le convenga desde el primer mes. ¿Le muestro cómo funciona?`},
-  dental:{label:"Clínica / dental",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas de citas para clínicas: agenda, recordatorio automático por WhatsApp (baja mucho las inasistencias) y ficha del paciente. Es${PRECIO()}, accesible para un consultorio. ¿Le muestro cómo funciona?`},
-  inmobiliaria:{label:"Inmobiliaria",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para inmobiliarias: catálogo de propiedades, control de clientes interesados y consultas que le llegan al WhatsApp. Es${PRECIO()}, sin mensualidades caras. ¿Le muestro cómo funciona?`},
-  gimnasio:{label:"Gimnasio / fitness",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas para gimnasios: control de membresías, asistencia y aviso de pago por WhatsApp (baja la morosidad). Es${PRECIO()}, pensado para que se pague solo. ¿Le muestro cómo funciona?`},
-  bodega:{label:"Bodega / minimarket",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas de venta para bodegas: registra ventas, controla el stock y lleva los fiados de quién le debe. Es${PRECIO()}, hecho para negocios de barrio. ¿Le muestro cómo funciona?`},
-  ferreteria:{label:"Ferretería",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas para ferreterías: inventario por producto, cotizaciones rápidas y control de caja. Es${PRECIO()}, accesible para el negocio. ¿Le muestro cómo funciona?`},
-  hotel:{label:"Hotel / hospedaje",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para hospedajes: control de habitaciones, reservas y confirmación por WhatsApp, sin comisiones de terceros. Es${PRECIO()}. ¿Le muestro cómo funciona?`},
-  belleza:{label:"Salón / barbería",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas de reservas para salones: agenda por horario, recordatorio al cliente y control de caja. Es${PRECIO()}, al alcance del negocio. ¿Le muestro cómo funciona?`},
-  veterinaria:{label:"Veterinaria",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para veterinarias: historial de cada mascota, carnet de vacunas y recordatorio al dueño por WhatsApp. Es${PRECIO()}. ¿Le muestro cómo funciona?`},
-  contable:{label:"Estudio contable",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas para estudios contables: control de clientes, vencimientos y portal para recibir documentos. Es${PRECIO()}. ¿Le muestro cómo funciona?`},
-  juridico:{label:"Estudio jurídico",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para estudios jurídicos: control de casos, plazos con alerta y agenda de consultas. Es${PRECIO()}. ¿Le muestro cómo funciona?`}
+  farmacia:{label:"Farmacia / botica",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para boticas: venta rápida, control de stock con alerta de vencimiento y reporte de caja del día. Es a medida y${PRECIO()}, pensado para que un negocio como el suyo lo pueda pagar sin complicarse. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
+  taller_celulares:{label:"Taller de celulares",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas para talleres: orden de reparación con ticket, aviso automático al cliente por WhatsApp e inventario de repuestos. Sencillo y${PRECIO()}, al alcance de un taller. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
+  restaurante:{label:"Restaurante / comida",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para restaurantes: comandas, control de caja y pedidos por WhatsApp sin pagar comisión a las apps. Es${PRECIO()}, hecho para que le convenga desde el primer mes. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
+  dental:{label:"Clínica / dental",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas de citas para clínicas: agenda, recordatorio automático por WhatsApp (baja mucho las inasistencias) y ficha del paciente. Es${PRECIO()}, accesible para un consultorio. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
+  inmobiliaria:{label:"Inmobiliaria",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para inmobiliarias: catálogo de propiedades, control de clientes interesados y consultas que le llegan al WhatsApp. Es${PRECIO()}, sin mensualidades caras. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
+  gimnasio:{label:"Gimnasio / fitness",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas para gimnasios: control de membresías, asistencia y aviso de pago por WhatsApp (baja la morosidad). Es${PRECIO()}, pensado para que se pague solo. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
+  bodega:{label:"Bodega / minimarket",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas de venta para bodegas: registra ventas, controla el stock y lleva los fiados de quién le debe. Es${PRECIO()}, hecho para negocios de barrio. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
+  ferreteria:{label:"Ferretería",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas para ferreterías: inventario por producto, cotizaciones rápidas y control de caja. Es${PRECIO()}, accesible para el negocio. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
+  hotel:{label:"Hotel / hospedaje",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para hospedajes: control de habitaciones, reservas y confirmación por WhatsApp, sin comisiones de terceros. Es${PRECIO()}. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
+  belleza:{label:"Salón / barbería",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas de reservas para salones: agenda por horario, recordatorio al cliente y control de caja. Es${PRECIO()}, al alcance del negocio. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
+  veterinaria:{label:"Veterinaria",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para veterinarias: historial de cada mascota, carnet de vacunas y recordatorio al dueño por WhatsApp. Es${PRECIO()}. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
+  contable:{label:"Estudio contable",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas para estudios contables: control de clientes, vencimientos y portal para recibir documentos. Es${PRECIO()}. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
+  juridico:{label:"Estudio jurídico",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para estudios jurídicos: control de casos, plazos con alerta y agenda de consultas. Es${PRECIO()}. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`}
 },servicios:{
-  sistema:{label:"Sistema a medida (general)",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas a medida para negocios: controlar ventas, stock y cuentas en un solo lugar, y saber sus números del día sin cuadernos. Es${PRECIO()}, pensado para que un negocio como el suyo lo pueda pagar. ¿Le muestro cómo funciona?`},
-  caja:{label:"Control de caja e inventario",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo un sistema simple de caja e inventario: sabe cuánto vendió hoy, qué le queda y quién le debe. Es${PRECIO()} y se aprende en una tarde. ¿Le muestro cómo funciona?`},
-  citas:{label:"Sistema de citas / reservas",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas de citas con recordatorio automático por WhatsApp, para que no se le caigan clientes. Es${PRECIO()}. ¿Le muestro cómo funciona?`},
-  web:{label:"Sistema + presencia web",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo el sistema para controlar su negocio y, de paso, su página para que lo encuentren en Google. Todo${PRECIO()}, en un solo paquete. ¿Le muestro cómo funciona?`}
+  sistema:{label:"Sistema a medida (general)",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas a medida para negocios: controlar ventas, stock y cuentas en un solo lugar, y saber sus números del día sin cuadernos. Es${PRECIO()}, pensado para que un negocio como el suyo lo pueda pagar. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
+  caja:{label:"Control de caja e inventario",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo un sistema simple de caja e inventario: sabe cuánto vendió hoy, qué le queda y quién le debe. Es${PRECIO()} y se aprende en una tarde. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
+  citas:{label:"Sistema de citas / reservas",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas de citas con recordatorio automático por WhatsApp, para que no se le caigan clientes. Es${PRECIO()}. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
+  fiados:{label:"Control de fiados y cobros",build:(n,g)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo un sistema para llevar los fiados y cobros: quién le debe, cuánto y desde cuándo, con recordatorio por WhatsApp. Es${PRECIO()}. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`}
 }};
-const FOLLOWUP=(n,g)=>`Hola de nuevo 👋, le escribí hace unos días por el sistema para ${g}. Se lo dejo${PRECIO()} y lo puede probar antes de decidir, sin compromiso. ¿Se lo muestro en 5 minutos? — ${n}`;
+const FOLLOWUP=(n,g)=>`Hola de nuevo 👋, le escribí hace unos días por el sistema para ${g}. Se lo dejo${PRECIO()} y lo puede probar sin compromiso antes de decidir. ¿Se lo muestro en 5 minutos? — ${n}`;
 const VR=[[/farmac|botica/,"farmacia"],[/celular|reparaci|t[eé]cnico|phone|electr[oó]nic/,"taller_celulares"],[/restaur|comida|cevich|poller|caf[eé]|pizzer|chifa|men[uú]|parrill/,"restaurante"],[/dental|dentist|odont/,"dental"],[/inmobili|bienes ra|propiedad/,"inmobiliaria"],[/gimnas|gym|fitness|crossfit/,"gimnasio"],[/bodega|minimarket|abarrote|market|licorer/,"bodega"],[/ferret/,"ferreteria"],[/hotel|hostal|hosped|lodge/,"hotel"],[/peluquer|sal[oó]n|barber|belleza|spa|est[eé]tica|u[nñ]as/,"belleza"],[/veterin|mascota/,"veterinaria"],[/contab|contador/,"contable"],[/abogad|jur[ií]dic|legal|notari/,"juridico"]];
 const detectV=c=>{c=(c||"").toLowerCase();for(const[re,k]of VR)if(re.test(c))return k;return null;};
 const pitchBy=v=>{const g=v.slice(0,1),k=v.slice(2);return(g==="v"?PITCHES.verticals:PITCHES.servicios)[k];};
 // ---- Clasificación de leads ----
 const SYSTEM_V={farmacia:1,taller_celulares:1,restaurante:1,dental:1,gimnasio:1,bodega:1,ferreteria:1,hotel:1,belleza:1,veterinaria:1};
 function classify(l){const needsWeb=!realWeb(l);const v=detectV(l.category);const needsSystem=!!(v&&SYSTEM_V[v]);const offer="sistema";const s=scoreOf(l);const tier=s>=70?"alta":(s>=40?"media":"baja");return{offer,needsWeb,needsSystem,vertical:v,tier,score:Math.round(s)};}
-const OFFER_LABEL={web:"🌐 Web + presencia",sistema:"🧾 Sistema de gestión"};
+const OFFER_LABEL={sistema:"🧾 Sistema de gestión"};
 const TIER_LABEL={alta:"🔥 Prioridad alta",media:"⭐ Prioridad media",baja:"Prioridad baja"};
 const SYS_LINE={farmacia:"control de stock con alertas de vencimiento, ventas rápidas y recordatorios a clientes",taller_celulares:"órdenes de reparación con ticket, aviso por WhatsApp e inventario de repuestos",restaurante:"carta digital con QR, pedidos y reservas por WhatsApp, y control de caja",dental:"agenda de citas con recordatorios por WhatsApp y ficha de pacientes",gimnasio:"membresías, control de asistencia y avisos de pago por WhatsApp",bodega:"punto de venta (POS) con inventario y control de fiados",ferreteria:"catálogo con cotizaciones rápidas y control de stock",hotel:"reservas con confirmación por WhatsApp y control de habitaciones",belleza:"reservas online con recordatorios por WhatsApp",veterinaria:"citas, carnet de vacunas digital y recordatorios por WhatsApp"};
-function webProposal(biz,rubro){return{title:"Más ventas con una presencia web profesional",diag:`Hoy ${biz} no aparece con una página web propia. Cuando alguien busca "${rubro}" en Google, encuentra primero a la competencia. Una web profesional más tu ficha optimizada en Google te hacen visible las 24 horas, generan confianza y convierten esas búsquedas en clientes que te escriben.`,incluye:["Página web moderna y rápida (se ve perfecta en celular y en PC).","Ficha optimizada en Google (Maps y búsquedas) para tu zona.","Botón de WhatsApp y formularios que llegan directo a tu teléfono.","Catálogo de productos o servicios con fotos y precios.","Textos y SEO local para aparecer cuando te buscan cerca."],result:["Más clientes nuevos que te encuentran solos.","Más consultas y pedidos por WhatsApp.","Imagen profesional que transmite confianza.","Vendes aunque el local esté cerrado."],plan:["Reunión de 15 minutos para entender tu negocio (sin costo).","Diseño de la web con tus fotos y textos.","Publicación y optimización de tu Google.","Ajustes finales y soporte."]};}
-function sysProposal(biz,rubro,v){const extra=SYS_LINE[v]?(" Para tu rubro: "+SYS_LINE[v]+"."):"";const pr=(store.get("bc3k_precio","")||"").trim();return{title:"Un sistema a medida para tu negocio, a un costo accesible",diag:`${biz} puede llevar el control de sus ventas, inventario y cuentas en un solo sistema hecho a su medida: menos errores manuales, menos pérdidas y sus números al día.${extra} Lo armamos ${pr?("desde "+pr):"a un precio accesible"}, pensado para que un negocio como el suyo pueda tenerlo sin una inversión grande.`,incluye:["Registro de ventas y cierre de caja diario.","Inventario con alertas de stock bajo y vencimiento.","Control de cuentas y fiados, con cobros al día.","Reportes claros de qué se vende más y cuándo.","Avisos y recordatorios a clientes por WhatsApp."],result:["Menos pérdidas, robos y errores de conteo.","Sabes tus números en tiempo real.","Cobras a tiempo y mejoras tu flujo de caja.","Ahorras horas de trabajo manual cada semana.","Se paga solo: costo accesible y sin mensualidades caras."],plan:["Reunión de 15 minutos para mapear tu proceso (sin costo).","Configuración del sistema a tu medida.","Carga de tus productos y capacitación.","Puesta en marcha y soporte."]};}
+// ---- Estadísticas REALES por negocio (se calculan con TUS leads escaneados) ----
+function statsFor(l){
+  if(!LEADS||LEADS.length<6)return null;
+  const key=normCat(l.category||""),cat=key||"tu rubro",city=(cityOf(l)||"").trim();
+  const sameCat=key?LEADS.filter(x=>normCat(x.category||"")===key):[];
+  let peers=[],scope="";
+  if(city&&sameCat.length){const cl=city.toLowerCase();peers=sameCat.filter(x=>(cityOf(x)||"").trim().toLowerCase()===cl);scope=cat+" en "+city;}
+  if(peers.length<5&&sameCat.length){peers=sameCat;scope=cat+" (toda su base escaneada)";}
+  if(peers.length<5&&city){const cl=city.toLowerCase();peers=LEADS.filter(x=>(cityOf(x)||"").trim().toLowerCase()===cl);scope="negocios de "+city;}
+  if(peers.length<5){peers=LEADS;scope="negocios de su base";}
+  if(peers.length<5)return null;
+  const n=peers.length;
+  const rated=peers.filter(x=>+x.rating>0);
+  const avgR=rated.length?rated.reduce((a,b)=>a+(+b.rating||0),0)/rated.length:0;
+  const revs=peers.map(x=>+x.reviews||0);
+  const avgRev=revs.reduce((a,b)=>a+b,0)/n;
+  const mine=+l.reviews||0,myR=+l.rating||0;
+  const rank=revs.filter(v=>v>mine).length+1;
+  let top=0;for(const v of revs)if(v>top)top=v;
+  const noWeb=peers.filter(x=>!realWeb(x)).length,soc=peers.filter(x=>hasSoc(x)).length,tel=peers.filter(x=>!!waN(x.phone)).length;
+  return{n,scope,cat,city,avgR,avgRev,mine,myR,rank,top,
+    pctNoWeb:Math.round(100*noWeb/n),pctSoc:Math.round(100*soc/n),pctTel:Math.round(100*tel/n),
+    pctBetter:Math.round(100*revs.filter(v=>v<mine).length/n)};
+}
+function insightsFor(l,S){
+  const o=[];if(!S)return o;
+  if(S.avgRev>0){
+    const d=Math.round(S.mine-S.avgRev);
+    o.push(d>=0
+      ?"Tiene "+S.mine+" reseñas: "+d+" más que el promedio de "+S.scope+" ("+Math.round(S.avgRev)+"). Ese volumen de clientes es justo el que más se desordena cuando todo se anota a mano."
+      :"Tiene "+S.mine+" reseñas y el promedio de "+S.scope+" es "+Math.round(S.avgRev)+": le faltan "+Math.abs(d)+" para alcanzarlo. El sistema pide la reseña solo, por WhatsApp, después de cada venta.");
+  }
+  o.push("Puesto "+S.rank+" de "+S.n+" en "+S.scope+" por número de reseñas"+(S.top>S.mine?("; el primero de su zona tiene "+S.top+", o sea "+(S.top-S.mine)+" más que usted."):"; hoy encabeza la lista de su zona."));
+  if(S.myR&&S.avgR){const a=S.myR.toFixed(1),b=S.avgR.toFixed(1);
+    o.push("Su calificación es "+a+" estrellas y el promedio de "+S.scope+" es "+b+(+a>+b?". Mantenerla depende de no fallar en stock ni en tiempos de entrega, que es exactamente lo que ordena el sistema.":(+a===+b?". Están empatados: quien se despegue va a ser el que deje de fallar en stock y en tiempos, y eso lo ordena el sistema.":". En este rubro casi toda la queja es por demoras y por productos que se acabaron: dos cosas que el sistema evita antes de que pasen.")));}
+  o.push(S.pctNoWeb+"% de los "+S.n+" negocios de "+S.scope+" sigue sin sistema ni web propia"+(S.pctNoWeb>=50?": entrar ahora lo deja por delante de más de la mitad de su competencia directa.":": la mayoría ya se está ordenando, y quedarse con el cuaderno empieza a notarse."));
+  if(S.pctTel<100)o.push("Solo "+S.pctTel+"% de esos negocios tiene un número por el que se pueda pedir por WhatsApp. Con el sistema, su WhatsApp deja de ser un chat suelto y pasa a ser un canal de pedidos con registro.");
+  const so=socialOf(l),red=[so.fb?"Facebook":"",so.ig?"Instagram":"",so.tt?"TikTok":""].filter(Boolean);
+  if(red.length)o.push("Ya tiene "+red.join(", ")+", así que los pedidos le llegan por chat y quedan sueltos entre mensajes. El sistema los junta en un solo panel, cada uno con su estado (pendiente, entregado, pagado).");
+  else if(!realWeb(l))o.push("No encontramos web ni redes suyas: hoy su registro depende de la memoria y del cuaderno. Ahí es donde más dinero se escapa sin que se note.");
+  return o;
+}
+// ---- Comparativa real por rubro: cómo trabaja hoy vs con el sistema ----
+const BENCH_GEN=[["Ventas","Cuaderno o Excel; el cierre de caja sale al tanteo","Cada venta registrada; cierre de caja exacto en 1 clic"],["Inventario","Se cuenta a mano y se entera cuando ya faltó","Stock al día, con aviso antes de quedarse sin producto"],["Fiados y cobros","Se apuntan en papel y algunos se olvidan","Quién debe, cuánto y desde cuándo, con recordatorio por WhatsApp"],["Clientes","No sabe quién volvió ni qué compró","Historial por cliente y mensaje de recompra automático"],["Números del mes","Los saca a fin de mes, si le alcanza el tiempo","Reporte listo: lo que más deja, por día y por hora"]];
+const BENCH={
+ farmacia:[["Vencimientos","Se descubren en el estante, ya vencidos","Alerta 60 días antes: alcanza a rotarlo o devolverlo"],["Stock","Se pide lo que se ve que falta","Aviso de stock bajo por producto y laboratorio"],["Ventas","Boleta a mano, caja al tanteo","Venta rápida por código y cierre de caja exacto"],["Clientes crónicos","Se acuerdan (o no) de volver","Recordatorio de recompra por WhatsApp en su fecha"]],
+ taller_celulares:[["Órdenes","Papelito con el equipo; se pierden","Ticket con número, equipo, falla y fecha prometida"],["Avisos","El cliente llama a preguntar si ya está","Aviso automático por WhatsApp cuando queda listo"],["Repuestos","No sabe cuántas pantallas le quedan","Inventario de repuestos con costo y aviso de stock"],["Garantías","Depende de la memoria","Historial por equipo e IMEI, con garantía y fecha"]],
+ restaurante:[["Pedidos","Se anotan en papel y se cruzan","Pedido por mesa o por WhatsApp, con su estado"],["Carta","Se reimprime cada vez que cambia un precio","Carta digital con QR: cambia el precio y listo"],["Insumos","Se compra por costumbre","Consumo real por plato y aviso de insumo bajo"],["Caja","Se cuadra de noche y a veces no cuadra","Cierre por turno, con propinas y delivery aparte"]],
+ dental:[["Citas","Agenda de papel; faltan pacientes","Agenda con recordatorio por WhatsApp el día antes"],["Fichas","Historias en folder, difíciles de ubicar","Ficha digital con tratamientos y radiografías"],["Tratamientos","Se olvida la siguiente fase","Aviso de control y de tratamiento pendiente"],["Pagos","Se apuntan aparte","Plan de pagos por paciente y saldo al día"]],
+ gimnasio:[["Membresías","Se anota en cuaderno quién pagó","Vencimiento por socio y aviso antes de que caiga"],["Asistencia","Nadie la registra","Control de ingreso y quién dejó de venir"],["Cobros","Hay que perseguir al socio","Recordatorio de pago automático por WhatsApp"],["Planes","Todos pagan casi lo mismo","Planes y promos por tipo de socio, con su reporte"]],
+ bodega:[["Ventas","Todo de memoria y calculadora","POS por código o por nombre, con vuelto exacto"],["Fiados","Cuaderno de fiados que nadie cuadra","Lista de deudores con saldo y recordatorio"],["Stock","Se pide lo que se ve vacío","Aviso de stock bajo de lo que más rota"],["Ganancia","No sabe qué producto deja más","Margen por producto: qué conviene tener"]],
+ ferreteria:[["Cotizaciones","A mano, y se demoran","Cotización en minutos con precios al día"],["Stock","Miles de códigos, se busca a ojo","Búsqueda por código o nombre, con stock real"],["Proveedores","Se pide por costumbre","Historial de compras y costo por proveedor"],["Obras","Se pierde el hilo del cliente","Cuenta por cliente u obra, con su saldo"]],
+ hotel:[["Reservas","Cuaderno o WhatsApp suelto","Calendario de habitaciones, sin sobreventa"],["Confirmaciones","Se llama uno por uno","Confirmación y recordatorio automático por WhatsApp"],["Ocupación","No conoce su ocupación real","Ocupación por día, mes y temporada"],["Consumos","Se apuntan aparte","Consumo cargado a la habitación, en una sola cuenta"]],
+ belleza:[["Reservas","Por chat; se cruzan las horas","Reserva online por profesional, sin cruces"],["Ausencias","Se pierde la hora y el ingreso","Recordatorio automático: bajan las faltas"],["Fichas","No sabe qué color o corte llevó","Historial por cliente, con foto y producto usado"],["Promos","Se avisa a quien uno se acuerda","Campaña por WhatsApp a quien no vuelve hace X días"]],
+ veterinaria:[["Citas","Agenda de papel","Agenda con recordatorio por WhatsApp"],["Vacunas","El dueño se olvida de la siguiente","Carnet digital y aviso de la próxima dosis"],["Historial","Un folder por mascota","Ficha con peso, tratamientos y alergias"],["Farmacia","Se acaba el medicamento clave","Stock con alerta y control de vencimientos"]],
+ inmobiliaria:[["Cartera","Propiedades en Excel y en la cabeza","Cartera con fotos, estado y precio actualizado"],["Visitas","Se agendan por chat","Agenda de visitas con recordatorio a ambas partes"],["Seguimiento","Se enfría el interesado","Embudo por cliente: quién vio qué y cuándo"],["Comisiones","Se calculan a mano","Comisión por operación y por asesor"]],
+ contable:[["Clientes","Carpetas y correos sueltos","Panel por cliente, con documentos y estado"],["Vencimientos","Se revisan a mano en el cronograma","Alerta de vencimiento por cliente y por tributo"],["Cobros","Se factura tarde","Facturación recurrente con recordatorio"],["Documentos","El cliente los manda por WhatsApp","El propio cliente los carga en su acceso"]],
+ juridico:[["Expedientes","Carpetas físicas y notas sueltas","Expediente digital con toda su actuación"],["Plazos","Se llevan en la agenda personal","Alerta de plazo por expediente"],["Clientes","Llaman a preguntar cómo va","Acceso para que vean el avance ellos mismos"],["Honorarios","Se cobran cuando uno se acuerda","Estado de cuenta por caso, con recordatorio"]]
+};
+const benchOf=v=>(v&&BENCH[v])||BENCH_GEN;
+function sysProposal(biz,rubro,v){const extra=SYS_LINE[v]?(" Para su rubro: "+SYS_LINE[v]+"."):"";const pr=(store.get("bc3k_precio","")||"").trim();return{title:"Un sistema a medida para su negocio, a un costo accesible",diag:biz+" puede llevar el control de sus ventas, su inventario y sus cuentas en un solo sistema hecho a su medida: menos errores manuales, menos pérdidas y sus números al día."+extra+" Lo armamos "+(pr?("desde "+pr):"a un precio accesible")+", pensado para que un negocio como el suyo pueda tenerlo sin una inversión grande, y lo puede probar sin compromiso antes de decidir.",incluye:["Registro de ventas y cierre de caja diario.","Inventario con alertas de stock bajo y de vencimiento.","Control de cuentas y fiados, con los cobros al día.","Reportes claros de qué se vende más y cuándo.","Avisos y recordatorios a sus clientes por WhatsApp."],result:["Menos pérdidas, robos y errores de conteo.","Conoce sus números en tiempo real.","Cobra a tiempo y mejora su flujo de caja.","Ahorra horas de trabajo manual cada semana.","Se paga solo: costo accesible y sin mensualidades caras."],plan:["Reunión de 15 minutos para mapear su proceso (sin costo).","Configuración del sistema a su medida.","Carga de sus productos y capacitación de su personal.","Puesta en marcha, periodo de prueba sin compromiso y soporte."]};}
 function drawProposal(doc,l){
-  const c=classify(l);
+  const c=classify(l),S=statsFor(l),INS=insightsFor(l,S);
   const sender=(($("#myName")&&$("#myName").value)||store.get("bc3k_name","")||"").trim();
   const contact=(($("#cfgContact")&&$("#cfgContact").value)||store.get("bc3k_contact","")||"").trim();
   const biz=(l.title||"tu negocio").trim(),rubro=(l.category||"tu rubro").trim();
-  const W=210,M=16,cw=W-2*M,ACC=[91,84,230],INK=[32,35,54],MUT=[110,120,140];let y=0;
+  const W=210,M=16,cw=W-2*M,ACC=[91,84,230],INK=[32,35,54],MUT=[110,120,140],OK=[22,132,90];let y=0;
+  const foot=()=>{doc.setTextColor(...MUT);doc.setFont("helvetica","normal");doc.setFontSize(7.5);doc.text(biz+"   ·   Propuesta preparada por "+(sender||"Sky Tech"),M,290);};
+  const need=h=>{if(y+h>276){foot();doc.addPage();y=20;}};
+  // --- Portada ---
   doc.setFillColor(...ACC);doc.rect(0,0,W,34,"F");
   doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(9);doc.text("PROPUESTA COMERCIAL",M,12);
-  doc.setFontSize(18);doc.text(doc.splitTextToSize(biz,cw),M,21);
+  doc.setFontSize(18);let tl=doc.splitTextToSize(biz,cw);
+  if(tl.length>1){doc.setFontSize(13);tl=doc.splitTextToSize(biz,cw).slice(0,2);doc.text(tl,M,18);}else{doc.text(tl,M,21);}
   doc.setFont("helvetica","normal");doc.setFontSize(9.5);
   const dt=new Date().toLocaleDateString("es-PE",{day:"2-digit",month:"long",year:"numeric"});
   doc.text((sender?("Preparado por "+sender+"   ·   "):"")+dt,M,30);
   y=44;doc.setTextColor(...MUT);doc.setFont("helvetica","normal");doc.setFontSize(9.5);
-  const snap=[rubro,l.rating?("Rating "+l.rating.toFixed(1)+" · "+(l.reviews||0)+" reseñas"):null,realWeb(l)?"Con web":"Sin web propia",l.phone?("Tel: "+l.phone):null].filter(Boolean).join("    ·    ");
-  doc.text(doc.splitTextToSize(snap,cw),M,y);y+=5;
-  if(l.address){doc.text(doc.splitTextToSize("Dirección: "+l.address,cw),M,y);y+=5;}
+  const snap=[rubro,l.rating?("Rating "+l.rating.toFixed(1)+" · "+(l.reviews||0)+" reseñas"):null,realWeb(l)?"Con web propia":"Sin sistema ni web propia",l.phone?("Tel: "+l.phone):null].filter(Boolean).join("    ·    ");
+  const sn=doc.splitTextToSize(snap,cw);doc.text(sn,M,y);y+=sn.length*5;
+  if(l.address){const ad=doc.splitTextToSize("Dirección: "+l.address,cw);doc.text(ad,M,y);y+=ad.length*4.8;}
   if(l.about){const ab=doc.splitTextToSize(l.about,cw);doc.text(ab,M,y);y+=ab.length*4.6;}
   y+=3;
-  const P=c.offer==="web"?webProposal(biz,rubro):sysProposal(biz,rubro,c.vertical);
-  const h2=t=>{y+=3;doc.setFillColor(236,235,253);doc.roundedRect(M,y-4.5,cw,7,1,1,"F");doc.setTextColor(...ACC);doc.setFont("helvetica","bold");doc.setFontSize(11);doc.text(t,M+2.5,y);y+=8;};
-  const para=t=>{doc.setTextColor(...INK);doc.setFont("helvetica","normal");doc.setFontSize(10.5);const ls=doc.splitTextToSize(t,cw);doc.text(ls,M,y);y+=ls.length*5+2;};
-  const bullets=arr=>{doc.setFontSize(10.5);doc.setFont("helvetica","normal");arr.forEach(b=>{doc.setFillColor(...ACC);doc.circle(M+1.6,y-1.3,0.8,"F");doc.setTextColor(...INK);const ls=doc.splitTextToSize(b,cw-7);doc.text(ls,M+5,y);y+=ls.length*5+1.8;});y+=1.5;};
-  h2(P.title);para(P.diag);
-  h2("Qué incluye");bullets(P.incluye);
-  h2("Resultados que puedes esperar");bullets(P.result);
-  h2("Cómo lo hacemos, en 4 pasos");bullets(P.plan);
-  let demo=(c.offer==="sistema")?(store.get("bc3k_demo_sist","")||store.get("bc3k_demo_web","")):(store.get("bc3k_demo_web","")||store.get("bc3k_demo_sist",""));demo=(demo||"").trim();
-  const boxH=demo?26:20;y=Math.max(y,255);if(y>289-boxH)y=289-boxH;
+  // --- helpers de bloque ---
+  const h2=(t,keep)=>{need(16+(keep||0));y+=3;doc.setFillColor(236,235,253);doc.roundedRect(M,y-4.5,cw,7,1,1,"F");doc.setTextColor(...ACC);doc.setFont("helvetica","bold");doc.setFontSize(11);doc.text(t,M+2.5,y);y+=8;};
+  const para=(t,col)=>{doc.setTextColor(...(col||INK));doc.setFont("helvetica","normal");doc.setFontSize(10.5);const ls=doc.splitTextToSize(t,cw);need(ls.length*5+4);doc.text(ls,M,y);y+=ls.length*5+2;};
+  const bullets=arr=>{doc.setFontSize(10.5);doc.setFont("helvetica","normal");arr.forEach(b=>{const ls=doc.splitTextToSize(b,cw-7);need(ls.length*5+4);doc.setFillColor(...ACC);doc.circle(M+1.6,y-1.3,0.8,"F");doc.setTextColor(...INK);doc.text(ls,M+5,y);y+=ls.length*5+1.8;});y+=1.5;};
+  const kpi=items=>{const gap=3,bw=(cw-gap*(items.length-1))/items.length,bh=18;need(bh+5);
+    items.forEach((it,i)=>{const x=M+i*(bw+gap);
+      doc.setFillColor(245,245,252);doc.roundedRect(x,y,bw,bh,1.6,1.6,"F");
+      doc.setTextColor(...MUT);doc.setFont("helvetica","normal");doc.setFontSize(7);doc.text(doc.splitTextToSize(it[0],bw-3)[0],x+2.5,y+4.8);
+      doc.setTextColor(...ACC);doc.setFont("helvetica","bold");doc.setFontSize(14);doc.text(""+it[1],x+2.5,y+12);
+      doc.setTextColor(...MUT);doc.setFont("helvetica","normal");doc.setFontSize(6.8);doc.text(doc.splitTextToSize(it[2]||"",bw-3)[0]||"",x+2.5,y+15.8);});
+    y+=bh+5;};
+  const C1=Math.round(cw*0.19),C2=Math.round(cw*0.40),C3=cw-C1-C2;
+  // mide cada fila con la MISMA tipografía con la que se dibuja (negrita mide más ancho)
+  const tprep=rows=>{doc.setFontSize(9);
+    const pre=rows.map(r=>{
+      doc.setFont("helvetica","bold");
+      const a=doc.splitTextToSize(r[0],C1-4),d=doc.splitTextToSize(r[2],C3-4);
+      doc.setFont("helvetica","normal");
+      const b=doc.splitTextToSize(r[1],C2-4);
+      return{a,b,d,hh:Math.max(a.length,b.length,d.length)*4.2+4};});
+    return{pre,total:6.5+pre.reduce((x,r)=>x+r.hh,0)+4};};
+  const thead=()=>{doc.setFillColor(...ACC);doc.rect(M,y-4,cw,6.5,"F");doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(8.4);
+    doc.text("ÁREA",M+2,y);doc.text("HOY, A MANO",M+C1+2,y);doc.text("CON EL SISTEMA",M+C1+C2+2,y);y+=6.5;};
+  const tdraw=pre=>{thead();
+    pre.forEach((r,i)=>{
+      if(y+r.hh>276){foot();doc.addPage();y=20;thead();}
+      if(i%2===0){doc.setFillColor(247,247,252);doc.rect(M,y-4,cw,r.hh,"F");}
+      doc.setFontSize(9);
+      doc.setTextColor(...INK);doc.setFont("helvetica","bold");doc.text(r.a,M+2,y);
+      doc.setTextColor(...MUT);doc.setFont("helvetica","normal");doc.text(r.b,M+C1+2,y);
+      doc.setTextColor(...OK);doc.setFont("helvetica","bold");doc.text(r.d,M+C1+C2+2,y);
+      y+=r.hh;});
+    y+=4;};
+  // --- 1. Estadisticas reales ---
+  if(S){
+    h2("Su negocio en números (datos reales de su zona)",34);
+    para("Medimos "+S.n+" negocios de "+S.scope+" con datos públicos de Google Maps. Esto es lo que dicen de "+biz+":",MUT);
+    kpi([["Sus reseñas",S.mine,"prom. zona "+Math.round(S.avgRev)],
+         ["Su calificación",(S.myR?S.myR.toFixed(1):"s/d"),(S.avgR?("prom. "+S.avgR.toFixed(1)):"sin dato")],
+         ["Puesto en su zona",S.rank+" de "+S.n,"por reseñas"],
+         ["Sin sistema propio",S.pctNoWeb+"%","de su competencia"]]);
+    bullets(INS);
+  }
+  // --- 2. Hoy vs con el sistema (el dato lleva al cambio) ---
+  const T=tprep(benchOf(c.vertical));
+  const intro="Cada fila es trabajo que hoy se hace a mano y que el sistema deja resuelto. No cambia lo que usted vende: cambia el orden con el que lo controla.";
+  doc.setFont("helvetica","normal");doc.setFontSize(10.5);
+  need(Math.min(11+doc.splitTextToSize(intro,cw).length*5+2+T.total,250));
+  h2("Cómo trabaja hoy y cómo quedaría con el sistema",14);
+  para(intro,MUT);
+  tdraw(T.pre);
+  // --- 3. La propuesta ---
+  const P=sysProposal(biz,rubro,c.vertical);
+  doc.setFont("helvetica","normal");doc.setFontSize(10.5);
+  h2(P.title,doc.splitTextToSize(P.diag,cw).length*5+2);para(P.diag);
+  // --- 4. Detalle ---
+  h2("Qué incluye",13);bullets(P.incluye);
+  h2("Resultados que puede esperar",13);bullets(P.result);
+  h2("Cómo lo hacemos, en 4 pasos",13);bullets(P.plan);
+  // --- 5. Cierre ---
+  let demo=(store.get("bc3k_demo_sist","")||"").trim();
+  const boxH=demo?30:24;need(boxH+6);y+=2;
   doc.setFillColor(...ACC);doc.roundedRect(M,y,cw,boxH,2,2,"F");
-  doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(12);doc.text("¿Vemos una demo sin compromiso?",M+4,y+8);
-  doc.setFont("helvetica","normal");doc.setFontSize(10);doc.text([sender,contact].filter(Boolean).join("    ·    ")||"Escríbeme y te muestro cómo quedaría.",M+4,y+15);
-  if(demo){doc.setFont("helvetica","bold");doc.text("Prueba la demo: ",M+4,y+21.5);const lw=doc.getTextWidth("Prueba la demo: ");doc.setFont("helvetica","normal");doc.text(demo,M+4+lw,y+21.5);}
-  doc.setTextColor(...MUT);doc.setFont("helvetica","normal");doc.setFontSize(8);doc.text("Propuesta generada con BUSCA-CHAMBA-3000",M,294);
+  doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(12.5);doc.text("Pruébelo sin compromiso, antes de decidir",M+4,y+8);
+  doc.setFont("helvetica","normal");doc.setFontSize(9.5);doc.text("Le dejo el sistema andando con sus propios datos. Si no le sirve, no paga nada.",M+4,y+14.5);
+  doc.setFontSize(10);doc.text([sender,contact].filter(Boolean).join("    ·    ")||"Escríbame y se lo muestro funcionando.",M+4,y+20.5);
+  if(demo){doc.setFont("helvetica","bold");doc.text("Pruebe la demo: ",M+4,y+26.5);const lw=doc.getTextWidth("Pruebe la demo: ");doc.setFont("helvetica","normal");doc.text(demo,M+4+lw,y+26.5);}
+  y+=boxH;
+  foot();
 }
 function pdfName(l){return "Propuesta - "+((l.title||"negocio").trim()).replace(/[\\/:*?"<>|]+/g,"").slice(0,60)+".pdf";}
 function proposalPDF(l){const lib=window.jspdf&&window.jspdf.jsPDF;if(!lib){openProposalPrint([l]);return;}const doc=new lib({unit:"mm",format:"a4"});drawProposal(doc,l);doc.save(pdfName(l));toast("PDF descargado ✓");}
 function bulkProposalsPDF(list){if(!list||!list.length){toast("No hay leads para exportar");return;}const lib=window.jspdf&&window.jspdf.jsPDF;if(!lib){openProposalPrint(list);return;}const doc=new lib({unit:"mm",format:"a4"});list.forEach((l,i)=>{if(i>0)doc.addPage();drawProposal(doc,l);});doc.save("Propuestas ("+list.length+").pdf");toast(list.length+" propuestas en un PDF ✓");}
-function proposalHTMLDoc(list){const sender=(($("#myName")&&$("#myName").value)||store.get("bc3k_name","")||"").trim();const contact=(($("#cfgContact")&&$("#cfgContact").value)||store.get("bc3k_contact","")||"").trim();const dt=new Date().toLocaleDateString("es-PE",{day:"2-digit",month:"long",year:"numeric"});const web0=(store.get("bc3k_demo_web","")||"").trim(),sis0=(store.get("bc3k_demo_sist","")||"").trim();const li=a=>a.map(x=>`<li>${esc(x)}</li>`).join("");const body=list.map(l=>{const c=classify(l),biz=esc(l.title||"tu negocio"),rubro=l.category||"tu rubro";const P=c.offer==="web"?webProposal(l.title||"tu negocio",rubro):sysProposal(l.title||"tu negocio",rubro,c.vertical);const demo=c.offer==="sistema"?(sis0||web0):(web0||sis0);const snap=[esc(rubro),l.rating?("★ "+l.rating.toFixed(1)+" · "+(l.reviews||0)+" reseñas"):null,realWeb(l)?"Con web":"Sin web propia",l.phone?("Tel: "+esc(l.phone)):null].filter(Boolean).join(" · ");return `<article><header><div class="k">PROPUESTA COMERCIAL</div><h1>${biz}</h1><div class="sub">${sender?("Preparado por "+esc(sender)+" · "):""}${dt}</div></header><div class="snap">${snap}${l.address?" · "+esc(l.address):""}</div>${l.about?`<div class="desc">${esc(l.about)}</div>`:""}<h2>${esc(P.title)}</h2><p>${esc(P.diag)}</p><h3>Qué incluye</h3><ul>${li(P.incluye)}</ul><h3>Resultados que puedes esperar</h3><ul>${li(P.result)}</ul><h3>Cómo lo hacemos, en 4 pasos</h3><ol>${li(P.plan)}</ol><div class="cta"><b>¿Vemos una demo sin compromiso?</b><br>${esc([sender,contact].filter(Boolean).join(" · "))}${demo?`<br>Prueba la demo: <span class="lnk">${esc(demo)}</span>`:""}</div></article>`;}).join("");return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Propuesta</title><style>*{box-sizing:border-box}body{font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#20233a;margin:0}article{max-width:760px;margin:0 auto;padding:0 0 30px}article+article{page-break-before:always}header{background:#5b54e6;color:#fff;padding:20px 26px;border-radius:0 0 10px 10px}header .k{font-size:11px;letter-spacing:1px;opacity:.85}header h1{margin:4px 0 2px;font-size:24px}header .sub{font-size:12px;opacity:.9}.snap{color:#6a758c;padding:14px 26px 0;font-size:12.5px}.desc{color:#6a758c;padding:4px 26px 0;font-size:12.5px}h2{color:#5b54e6;margin:16px 26px 6px;font-size:17px}p{margin:0 26px 8px}h3{margin:14px 26px 4px;font-size:14px}ul,ol{margin:0 26px 8px;padding-left:20px}li{margin:3px 0}.cta{background:#5b54e6;color:#fff;margin:18px 26px 0;padding:14px 18px;border-radius:10px}.cta .lnk{text-decoration:underline}@media print{header,.cta{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>${body}<script>window.onload=function(){setTimeout(function(){window.print();},350);};<\/script></body></html>`;}
+function proposalHTMLDoc(list){
+  const sender=(($("#myName")&&$("#myName").value)||store.get("bc3k_name","")||"").trim();
+  const contact=(($("#cfgContact")&&$("#cfgContact").value)||store.get("bc3k_contact","")||"").trim();
+  const dt=new Date().toLocaleDateString("es-PE",{day:"2-digit",month:"long",year:"numeric"});
+  const demo=(store.get("bc3k_demo_sist","")||"").trim();
+  const li=a=>a.map(x=>`<li>${esc(x)}</li>`).join("");
+  const body=list.map(l=>{
+    const c=classify(l),S=statsFor(l),INS=insightsFor(l,S);
+    const biz=esc(l.title||"tu negocio"),rubro=l.category||"tu rubro";
+    const P=sysProposal(l.title||"tu negocio",rubro,c.vertical);
+    const snap=[esc(rubro),l.rating?("★ "+l.rating.toFixed(1)+" · "+(l.reviews||0)+" reseñas"):null,realWeb(l)?"Con web propia":"Sin sistema ni web propia",l.phone?("Tel: "+esc(l.phone)):null].filter(Boolean).join(" · ");
+    const kpis=S?`<div class="kpis">
+      <div class="kpi"><span>Sus reseñas</span><b>${S.mine}</b><i>prom. zona ${Math.round(S.avgRev)}</i></div>
+      <div class="kpi"><span>Su calificación</span><b>${S.myR?S.myR.toFixed(1):"s/d"}</b><i>${S.avgR?("prom. "+S.avgR.toFixed(1)):"sin dato"}</i></div>
+      <div class="kpi"><span>Puesto en su zona</span><b>${S.rank} de ${S.n}</b><i>por reseñas</i></div>
+      <div class="kpi"><span>Sin sistema propio</span><b>${S.pctNoWeb}%</b><i>de su competencia</i></div></div>`:"";
+    const stats=S?`<h2>Su negocio en números (datos reales de su zona)</h2><p class="mut">Medimos ${S.n} negocios de ${esc(S.scope)} con datos públicos de Google Maps. Esto es lo que dicen de ${biz}:</p>${kpis}<ul>${li(INS)}</ul>`:"";
+    const rows=benchOf(c.vertical).map((r,i)=>`<tr class="${i%2?"":"alt"}"><th>${esc(r[0])}</th><td class="hoy">${esc(r[1])}</td><td class="sis">${esc(r[2])}</td></tr>`).join("");
+    return `<article>
+      <header><div class="k">PROPUESTA COMERCIAL</div><h1>${biz}</h1><div class="sub">${sender?("Preparado por "+esc(sender)+" · "):""}${dt}</div></header>
+      <div class="snap">${snap}${l.address?" · "+esc(l.address):""}</div>
+      ${l.about?`<div class="desc">${esc(l.about)}</div>`:""}
+      ${stats}
+      <h2>Cómo trabaja hoy y cómo quedaría con el sistema</h2>
+      <p class="mut">Cada fila es trabajo que hoy se hace a mano y que el sistema deja resuelto. No cambia lo que usted vende: cambia el orden con el que lo controla.</p>
+      <table class="cmp"><thead><tr><th>Área</th><th>Hoy, a mano</th><th>Con el sistema</th></tr></thead><tbody>${rows}</tbody></table>
+      <h2>${esc(P.title)}</h2><p>${esc(P.diag)}</p>
+      <h3>Qué incluye</h3><ul>${li(P.incluye)}</ul>
+      <h3>Resultados que puede esperar</h3><ul>${li(P.result)}</ul>
+      <h3>Cómo lo hacemos, en 4 pasos</h3><ol>${li(P.plan)}</ol>
+      <div class="cta"><b>Pruébelo sin compromiso, antes de decidir</b><br>Le dejo el sistema andando con sus propios datos. Si no le sirve, no paga nada.<br>${esc([sender,contact].filter(Boolean).join(" · "))}${demo?`<br>Pruebe la demo: <span class="lnk">${esc(demo)}</span>`:""}</div>
+    </article>`;}).join("");
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Propuesta</title><style>*{box-sizing:border-box}body{font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#20233a;margin:0}article{max-width:760px;margin:0 auto;padding:0 0 30px}article+article{page-break-before:always}header{background:#5b54e6;color:#fff;padding:20px 26px;border-radius:0 0 10px 10px}header .k{font-size:11px;letter-spacing:1px;opacity:.85}header h1{margin:4px 0 2px;font-size:24px}header .sub{font-size:12px;opacity:.9}.snap{color:#6a758c;padding:14px 26px 0;font-size:12.5px}.desc,.mut{color:#6a758c;padding:4px 26px 0;font-size:12.5px}h2{color:#5b54e6;margin:16px 26px 6px;font-size:17px}p{margin:0 26px 8px}h3{margin:14px 26px 4px;font-size:14px}ul,ol{margin:0 26px 8px;padding-left:46px}li{margin:3px 0}.kpis{display:flex;gap:8px;margin:8px 26px 10px}.kpi{flex:1;background:#f5f5fc;border-radius:8px;padding:8px 10px}.kpi span{display:block;font-size:10px;color:#6a758c}.kpi b{display:block;font-size:20px;color:#5b54e6;line-height:1.2}.kpi i{font-size:10px;color:#6a758c;font-style:normal}table.cmp{width:calc(100% - 52px);margin:6px 26px 8px;border-collapse:collapse;font-size:12px}table.cmp thead th{background:#5b54e6;color:#fff;text-align:left;padding:6px 8px;font-size:11px;letter-spacing:.4px}table.cmp tbody th{text-align:left;width:19%;padding:6px 8px;vertical-align:top}table.cmp td{padding:6px 8px;vertical-align:top}table.cmp tr.alt th,table.cmp tr.alt td{background:#f7f7fc}table.cmp .hoy{color:#6a758c;width:40%}table.cmp .sis{color:#16845a;font-weight:600}.cta{background:#5b54e6;color:#fff;margin:18px 26px 0;padding:14px 18px;border-radius:10px;line-height:1.6}.cta .lnk{text-decoration:underline}@media print{header,.cta,.kpi,table.cmp thead th,table.cmp tr.alt th,table.cmp tr.alt td{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>${body}<script>window.onload=function(){setTimeout(function(){window.print();},350);};<\/script></body></html>`;
+}
 function openProposalPrint(list){const w=window.open("","_blank");if(!w){toast("Permite ventanas emergentes para generar el PDF");return;}w.document.write(proposalHTMLDoc(list));w.document.close();toast('Se abrió la propuesta: elige "Guardar como PDF"');}
 const RUBRO_GROUPS=[
   {name:"Comida y bebida",icon:"🍽️",items:["restaurante","pollería","chifa","cevichería","cafetería","juguería","panadería","pizzería"]},
@@ -674,7 +823,7 @@ function card(l){
   if(l.rating)h+=`<div class="rating"><b>★ ${l.rating.toFixed(1)}</b> · ${l.reviews} reseñas</div>`;
   const v=detectV(l.category);if(v)h+=`<div class="sug">💡 ${esc(PITCHES.verticals[v].label)}</div>`;
   h+=`</div></div>`;
-  if(!realWeb(l))h+=`<span class="flag">🔥 SIN WEB · prospecto ideal</span>`;
+  if(!realWeb(l))h+=`<span class="flag">🔥 SIN SISTEMA · prospecto ideal</span>`;
   h+=`<div class="badges"><span class="b2 ${realWeb(l)?"yes":"no"}">🌐 ${realWeb(l)?"Web propia":(hasSoc(l)?"Solo redes":"Sin web")}</span>${(()=>{const o=socialOf(l),n=[o.fb?"FB":"",o.ig?"IG":"",o.tt?"TikTok":""].filter(Boolean);return n.length?`<span class="b2 yes">📱 ${n.join(" · ")}</span>`:"";})()}<span class="b2 ${wa?"yes":"no"}">${isMobile(l.phone)?"📱":"☎️"} ${wa?(isMobile(l.phone)?"WhatsApp":"Fijo"):"Sin tel."}</span><span class="b2 ${email?"yes":"no"}">✉️ ${email?"Correo":"Sin correo"}</span></div>`;
   const cls=classify(l);
   h+=`<div class="clsrow"><span class="clsb ${cls.offer}">💼 ${OFFER_LABEL[cls.offer]}</span><span class="clst t-${cls.tier}">${TIER_LABEL[cls.tier]}</span></div>`;
@@ -746,12 +895,12 @@ function renderMetrics(){
 
 // ---- Modal ----
 const myName=()=>($("#myName").value||"").trim()||"[tu nombre]";
-function demoLinkFor(l){const web=(store.get("bc3k_demo_web","")||"").trim(),sis=(store.get("bc3k_demo_sist","")||"").trim();return sis||web;}
+function demoLinkFor(l){return (store.get("bc3k_demo_sist","")||"").trim();}
 function offerService(l){const c=classify(l);return c.vertical?("v:"+c.vertical):"s:sistema";}
-function applyTpl(tpl,l,demo){let t=(""+tpl).replace(/\{negocio\}/gi,l.title||"tu negocio").replace(/\{nombre\}/gi,myName()).replace(/\{demo\}/gi,demo||"");if(!/\{demo\}/i.test(tpl)&&demo)t+="\n\n👉 Míralo funcionando (demo): "+demo;return t;}
-function cardWaText(l){const link=demoLinkFor(l);const tpl=(store.get("bc3k_tpl","")||"").trim();if(tpl)return applyTpl(tpl,l,link);let t=pitchBy(offerService(l)).build(myName(),l.title);if(link)t+="\n\n👉 Míralo funcionando (demo): "+link;return t;}
+function applyTpl(tpl,l,demo){let t=(""+tpl).replace(/\{negocio\}/gi,l.title||"tu negocio").replace(/\{nombre\}/gi,myName()).replace(/\{demo\}/gi,demo||"");if(!/\{demo\}/i.test(tpl)&&demo)t+="\n\n👉 Aquí lo puede probar usted mismo (demo): "+demo;return t;}
+function cardWaText(l){const link=demoLinkFor(l);const tpl=(store.get("bc3k_tpl","")||"").trim();if(tpl)return applyTpl(tpl,l,link);let t=pitchBy(offerService(l)).build(myName(),l.title);if(link)t+="\n\n👉 Aquí lo puede probar usted mismo (demo): "+link;return t;}
 function cardMailHref(l){const email=(l.emails&&l.emails[0])||"";if(!email)return"";const subj="Propuesta para "+(l.title||"tu negocio");return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(cardWaText(l))}`;}
-function buildMsg(){const link=demoLinkFor(current);let t;if($("#mFollow").checked){t=FOLLOWUP(myName(),current.title);if(link)t+="\n\n👉 Míralo funcionando (demo): "+link;}else{const tpl=(store.get("bc3k_tpl","")||"").trim();if(tpl)t=applyTpl(tpl,current,link);else{t=pitchBy($("#mService").value).build(myName(),current.title);if(link)t+="\n\n👉 Míralo funcionando (demo): "+link;}}$("#mText").value=t;}
+function buildMsg(){const link=demoLinkFor(current);let t;if($("#mFollow").checked){t=FOLLOWUP(myName(),current.title);if(link)t+="\n\n👉 Aquí lo puede probar usted mismo (demo): "+link;}else{const tpl=(store.get("bc3k_tpl","")||"").trim();if(tpl)t=applyTpl(tpl,current,link);else{t=pitchBy($("#mService").value).build(myName(),current.title);if(link)t+="\n\n👉 Aquí lo puede probar usted mismo (demo): "+link;}}$("#mText").value=t;}
 function openModal(l){current=l;const id=idOf(l),m=getMeta(id);
   $("#mTitle").textContent=l.title;$("#mSub").textContent=((l.phone?("📞 "+l.phone):"")+(l.emails[0]?("   ✉️ "+l.emails[0]):""))||"Sin contacto directo";$("#mFollow").checked=false;
   const G=[["Vender un sistema (por rubro)","v",PITCHES.verticals],["Servicio general","s",PITCHES.servicios]];
@@ -911,7 +1060,6 @@ $("#mMail").onclick=()=>{const e=current.emails[0];if(!e){toast("Sin correo");re
 $("#guideBtn").onclick=()=>$("#guideBg").classList.add("open");$("#guideClose").onclick=()=>$("#guideBg").classList.remove("open");$("#guideBg").onclick=e=>{if(e.target===$("#guideBg"))$("#guideBg").classList.remove("open");};
 $("#myName").value=store.get("bc3k_name","")||"Bryan de Sky Tech";if(!store.get("bc3k_name",""))store.set("bc3k_name",$("#myName").value);$("#myName").oninput=e=>store.set("bc3k_name",e.target.value);
 if($("#cfgContact")){$("#cfgContact").value=store.get("bc3k_contact","");$("#cfgContact").oninput=e=>store.set("bc3k_contact",e.target.value);}
-if($("#cfgDemoWeb")){$("#cfgDemoWeb").value=store.get("bc3k_demo_web","");$("#cfgDemoWeb").oninput=e=>store.set("bc3k_demo_web",e.target.value);}
 if($("#cfgDemoSist")){$("#cfgDemoSist").value=store.get("bc3k_demo_sist","");$("#cfgDemoSist").oninput=e=>store.set("bc3k_demo_sist",e.target.value);}
 if($("#cfgTpl")){$("#cfgTpl").value=store.get("bc3k_tpl","");$("#cfgTpl").oninput=e=>store.set("bc3k_tpl",e.target.value);}
 if($("#cfgPrecio")){$("#cfgPrecio").value=store.get("bc3k_precio","");$("#cfgPrecio").oninput=e=>store.set("bc3k_precio",e.target.value);}
