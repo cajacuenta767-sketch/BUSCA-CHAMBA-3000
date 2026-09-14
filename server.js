@@ -12,7 +12,7 @@ const http = require("http");
 const https = require("https");
 const fs = require("fs");
 const path = require("path");
-const { spawn } = require("child_process");
+const { spawn, execSync } = require("child_process");
 
 const PORT = process.env.PORT || 8090;
 const AUTH = process.env.BASIC_AUTH || "";
@@ -23,6 +23,8 @@ const DB_FILE = path.join(DATA, "db.json");
 const CFG_FILE = path.join(DATA, "config.json");
 const Q_FILE = path.join(DATA, "q.txt");
 const CELL_CSV = path.join(DATA, "cell.csv");
+const PROXIES_FILE = path.join(DATA, "proxies.txt");
+const ROOT_PROXIES = path.join(ROOT, "proxies.txt");
 
 // Rubros agrupados en "grupos selectos" (limpio, sin repetidos ni nombres sueltos).
 // El frontend usa los mismos grupos; aquí se aplanan para el modo "Todo el área".
@@ -41,8 +43,38 @@ const CATEGORIES = [...new Set(CATEGORY_GROUPS.flatMap(g => g.items))];
 let db = load(DB_FILE, { leads: {}, order: [], history: [], scanned: [] });
 let cfg = load(CFG_FILE, { telegramToken: "", telegramChat: "", webhookUrl: "", proxies: "", leadsdbKey: "", notify: false, safeMode: true, pauseMin: 3, pauseMax: 8, depth: 0, maxBlocks: 4, subdivide: true, subdivideAt: 90, exclude: "", maxLeads: 0, retryFailed: true, cellMax: 6, conc: 1, inactivity: 20 });
 function load(f, d) { try { return Object.assign({}, d, JSON.parse(fs.readFileSync(f, "utf8"))); } catch (e) { return d; } }
-let saveT = null;
-function save() { clearTimeout(saveT); saveT = setTimeout(() => { try { fs.writeFileSync(DB_FILE, JSON.stringify(db)); } catch (e) {} }, 250); }
+let saveT = null, lastBak = 0;
+function save(immediate = false) {
+  const doSave = () => {
+    try {
+      const json = JSON.stringify(db);
+      fs.writeFileSync(DB_FILE + ".tmp", json);
+      fs.renameSync(DB_FILE + ".tmp", DB_FILE);
+      const now = Date.now();
+      if (now - lastBak > 60000) {
+        lastBak = now;
+        try { fs.copyFileSync(DB_FILE, DB_FILE + ".bak"); } catch (_) {}
+      }
+    } catch (e) {
+      try { fs.writeFileSync(DB_FILE, JSON.stringify(db)); } catch (_) {}
+    }
+  };
+  clearTimeout(saveT);
+  if (immediate) doSave();
+  else saveT = setTimeout(doSave, 200);
+}
+function killChild(p) {
+  if (!p) return;
+  try {
+    if (process.platform === "win32" && p.pid) {
+      execSync(`taskkill /F /T /PID ${p.pid} 2>nul`, { stdio: "ignore" });
+    } else if (p.kill) {
+      p.kill("SIGKILL");
+    }
+  } catch (e) {
+    try { if (p.kill) p.kill("SIGKILL"); } catch (_) {}
+  }
+}
 function saveCfg() { try { fs.writeFileSync(CFG_FILE, JSON.stringify(cfg)); } catch (e) {} }
 
 // ---------- Logs ----------
@@ -99,8 +131,56 @@ async function fetchProxyList() { const set = new Set(); await Promise.all(PROXY
 function testProxy(pxy) { return new Promise(res => { const m = pxy.replace(/^https?:\/\//, "").split(":"), host = m[0], port = +m[1] || 8080; let done = false; const fin = ok => { if (!done) { done = true; res(ok); } }; try { const req = http.request({ host, port, method: "GET", path: "http://www.google.com/generate_204", headers: { Host: "www.google.com" }, timeout: 5000 }, r => { r.destroy(); fin(true); }); req.on("error", () => fin(false)); req.on("timeout", () => { req.destroy(); fin(false); }); req.end(); } catch (e) { fin(false); } }); }
 async function fetchAndTestProxies() { const list = await fetchProxyList(); const working = []; const batch = 50; const deadline = Date.now() + 75000; for (let i = 0; i < list.length && working.length < 250 && Date.now() < deadline; i += batch) { const chunk = list.slice(i, i + batch); const ok = await Promise.all(chunk.map(testProxy)); chunk.forEach((p, j) => { if (ok[j]) working.push("http://" + p); }); } log(`Proxies: ${working.length} vivas de ${list.length} candidatas`); return { total: list.length, working }; }
 
+function testProxyFast(pxy) {
+  return new Promise(res => {
+    try {
+      const u = new URL(pxy.startsWith("http") ? pxy : `http://${pxy}`);
+      const opts = {
+        hostname: u.hostname,
+        port: +u.port || 80,
+        path: "http://www.google.com/generate_204",
+        method: "GET",
+        headers: {
+          Host: "www.google.com",
+          "User-Agent": "Mozilla/5.0"
+        },
+        timeout: 3000
+      };
+      if (u.username && u.password) {
+        opts.headers["Proxy-Authorization"] = "Basic " + Buffer.from(`${u.username}:${u.password}`).toString("base64");
+      }
+      const req = http.request(opts, r => {
+        const ok = r.statusCode === 204 || r.statusCode === 200;
+        r.destroy();
+        res(ok);
+      });
+      req.on("error", () => res(false));
+      req.on("timeout", () => { req.destroy(); res(false); });
+      req.end();
+    } catch (e) {
+      res(false);
+    }
+  });
+}
+
 function normalizeProxy(s) { s = ("" + s).trim(); if (!s) return ""; if (/^(https?|socks5h?):\/\//i.test(s)) return s; const p = s.split(":"); if (p.length === 4) return `http://${p[2]}:${p[3]}@${p[0]}:${p[1]}`; if (p.length === 2) return `http://${p[0]}:${p[1]}`; if (s.includes("@")) return "http://" + s; return "http://" + s; }
 function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]]; } return a; }
+function getBackendProxies() {
+  for (const f of [PROXIES_FILE, ROOT_PROXIES]) {
+    try {
+      if (fs.existsSync(f)) {
+        const txt = fs.readFileSync(f, "utf8");
+        const list = txt.split(/[\r\n\s,]+/).map(s => normalizeProxy(s)).filter(Boolean);
+        if (list.length > 0) return [...new Set(list)];
+      }
+    } catch (e) {}
+  }
+  if (cfg.proxies) {
+    const list = String(cfg.proxies).split(/[\r\n\s,]+/).map(s => normalizeProxy(s)).filter(Boolean);
+    if (list.length > 0) return [...new Set(list)];
+  }
+  return [];
+}
 
 // ---------- CSV ----------
 function parseCSV(t) { const rows = []; let row = [], f = "", q = false; for (let i = 0; i < t.length; i++) { const c = t[i]; if (q) { if (c === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; } else { if (c === '"') q = true; else if (c === ",") { row.push(f); f = ""; } else if (c === "\n") { row.push(f); rows.push(row); row = []; f = ""; } else if (c !== "\r") f += c; } } if (f.length || row.length) { row.push(f); rows.push(row); } return rows; }
@@ -155,57 +235,179 @@ function addLead(l) {
 
 // ---------- Escaneo por cuadrícula ----------
 let scan = null, child = null, pollT = null, demoT = null, nextT = null, curCell = null, curEmitted = 0, lastLogB = 0, cellTimer = null, cellStart = 0;
-const BLOCK_RE = /ERR_TUNNEL|\b429\b|\b403\b|captcha|unusual traffic|too many requests|rate.?limit|sorry\/index/i;
-function statusObj() { if (!scan) return { running: false }; const done = scan.cells.filter(c => ["done", "empty", "error"].includes(c.state)).length; return { running: scan.running, paused: scan.paused, mode: scan.mode, cellsTotal: scan.cells.length, cellsDone: done, found: scan.found, cellIdx: Math.min(scan.idx + 1, scan.cells.length), cellFound: curCell ? (curCell.found || 0) : 0, cellSecs: (scan.running && !scan.paused && cellStart) ? Math.round((Date.now() - cellStart) / 1000) : 0, queries: (scan.queries || []).length }; }
+const BLOCK_RE = /ERR_TUNNEL|\b429\b|\b403\b|captcha|unusual traffic|too many requests|rate.?limit|sorry\/index|connection reset/i;
+function statusObj() {
+  if (!scan) return { running: false, backendProxies: getBackendProxies().length, totalDbLeads: Object.keys(db.leads || {}).length };
+  const done = scan.cells.filter(c => ["done", "empty", "error"].includes(c.state)).length;
+  return {
+    running: scan.running,
+    paused: scan.paused,
+    mode: scan.mode,
+    cellsTotal: scan.cells.length,
+    cellsDone: done,
+    found: scan.found,
+    totalDbLeads: Object.keys(db.leads || {}).length,
+    cellIdx: Math.min(scan.idx + 1, scan.cells.length),
+    cellFound: curCell ? (curCell.found || 0) : 0,
+    cellSecs: (scan.running && !scan.paused && cellStart) ? Math.round((Date.now() - cellStart) / 1000) : 0,
+    queries: (scan.queries || []).length,
+    backendProxies: scan.proxyList ? scan.proxyList.length : getBackendProxies().length
+  };
+}
 function computeCells(area, cellKm) { const [s, w, n, e] = area, latC = (s + n) / 2, dLat = cellKm / 111, dLon = cellKm / (111 * Math.cos(latC * Math.PI / 180)), cells = []; for (let lat = s; lat < n; lat += dLat) for (let lon = w; lon < e; lon += dLon) { const top = Math.min(lat + dLat, n), right = Math.min(lon + dLon, e); cells.push({ key: lat.toFixed(4) + "_" + lon.toFixed(4), bbox: [lat, lon, top, right], state: "pending", found: 0, km: cellKm, depth: 0 }); } return cells; }
 function splitCell(c) { const [s, w, n, e] = c.bbox, mLat = (s + n) / 2, mLon = (w + e) / 2, km = (c.km || 1) / 2, d = (c.depth || 0) + 1; return [[s, w, mLat, mLon], [s, mLon, mLat, e], [mLat, w, n, mLon], [mLat, mLon, n, e]].map((bb, i) => ({ key: c.key + "s" + i, bbox: bb, state: "pending", found: 0, km, depth: d })); }
-function startScan(cfgIn) {
+async function startScan(cfgIn) {
   if (scan && scan.running) return { error: "Ya hay un escaneo en curso." };
   const area = cfgIn.area; if (!area || area.length !== 4) return { error: "Falta el área a escanear." };
   let cellKm = Math.max(0.2, cfgIn.cellKm || 1);
   let cells = computeCells(area, cellKm);
   if (!cells.length) return { error: "El área es muy pequeña." };
-  // Área grande: en vez de bloquear con "demasiadas celdas", subimos solos el
-  // tamaño de celda hasta que el área entre. Así siempre se puede escanear.
   const CAP = 550; const askedKm = cellKm; let adjusted = false;
   while (cells.length > CAP && cellKm < 25) { cellKm = Math.round((cellKm + (cellKm < 3 ? 0.3 : 1)) * 10) / 10; cells = computeCells(area, cellKm); adjusted = true; }
   if (cells.length > CAP) return { error: "Esa área es enorme. Elige una ciudad o zona más específica." };
   const cLat = (area[0] + area[2]) / 2, cLon = (area[1] + area[3]) / 2;
-  cells.sort((a, b) => Math.hypot((a.bbox[0] + a.bbox[2]) / 2 - cLat, (a.bbox[1] + a.bbox[3]) / 2 - cLon) - Math.hypot((b.bbox[0] + b.bbox[2]) / 2 - cLat, (b.bbox[1] + b.bbox[3]) / 2 - cLon)); // espiral: del centro hacia afuera
-  if (cfgIn.skipScanned && Array.isArray(db.scanned) && db.scanned.length) { const done = new Set(db.scanned); cells = cells.filter(c => !done.has(c.key)); }
-  if (!cells.length) return { error: "Toda esa zona ya fue escaneada (desmarca 'solo lo nuevo')." };
+  cells.sort((a, b) => Math.hypot((a.bbox[0] + a.bbox[2]) / 2 - cLat, (a.bbox[1] + a.bbox[3]) / 2 - cLon) - Math.hypot((b.bbox[0] + b.bbox[2]) / 2 - cLat, (b.bbox[1] + b.bbox[3]) / 2 - cLon));
+
+  // Continuar donde se quedó: omitir por defecto las celdas ya terminadas (por clave exacta o proximidad espacial)
+  const initialCells = cells.length;
+  if (cfgIn.skipScanned !== false && Array.isArray(db.scanned) && db.scanned.length) {
+    const done = new Set(db.scanned);
+    const halfLat = (cellKm / 111) / 2;
+    const halfLon = (cellKm / (111 * Math.cos(cLat * Math.PI / 180))) / 2;
+    const scannedPts = db.scanned.map(k => {
+      const p = k.split("_");
+      return { lat: +p[0] + halfLat, lon: +p[1] + halfLon };
+    });
+    cells = cells.filter(c => {
+      if (done.has(c.key)) return false;
+      const cCenterLat = (c.bbox[0] + c.bbox[2]) / 2;
+      const cCenterLon = (c.bbox[1] + c.bbox[3]) / 2;
+      const cosLat = Math.cos(cCenterLat * Math.PI / 180);
+      return !scannedPts.some(sp => Math.hypot((cCenterLat - sp.lat) * 111, (cCenterLon - sp.lon) * 111 * cosLat) < (cellKm * 0.75));
+    });
+  }
+  const skipped = initialCells - cells.length;
+  if (!cells.length) return { error: `Toda esa zona (${initialCells} celdas) ya fue revisada previamente. Si deseas volver a escanearla desde cero, desmarca "Continuar donde se quedó".` };
+
   const queries = (cfgIn.mode === "rubros" && Array.isArray(cfgIn.rubros) && cfgIn.rubros.length) ? cfgIn.rubros : CATEGORIES;
-  const proxyList = shuffle(String(cfgIn.proxies || cfg.proxies || "").split(/[\n,]+/).map(s => normalizeProxy(s)).filter(Boolean));
+  
+  // Proxies: probar conectividad y saldo antes de iniciar
+  let rawProxies = (cfgIn && cfgIn.proxies && String(cfgIn.proxies).trim()) ? cfgIn.proxies : "";
+  let pList = rawProxies ? String(rawProxies).split(/[\r\n\s,]+/).map(s => normalizeProxy(s)).filter(Boolean) : [];
+  if (!pList.length) pList = getBackendProxies();
+  
+  let proxyList = [];
+  if (pList.length > 0) {
+    const checkSample = pList.slice(0, 3);
+    const checks = await Promise.all(checkSample.map(testProxyFast));
+    if (checks.some(Boolean)) {
+      proxyList = shuffle([...new Set(pList)]);
+    } else {
+      log("⚠️ Las proxies configuradas no responden o agotaron su saldo (402 Payment Required / límite de saldo).");
+      log("🛡️ Activando automáticamente MODO DIRECTO SEGURO (sin proxies, con pausas antibaneo para que el escáner NUNCA se detenga).");
+      broadcast("notice", { msg: "Proxies sin saldo. El escáner continuará en Modo Directo Seguro automáticamente sin parar." });
+    }
+  }
+
   const exclude = (Array.isArray(cfgIn.exclude) ? cfgIn.exclude : String(cfgIn.exclude != null ? cfgIn.exclude : (cfg.exclude || "")).split(",")).map(s => ("" + s).trim().toLowerCase()).filter(Boolean);
   scan = { mode: cfgIn.mode === "rubros" ? "rubros" : "all", demo: !!cfgIn.demo, cells, idx: 0, cellKm, queries, email: !!cfgIn.email, proxyList, proxyIdx: 0, exclude, maxLeads: +cfgIn.maxLeads || +cfg.maxLeads || 0, running: true, paused: false, found: 0, area, consecBlocks: 0, retried: false, curProxy: null };
-  log(`Inicio ${scan.mode} · ${cells.length} celdas · celda ${cellKm}km${scan.demo ? " (demo)" : ""}`);
+  
+  const modeMsg = proxyList.length > 0 ? `${proxyList.length} proxies backend activos` : `Modo directo seguro (antibaneo activo)`;
+  const resumeMsg = skipped > 0 ? ` (continuando: omitidas ${skipped} celdas ya revisadas, quedan ${cells.length})` : "";
+  log(`Inicio ${scan.mode} · ${cells.length} celdas · celda ${cellKm}km · ${modeMsg}${resumeMsg}${scan.demo ? " (demo)" : ""}`);
   if (adjusted) { const m = `Área grande: ajusté la celda de ${askedKm} a ${cellKm} km para cubrirla en ${cells.length} celdas.`; log(m); broadcast("notice", { msg: m }); }
+  if (skipped > 0) broadcast("notice", { msg: `Continuando donde te quedaste: se omitieron ${skipped} celdas ya revisadas anteriormente.` });
+
   broadcast("cells", { cells: cells.map(c => ({ key: c.key, bbox: c.bbox, state: c.state })), area, total: cells.length });
   broadcast("status", statusObj());
   processNext();
-  return { ok: true, cells: cells.length, mode: scan.mode, cellKm, adjusted, askedKm };
+  return { ok: true, cells: cells.length, mode: scan.mode, cellKm, adjusted, askedKm, skipped, proxies: proxyList.length };
 }
 function processNext() { if (!scan || !scan.running || scan.paused) return; const cell = scan.cells[scan.idx]; if (!cell) return finish(); cell.state = "scanning"; broadcast("cell", { key: cell.key, state: "scanning", found: 0 }); broadcast("status", statusObj()); if (scan.demo) return demoCell(cell); runCell(cell); }
-function scheduleNext() { if (!scan || !scan.running || scan.paused) return; let lo = cfg.safeMode ? (cfg.pauseMin || 3) : 0, hi = cfg.safeMode ? (cfg.pauseMax || 8) : 0; if (hi < lo) hi = lo; if (scan.consecBlocks > 0) { lo = Math.max(lo, 12 * scan.consecBlocks); hi = Math.max(hi, 25 * scan.consecBlocks); } const ms = scan.demo ? 250 : Math.round((lo + Math.random() * (hi - lo)) * 1000); nextT = setTimeout(processNext, ms); }
+function scheduleNext() {
+  if (!scan || !scan.running || scan.paused) return;
+  const hasProxies = scan.proxyList && scan.proxyList.length > 0;
+  let lo = hasProxies ? 1.0 : (cfg.safeMode ? 2.5 : 1.2);
+  let hi = hasProxies ? 2.5 : (cfg.safeMode ? 4.5 : 2.5);
+  if (hi < lo) hi = lo;
+  if (scan.consecBlocks > 0) {
+    lo = Math.max(lo, hasProxies ? 3 : 8 * scan.consecBlocks);
+    hi = Math.max(hi, hasProxies ? 7 : 16 * scan.consecBlocks);
+  }
+  const ms = scan.demo ? 250 : Math.round((lo + Math.random() * (hi - lo)) * 1000);
+  nextT = setTimeout(processNext, ms);
+}
 function advance() { if (!scan) return; scan.idx++; broadcast("progress", { cellsDone: scan.idx, cellsTotal: scan.cells.length, found: scan.found }); scheduleNext(); }
 function nextCell() { advance(); }
 function finishCell(cell) {
-  // Iterar entre proxies: si una celda se bloquea, reintentar con otra proxy (no perder la celda)
+  // Reintento rápido si hay proxies disponibles (hasta 3 reintentos)
   if (cell._blocked && scan.proxyList && scan.proxyList.length > 0 && (cell._tries || 0) < 3 && !scan.paused && !scan.demo) {
-    cell._tries = (cell._tries || 0) + 1; cell._blocked = false; cell.found = 0;
-    log("Reintento de celda con otra proxy (intento " + cell._tries + ")");
+    cell._tries = (cell._tries || 0) + 1;
+    cell._blocked = false;
+    cell.found = 0;
+    scan.proxyList = shuffle([...scan.proxyList]);
+    const waitMs = 2000 + Math.floor(Math.random() * 2500);
+    log(`⚠️ Incidencia en celda ${cell.key}: reintentando (${cell._tries}/3) tras ${Math.round(waitMs/1000)}s con proxies rotados`);
     broadcast("cell", { key: cell.key, state: "scanning" });
-    nextT = setTimeout(() => runCell(cell), 800); return;
+    nextT = setTimeout(() => runCell(cell), waitMs);
+    return;
+  }
+  // Reintento en modo directo con pausa prudente
+  if (cell._blocked && (!scan.proxyList || scan.proxyList.length === 0) && (cell._tries || 0) < 2 && !scan.paused && !scan.demo) {
+    cell._tries = (cell._tries || 0) + 1;
+    cell._blocked = false;
+    cell.found = 0;
+    const waitMs = 4000 + Math.floor(Math.random() * 3000);
+    log(`⚠️ Celda ${cell.key} con aviso en modo directo: esperando ${Math.round(waitMs/1000)}s antes de reintentar...`);
+    broadcast("cell", { key: cell.key, state: "scanning" });
+    nextT = setTimeout(() => runCell(cell), waitMs);
+    return;
   }
   cell.state = cell.found > 0 ? "done" : (cell._blocked ? "error" : "empty");
   broadcast("cell", { key: cell.key, state: cell.state, found: cell.found });
-  if (cell._blocked) scan.consecBlocks = (scan.consecBlocks || 0) + 1; else if (cell.found > 0) scan.consecBlocks = 0;
-  if (cfg.safeMode && scan.consecBlocks >= (cfg.maxBlocks || 4)) { log("Auto-pausa anti-baneo tras " + scan.consecBlocks + " celdas con posible bloqueo"); broadcast("blocked", { consec: scan.consecBlocks }); scan.paused = true; scan.idx++; broadcast("progress", { cellsDone: scan.idx, cellsTotal: scan.cells.length, found: scan.found }); broadcast("status", statusObj()); return; }
-  if (!scan.demo && cfg.subdivide !== false && cell.found >= (cfg.subdivideAt || 90) && ((cell.km || scan.cellKm) > 0.35) && (cell.depth || 0) < 2) { const subs = splitCell(cell); scan.cells.splice(scan.idx + 1, 0, ...subs); broadcast("cellsadd", { cells: subs.map(c => ({ key: c.key, bbox: c.bbox, state: "pending" })) }); log("Celda densa subdividida en 4 (" + cell.found + " negocios)"); }
+  
+  // PERSISTENCIA INMEDIATA: cada celda completada se guarda de inmediato en db.scanned
+  if (cell.state === "done" || cell.state === "empty") {
+    if (!Array.isArray(db.scanned)) db.scanned = [];
+    if (!db.scanned.includes(cell.key)) {
+      db.scanned.push(cell.key);
+      save(true);
+    }
+  }
+
+  if (cell._blocked) {
+    scan.consecBlocks = (scan.consecBlocks || 0) + 1;
+  } else {
+    scan.consecBlocks = Math.max(0, (scan.consecBlocks || 0) - 1);
+  }
+
+  // SISTEMA ANTIBANEO RESILIENTE: NUNCA SE PARA EL ESCANEO
+  if (scan.consecBlocks >= (cfg.maxBlocks || 4)) {
+    const cooldownSec = (scan.proxyList && scan.proxyList.length > 0) ? 15 : 25;
+    log(`🛡️ Antibaneo activo: ${scan.consecBlocks} avisos acumulados. Enfriando ${cooldownSec}s antes de continuar automáticamente...`);
+    broadcast("notice", { msg: `Antibaneo: enfriando ${cooldownSec}s. El escáner continuará solo sin detenerse.` });
+    scan.consecBlocks = 0;
+    if (scan.proxyList && scan.proxyList.length) scan.proxyList = shuffle([...scan.proxyList]);
+    nextT = setTimeout(advance, cooldownSec * 1000);
+    return;
+  }
+
+  if (!scan.demo && cfg.subdivide !== false && cell.found >= (cfg.subdivideAt || 90) && ((cell.km || scan.cellKm) > 0.35) && (cell.depth || 0) < 2) {
+    const subs = splitCell(cell);
+    scan.cells.splice(scan.idx + 1, 0, ...subs);
+    broadcast("cellsadd", { cells: subs.map(c => ({ key: c.key, bbox: c.bbox, state: "pending" })) });
+    log("Celda densa subdividida en 4 (" + cell.found + " negocios)");
+  }
   advance();
 }
 function runCell(cell) {
-  if (scan.proxyList && scan.proxyList.length) { if (scan.proxyIdx >= scan.proxyList.length) { shuffle(scan.proxyList); scan.proxyIdx = 0; } scan.curProxy = scan.proxyList[scan.proxyIdx]; scan.proxyIdx++; log("Celda " + cell.key + " → proxy " + scan.curProxy.replace(/\/\/.*@/, "//***@")); }
+  const hasProxies = scan.proxyList && scan.proxyList.length > 0;
+  if (hasProxies) {
+    scan.proxyList = shuffle([...scan.proxyList]);
+    log("Celda " + cell.key + " → rotando entre " + scan.proxyList.length + " proxies (antibaneo activo)");
+  } else {
+    log("Celda " + cell.key + " → modo directo seguro (sin proxies, pausas antibaneo)");
+  }
   fs.writeFileSync(Q_FILE, scan.queries.join("\n") + "\n"); try { fs.writeFileSync(CELL_CSV, ""); } catch (e) {}
   curCell = cell; curEmitted = 0; cellStart = Date.now();
   const bb = cell.bbox.map(x => x.toFixed(5)).join(",");
@@ -213,25 +415,70 @@ function runCell(cell) {
   if (cmd.error) { log("ERROR: " + cmd.error); broadcast("error", { message: cmd.error }); scan.running = false; broadcast("status", statusObj()); return; }
   try { child = spawn(cmd.cmd, cmd.args, { cwd: ROOT }); }
   catch (e) { cell.state = "error"; broadcast("cell", { key: cell.key, state: "error" }); return nextCell(); }
-  child.stderr.on("data", d => { const s = d.toString().trim(); if (!s) return; log(s.slice(0, 200)); if (BLOCK_RE.test(s)) cell._blocked = true; const now = Date.now(); if (/panic|cannot|refused|no such|not found|forbidden|blocked|denied|ERR_/i.test(s) && now - lastLogB > 4000) { lastLogB = now; broadcast("log", { line: s.slice(0, 150) }); } });
-  pollT = setInterval(() => ingestCell(), 400);
-  const maxMin = Math.max(1, +cfg.cellMax || 6);
+  child.stderr.on("data", d => {
+    const s = d.toString().trim(); if (!s) return; log(s.slice(0, 200));
+    // Detección inmediata de saldo agotado en proxies (402 Payment Required)
+    if (/402 Payment Required|bandwidthlimit|net::ERR_PROXY_AUTH_UNSUPPORTED/i.test(s)) {
+      if (scan && scan.proxyList && scan.proxyList.length > 0) {
+        log("⚠️ Límite de saldo alcanzado en proxies (402 Payment Required). Cambiando inmediatamente a MODO DIRECTO SEGURO...");
+        broadcast("notice", { msg: "Saldo de proxies agotado. Continuando en Modo Directo Seguro automáticamente para no parar." });
+        scan.proxyList = [];
+        cell._blocked = false;
+        killChild(child);
+        return;
+      }
+    }
+    if (BLOCK_RE.test(s)) cell._blocked = true;
+    const now = Date.now();
+    if (/panic|cannot|refused|no such|not found|forbidden|blocked|denied|ERR_/i.test(s) && now - lastLogB > 4000) {
+      lastLogB = now; broadcast("log", { line: s.slice(0, 150) });
+    }
+  });
+  pollT = setInterval(() => ingestCell(), 300);
+  const maxMin = Math.max(1, +cfg.cellMax || 5);
   clearTimeout(cellTimer);
-  cellTimer = setTimeout(() => { if (child) { log("Celda " + cell.key + " pasó de " + maxMin + " min; la cierro y sigo con la siguiente"); cell._timedout = true; try { child.kill("SIGKILL"); } catch (e) {} } }, maxMin * 60000);
+  cellTimer = setTimeout(() => {
+    if (child) {
+      log("Celda " + cell.key + " pasó de " + maxMin + " min; liberando celda y avanzando...");
+      cell._timedout = true;
+      killChild(child);
+    }
+  }, maxMin * 60000);
   child.on("exit", () => { clearTimeout(cellTimer); clearInterval(pollT); ingestCell(); child = null; finishCell(cell); });
   child.on("error", () => { clearInterval(pollT); child = null; cell.state = "error"; broadcast("cell", { key: cell.key, state: "error" }); nextCell(); });
 }
 function ingestCell() { let text; try { text = fs.readFileSync(CELL_CSV, "utf8"); } catch (e) { return; } if (!text) return; const endsNL = /\n$/.test(text); let rows = parseCSV(text); if (!endsNL && rows.length) rows = rows.slice(0, -1); if (rows.length < 2) return; const H = rows[0].map(h => h.trim().toLowerCase()); for (let i = 1 + curEmitted; i < rows.length; i++) { const l = rowToLead(H, rows[i]); if (l) addLead(l); } curEmitted = rows.length - 1; }
-function findBin() { if (process.env.SCRAPER_BIN && fs.existsSync(process.env.SCRAPER_BIN)) return process.env.SCRAPER_BIN; for (const p of [path.join(ROOT, "gms"), path.join(ROOT, "..", "google-maps-scraper", "gms")]) if (fs.existsSync(p)) return p; return null; }
+function findBin() {
+  if (process.env.SCRAPER_BIN && fs.existsSync(process.env.SCRAPER_BIN)) return process.env.SCRAPER_BIN;
+  for (const p of [
+    path.join(ROOT, "gms.exe"),
+    path.join(ROOT, "google_maps_scraper.exe"),
+    path.join(ROOT, "gms"),
+    path.join(ROOT, "..", "google-maps-scraper", "gms.exe"),
+    path.join(ROOT, "..", "google-maps-scraper", "gms")
+  ]) if (fs.existsSync(p)) return p;
+  return null;
+}
 function buildCmd(bb) {
   const grid = ["-grid-bbox", bb, "-grid-cell", String((curCell && curCell.km) || scan.cellKm), "-zoom", "15"];
-  const extra = ["-c", String(Math.max(1, Math.min(8, +cfg.conc || 1)))]; if (scan.email) extra.push("-email"); if (scan.curProxy) extra.push("-proxies", scan.curProxy); if (cfg.leadsdbKey) extra.push("-leadsdb-api-key", cfg.leadsdbKey); if (cfg.depth > 0) extra.push("-depth", String(cfg.depth));
+  const hasProxies = scan.proxyList && scan.proxyList.length > 0;
+  // Con proxies: concurrencia configurable (defecto 2). En modo directo: concurrencia 1 para máxima seguridad
+  const concurrency = hasProxies ? Math.max(1, Math.min(8, +cfg.conc || 2)) : 1;
+  const extra = ["-c", String(concurrency)];
+  if (scan.email) extra.push("-email");
+  if (hasProxies) {
+    const shuffled = shuffle([...scan.proxyList]);
+    extra.push("-proxies", shuffled.join(","));
+  }
+  if (cfg.leadsdbKey) extra.push("-leadsdb-api-key", cfg.leadsdbKey);
+  if (cfg.depth > 0) extra.push("-depth", String(cfg.depth));
+  const inactivityTimeout = hasProxies ? (Math.max(5, Math.min(180, +cfg.inactivity || 120)) + "s") : "2m";
   if (process.env.SCRAPER_MODE === "docker") {
-    const a = ["run", "--rm", "-v", `${DATA}:/out`, "-v", `${Q_FILE}:/queries.txt:ro`, "gosom/google-maps-scraper", "-input", "/queries.txt", "-results", "/out/cell.csv", "-lang", "es", "-exit-on-inactivity", Math.max(5, Math.min(120, +cfg.inactivity || 20)) + "s", ...extra, ...grid];
+    const a = ["run", "--rm", "--name", "avendia-scraper", "--memory", "1200m", "--cpus", "1.5", "-v", `${DATA}:/out`, "-v", `${Q_FILE}:/queries.txt:ro`, "gosom/google-maps-scraper", "-input", "/queries.txt", "-results", "/out/cell.csv", "-lang", "es", "-exit-on-inactivity", inactivityTimeout, ...extra, ...grid];
     return { cmd: "docker", args: a };
   }
   const bin = findBin(); if (!bin) return { error: "No encuentro 'gms'. Compílalo (go build), define SCRAPER_BIN o usa SCRAPER_MODE=docker." };
-  return { cmd: bin, args: ["-input", Q_FILE, "-results", CELL_CSV, "-lang", "es", "-exit-on-inactivity", Math.max(5, Math.min(120, +cfg.inactivity || 20)) + "s", ...extra, ...grid] };
+  return { cmd: bin, args: ["-input", Q_FILE, "-results", CELL_CSV, "-lang", "es", "-exit-on-inactivity", inactivityTimeout, ...extra, ...grid] };
 }
 function finish() {
   if (!scan) return;
@@ -239,14 +486,35 @@ function finish() {
   if (cfg.retryFailed !== false && !scan.retried && errs.length && !scan.paused) { scan.retried = true; scan.idx = scan.cells.length; errs.forEach(c => scan.cells.push(Object.assign({}, c, { state: "pending", _blocked: false }))); log("Reintentando " + errs.length + " celdas con error"); broadcast("status", statusObj()); return scheduleNext(); }
   scan.running = false;
   db.scanned = [...new Set((db.scanned || []).concat(scan.cells.filter(c => c.state === "done" || c.state === "empty").map(c => c.key)))].slice(-5000);
-  db.history.unshift({ ts: Date.now(), found: scan.found, cells: scan.cells.length, mode: scan.mode, area: scan.area }); db.history = db.history.slice(0, 50); save();
+  db.history.unshift({ ts: Date.now(), found: scan.found, cells: scan.cells.length, mode: scan.mode, area: scan.area }); db.history = db.history.slice(0, 50); save(true);
   broadcast("status", statusObj()); broadcast("done", { found: scan.found, cells: scan.cells.length }); log(`Fin · ${scan.found} negocios`);
   if (cfg.notify && cfg.telegramToken && cfg.telegramChat) tgSend("✅ Escaneo terminado: <b>" + scan.found + "</b> negocios en " + scan.cells.length + " celdas.");
 }
 function pause() { if (scan) { scan.paused = true; broadcast("status", statusObj()); } return { ok: true }; }
 function resume() { if (scan) { scan.paused = false; scan.consecBlocks = 0; broadcast("status", statusObj()); processNext(); } return { ok: true }; }
 function _stopTimers(){ clearTimeout(cellTimer); }
-function stop() { if (demoT) { clearTimeout(demoT); demoT = null; } if (nextT) { clearTimeout(nextT); nextT = null; } if (pollT) { clearInterval(pollT); pollT = null; } if (child) { try { child.kill("SIGTERM"); } catch (e) {} child = null; } if (scan) { scan.running = false; broadcast("status", statusObj()); broadcast("done", { found: scan.found, cells: scan.cells.length }); } return { ok: true }; }
+function stop() {
+  if (demoT) { clearTimeout(demoT); demoT = null; }
+  if (nextT) { clearTimeout(nextT); nextT = null; }
+  if (pollT) { clearInterval(pollT); pollT = null; }
+  if (cellTimer) { clearTimeout(cellTimer); cellTimer = null; }
+  if (child) { killChild(child); child = null; }
+  if (scan) {
+    scan.running = false;
+    broadcast("status", statusObj());
+    broadcast("done", { found: scan.found, cells: scan.cells.length });
+  }
+  return { ok: true };
+}
+
+// Watchdog global anti-congelamiento: garantiza que el escáner NUNCA se quede colgado
+setInterval(() => {
+  if (!scan || !scan.running || scan.paused) return;
+  if (child && cellStart && (Date.now() - cellStart > 210000)) {
+    log(`⏰ Watchdog: Celda ${curCell ? curCell.key : ""} tardó más de 3.5 min; cerrando proceso para que el escáner continúe sin parar.`);
+    killChild(child);
+  }
+}, 15000);
 
 const DNAMES = [["Botica ", "Farmacia", 0], ["Restaurante ", "Restaurante", 1], ["Barbería ", "Barbería", 0], ["Ferretería ", "Ferretería", 0], ["Gimnasio ", "Gimnasio", 1], ["Bodega ", "Bodega", 0], ["Dental ", "Clínica dental", 1], ["TecniCell ", "Taller de celulares", 0]];
 const SUF = ["San Martín", "Central", "Los Andes", "El Sol", "Perú", "Miraflores", "Norte", "Express"];
@@ -326,7 +594,7 @@ const server = http.createServer(async (req, res) => {
   if (p === "/api/status") return json(res, statusObj());
   if (p === "/api/leads") return json(res, { status: statusObj(), leads: db.order.map(id => db.leads[id]).filter(Boolean), cells: scan ? scan.cells.map(c => ({ key: c.key, bbox: c.bbox, state: c.state, found: c.found })) : [], categories: CATEGORIES, history: db.history || [] });
   if (p === "/api/stream") { res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive", "Access-Control-Allow-Origin": "*" }); res.write("retry: 3000\n\n"); res.write(`event: status\ndata: ${JSON.stringify(statusObj())}\n\n`); clients.add(res); req.on("close", () => clients.delete(res)); return; }
-  if (p === "/api/scan/start" && req.method === "POST") return json(res, startScan(await body(req)));
+  if (p === "/api/scan/start" && req.method === "POST") return json(res, await startScan(await body(req)));
   if (p === "/api/scan/pause" && req.method === "POST") return json(res, pause());
   if (p === "/api/scan/resume" && req.method === "POST") return json(res, resume());
   if (p === "/api/scan/stop" && req.method === "POST") return json(res, stop());
@@ -342,15 +610,20 @@ const server = http.createServer(async (req, res) => {
   res.writeHead(404, { "Access-Control-Allow-Origin": "*" }); res.end("not found");
 });
 // Proxies desde el backend (sin pegarlas en el frontend). Prioridad: env PROXIES,
-// luego proxies.txt (una por línea). proxies.txt está en .gitignore → tus
-// credenciales de pago NUNCA se suben a GitHub. Solo siembra si config está vacía.
+// luego data/proxies.txt o proxies.txt (una por línea).
+// proxies.txt está en .gitignore → tus credenciales de pago NUNCA se suben a GitHub.
 function seedProxies() {
   if (cfg.proxies && cfg.proxies.trim()) return;
   let seed = "";
   if (process.env.PROXIES && process.env.PROXIES.trim()) seed = process.env.PROXIES.replace(/[;,]+/g, "\n");
-  else { try { const f = path.join(ROOT, "proxies.txt"); if (fs.existsSync(f)) seed = fs.readFileSync(f, "utf8"); } catch (e) {} }
+  else {
+    try {
+      const f = fs.existsSync(PROXIES_FILE) ? PROXIES_FILE : path.join(ROOT, "proxies.txt");
+      if (fs.existsSync(f)) seed = fs.readFileSync(f, "utf8");
+    } catch (e) {}
+  }
   seed = (seed || "").split(/\r?\n/).map(s => s.trim()).filter(s => s && !s.startsWith("#")).join("\n");
   if (seed) { cfg.proxies = seed; saveCfg(); log("Proxies cargadas del backend (" + seed.split("\n").length + ") desde " + (process.env.PROXIES ? "env PROXIES" : "proxies.txt")); }
 }
 seedProxies();
-server.listen(PORT, () => console.log(`BUSCA-CHAMBA-3000 → http://localhost:${PORT}  (${db.order.length} leads${AUTH ? ", con login" : ""})`));
+server.listen(PORT, () => console.log(`BUSCA-CHAMBA-3000 → http://localhost:${PORT}  (${db.order.length} leads, ${getBackendProxies().length} proxies backend activos${AUTH ? ", con login" : ""})`));
