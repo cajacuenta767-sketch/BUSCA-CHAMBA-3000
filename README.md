@@ -30,9 +30,12 @@ En ambos modos tienes:
 
 - Buscador, filtros por rubro y orden por rating / número de reseñas.
 - Botones directos de **WhatsApp**, **correo**, **llamar** y **web** por cada negocio.
+- **🎨 Identidad Sky Tech** — logo propio (tres barras que suben con una flecha de crecimiento) y paleta azul, en el panel, en el PDF y como archivos sueltos en [`marca/`](marca/MARCA.md). El mismo dibujo se traza **vectorial dentro del PDF**, sin imágenes externas.
 - **📄 Propuesta en PDF de un clic — visual, de 2 páginas y con QR**. Está armada para que el dueño la entienda en 15 segundos desde el celular, y apunta a lo único que le importa: **menos estrés y más dinero**.
   - Arranca con las **dos promesas** grandes (😌 menos estrés / 💰 más dinero).
-  - **Gráfica de barras real**: sus reseñas vs. el promedio de su zona vs. el primero de su zona, y un **medidor de puesto** en verde/ámbar/rojo según dónde esté.
+  - **Gráfica de barras** con colores primarios: **azul** usted, **gris** el promedio de su zona, **rojo** el primero de su zona, cada barra con su número al lado.
+  - **Su puesto dibujado**: un cuadrito por cada negocio de su rubro en su zona, con el suyo pintado de azul. Se entiende sin leer nada.
+  - Los cuatro colores de las gráficas pasan los **seis chequeos de color** (contraste ≥ 3:1 y separación bajo daltonismo), así que la propuesta se lee impresa en blanco y negro y por alguien que no distingue rojo y verde.
   - **Lo que gana cada mes** en tres tarjetas: ⏱️ tiempo, 💰 dinero y 😌 tranquilidad, escritas para **su rubro** (las horas van marcadas como estimación).
   - **Hoy, a mano ❌ | Con el sistema ✅** en dos columnas de color, no un párrafo.
   - **QR escaneable** para que abra la demo desde el celular, más el link **tocable** dentro del PDF.

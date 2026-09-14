@@ -30,7 +30,10 @@
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
   header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:16px}
   .brand{display:flex;align-items:center;gap:12px;margin-right:auto}
-  .logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(140deg,var(--accent),#22cad6);display:grid;place-items:center;font-size:22px;box-shadow:var(--shadow-sm)}
+  .logo{width:42px;height:42px;border-radius:12px;background:#0B3C68;display:grid;place-items:center;box-shadow:var(--shadow-sm)}
+  .logo svg{display:block}
+  .brand .firma{margin:0;font-size:11px;color:var(--muted);letter-spacing:.6px}
+  .brand .firma b{color:#1FA2FF}
   .brand h1{font-size:19px;margin:0;letter-spacing:-.4px;font-weight:800}
   .brand p{margin:0;font-size:12px;color:var(--muted)}
   .btn{border:1px solid var(--border);background:var(--surface);color:var(--text);padding:9px 13px;border-radius:var(--radius-sm);font:600 13.5px var(--font-b);cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:.15s;white-space:nowrap}
@@ -201,7 +204,7 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="brand"><div class="logo">🧲</div><div><h1>BUSCA-CHAMBA-3000</h1><p>Radar de negocios → clientes</p></div></div>
+    <div class="brand"><div class="logo"><svg viewBox="0 0 48 48" width="34" height="34" aria-label="Sky Tech"><rect width="48" height="48" rx="11" fill="#0B3C68"/><rect x="9" y="27" width="6" height="11" rx="1.2" fill="#fff"/><rect x="18" y="22" width="6" height="16" rx="1.2" fill="#fff"/><rect x="27" y="17" width="6" height="21" rx="1.2" fill="#fff"/><path d="M24 22 L35 13" stroke="#1FA2FF" stroke-width="4" stroke-linecap="round" fill="none"/><path d="M39 9 L39 20 L29 12 Z" fill="#1FA2FF"/></svg></div><div><h1>BUSCA-CHAMBA-3000</h1><p>Radar de negocios → clientes</p><p class="firma">por SKY <b>TECH</b></p></div></div>
     <span class="mode" id="modeTag"><span class="dot" id="modeDot"></span><span id="modeTxt">…</span></span>
     <input class="field name-input" id="myName" placeholder="Tu nombre" title="Sale en los mensajes y en el PDF">
     <button class="btn ghost" id="themeBtn" title="Tema">🌙</button>
@@ -642,6 +645,35 @@ function drawQR(doc,url,x,y,size){
   return true;
 }
 function sysProposal(biz,rubro,v){const extra=SYS_LINE[v]?(" Para su rubro: "+SYS_LINE[v]+"."):"";return{title:"Un sistema a medida para su negocio, a un costo accesible",diag:biz+" puede llevar el control de sus ventas, su inventario y sus cuentas en un solo sistema hecho a su medida: menos errores manuales, menos pérdidas y sus números al día."+extra+" Lo armamos a un precio accesible, pensado para que un negocio como el suyo pueda tenerlo sin una inversión grande. Antes de hablar de nada, pruébelo sin compromiso: si le gusta, seguimos.",incluye:["Registro de ventas y cierre de caja diario.","Inventario con alertas de stock bajo y de vencimiento.","Control de cuentas y fiados, con los cobros al día.","Reportes claros de qué se vende más y cuándo.","Avisos y recordatorios a sus clientes por WhatsApp."],result:["Menos pérdidas, robos y errores de conteo.","Conoce sus números en tiempo real.","Cobra a tiempo y mejora su flujo de caja.","Ahorra horas de trabajo manual cada semana.","Se paga solo: costo accesible y sin mensualidades caras."],plan:["Reunión de 15 minutos para mapear su proceso (sin costo).","Configuración del sistema a su medida.","Carga de sus productos y capacitación de su personal.","Puesta en marcha, periodo de prueba sin compromiso y soporte."]};}
+// ---- Identidad Sky Tech: paleta validada (contraste y daltonismo) ----
+// Documento: azul profundo + celeste. Gráficas: primarios (azul / rojo) con gris de contexto.
+const SKY={
+  navy:[11,60,104], sky:[31,162,255], ink:[17,37,58], mut:[92,113,131], line:[215,226,238],
+  azul:[29,78,216], rojo:[217,45,32], ambar:[183,121,31], verde:[14,159,110],
+  azulW:[229,236,252], rojoW:[253,232,230], ambarW:[250,241,225], verdeW:[224,246,238], navyW:[232,240,249]
+};
+// Logo: distintivo con tres barras que suben y una flecha de crecimiento.
+function skyBadge(doc,x,y,s,onDark){
+  doc.setFillColor(...(onDark?[255,255,255]:SKY.navy));
+  doc.roundedRect(x,y,s,s,s*0.23,s*0.23,"F");
+  const bar=onDark?SKY.navy:[255,255,255];
+  const bw=s*0.125,gap=s*0.07,base=y+s*0.80,x0=x+s*0.15,hs=[s*0.18,s*0.30,s*0.42];
+  doc.setFillColor(...bar);
+  for(let i=0;i<3;i++)doc.rect(x0+i*(bw+gap),base-hs[i],bw,hs[i],"F");
+  doc.setDrawColor(...SKY.sky);doc.setLineWidth(s*0.085);doc.setLineCap("round");
+  doc.line(x+s*0.50,y+s*0.46,x+s*0.74,y+s*0.26);
+  doc.setFillColor(...SKY.sky);
+  doc.triangle(x+s*0.80,y+s*0.17,x+s*0.80,y+s*0.40,x+s*0.58,y+s*0.20,"F");
+  doc.setLineCap("butt");
+}
+function skyWordmark(doc,x,baseline,size,onDark){
+  doc.setFont("helvetica","normal");doc.setFontSize(size);
+  doc.setTextColor(...(onDark?[255,255,255]:SKY.navy));doc.text("SKY",x,baseline);
+  const w=doc.getTextWidth("SKY")+size*0.09;
+  doc.setFont("helvetica","bold");doc.setTextColor(...(onDark?SKY.sky:SKY.navy));
+  doc.text("TECH",x+w,baseline);
+  return w+doc.getTextWidth("TECH");
+}
 function drawProposal(doc,l){
   const c=classify(l),S=statsFor(l),INS=insightsFor(l,S),B=benefOf(c.vertical);
   const sender=(($("#myName")&&$("#myName").value)||store.get("bc3k_name","")||"").trim();
@@ -649,197 +681,244 @@ function drawProposal(doc,l){
   const biz=(l.title||"tu negocio").trim(),rubro=(normCat(l.category)||l.category||"tu rubro").trim();
   const demo=(store.get("bc3k_demo_sist","")||"").trim();
   const W=210,M=16,cw=W-2*M;
-  const ACC=[91,84,230],ACCW=[236,235,253],INK=[32,35,54],MUT=[110,120,140],LINE=[224,228,242];
-  const OK=[18,132,90],OKW=[226,246,235],RED=[198,58,62],REDW=[253,233,234],AMB=[186,112,0],AMBW=[251,240,216];
+  const NAVY=SKY.navy,INK=SKY.ink,MUT=SKY.mut,LINE=SKY.line;
+  const AZUL=SKY.azul,ROJO=SKY.rojo,AMBAR=SKY.ambar,VERDE=SKY.verde;
   let y=0;
-  const foot=()=>{doc.setTextColor(...MUT);doc.setFont("helvetica","normal");doc.setFontSize(7.5);
-    doc.text(biz+"   ·   Propuesta preparada por "+(sender||"Sky Tech"),M,290);};
-  const need=h=>{if(y+h>276){foot();doc.addPage();y=20;}};
-  // --- iconos vectoriales (el PDF no dibuja emojis) ---
-  const icoClock=(x,yy,r,col)=>{doc.setDrawColor(...col);doc.setLineWidth(.45);doc.circle(x,yy,r,"S");
+  const foot=()=>{doc.setDrawColor(...LINE);doc.setLineWidth(.3);doc.line(M,285,M+cw,285);
+    skyBadge(doc,M,287,4.4,false);
+    doc.setTextColor(...MUT);doc.setFont("helvetica","normal");doc.setFontSize(7.2);
+    doc.text("Sky Tech   ·   propuesta para "+biz,M+6,290.2);};
+  const need=h=>{if(y+h>278){foot();doc.addPage();y=20;}};
+  // ---- iconos vectoriales (el PDF no dibuja emojis) ----
+  const icoClock=(x,yy,r,col)=>{doc.setDrawColor(...col);doc.setLineWidth(.5);doc.circle(x,yy,r,"S");
     doc.line(x,yy,x,yy-r*.55);doc.line(x,yy,x+r*.45,yy+r*.22);};
-  const icoCoin=(x,yy,r,col)=>{doc.setDrawColor(...col);doc.setLineWidth(.45);doc.circle(x,yy,r,"S");
+  const icoCoin=(x,yy,r,col)=>{doc.setDrawColor(...col);doc.setLineWidth(.5);doc.circle(x,yy,r,"S");
     doc.setTextColor(...col);doc.setFont("helvetica","bold");doc.setFontSize(r*2.9);doc.text("$",x,yy+r*.45,{align:"center"});};
-  const icoSmile=(x,yy,r,col)=>{doc.setDrawColor(...col);doc.setLineWidth(.45);doc.circle(x,yy,r,"S");
+  const icoSmile=(x,yy,r,col)=>{doc.setDrawColor(...col);doc.setLineWidth(.5);doc.circle(x,yy,r,"S");
     doc.setFillColor(...col);doc.circle(x-r*.34,yy-r*.22,.32,"F");doc.circle(x+r*.34,yy-r*.22,.32,"F");
     doc.line(x-r*.52,yy+r*.14,x-r*.22,yy+r*.44);doc.line(x-r*.22,yy+r*.44,x+r*.22,yy+r*.44);doc.line(x+r*.22,yy+r*.44,x+r*.52,yy+r*.14);};
-  const icoCheck=(x,yy,z,col)=>{doc.setDrawColor(...col);doc.setLineWidth(.65);
+  const icoCheck=(x,yy,z,col)=>{doc.setDrawColor(...col);doc.setLineWidth(.7);
     doc.line(x,yy,x+z*.36,yy+z*.38);doc.line(x+z*.36,yy+z*.38,x+z,yy-z*.52);};
-  const icoX=(x,yy,z,col)=>{doc.setDrawColor(...col);doc.setLineWidth(.65);
+  const icoX=(x,yy,z,col)=>{doc.setDrawColor(...col);doc.setLineWidth(.7);
     doc.line(x,yy-z*.4,x+z*.8,yy+z*.4);doc.line(x+z*.8,yy-z*.4,x,yy+z*.4);};
-  // --- bloques ---
-  const h2=(t,keep)=>{need(15+(keep||0));y+=3;doc.setFillColor(...ACCW);doc.roundedRect(M,y-4.5,cw,7,1,1,"F");
-    doc.setTextColor(...ACC);doc.setFont("helvetica","bold");doc.setFontSize(11);doc.text(t,M+2.5,y);y+=8;};
-  const para=(t,col,sz)=>{doc.setTextColor(...(col||INK));doc.setFont("helvetica","normal");doc.setFontSize(sz||9.5);
-    const ls=doc.splitTextToSize(t,cw);need(ls.length*4.6+4);doc.text(ls,M,y);y+=ls.length*4.6+2;};
+  // ---- bloques ----
+  const h2=(t,keep)=>{need(14+(keep||0));y+=4;
+    doc.setFillColor(...NAVY);doc.roundedRect(M,y-4.6,2.2,6.4,1,1,"F");
+    doc.setTextColor(...NAVY);doc.setFont("helvetica","bold");doc.setFontSize(12);doc.text(t,M+5,y);
+    y+=3;doc.setDrawColor(...LINE);doc.setLineWidth(.3);doc.line(M,y,M+cw,y);y+=5.5;};
+  // texto que SIEMPRE cabe: nunca corta, envuelve y baja
+  const wrap=(t,x,ww,sz,col,style,lh)=>{doc.setFont("helvetica",style||"normal");doc.setFontSize(sz);
+    doc.setTextColor(...(col||INK));const ls=doc.splitTextToSize(t,ww);doc.text(ls,x,y);y+=ls.length*(lh||sz*0.42)+1.5;return ls.length;};
+  const para=(t,col,sz)=>{const ls=doc.splitTextToSize(t,cw);need(ls.length*4.6+4);wrap(t,M,cw,sz||9.5,col,"normal",4.6);};
   const bullets=arr=>{doc.setFont("helvetica","normal");doc.setFontSize(9);
-    arr.forEach(b=>{const ls=doc.splitTextToSize(b,cw-7);need(ls.length*4.3+3);
-      doc.setFillColor(...ACC);doc.circle(M+1.6,y-1.2,.75,"F");doc.setTextColor(...INK);doc.text(ls,M+5,y);y+=ls.length*4.3+1.6;});y+=1.5;};
-  // Portada
-  doc.setFillColor(...ACC);doc.rect(0,0,W,34,"F");
-  doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(8.5);doc.text("PROPUESTA PARA",M,11.5);
-  doc.setFontSize(18);let tl=doc.splitTextToSize(biz,cw);
-  if(tl.length>1){doc.setFontSize(13);tl=doc.splitTextToSize(biz,cw).slice(0,2);doc.text(tl,M,18);}else{doc.text(tl,M,21);}
-  doc.setFont("helvetica","normal");doc.setFontSize(9);
+    arr.forEach(b=>{const ls=doc.splitTextToSize(b,cw-8);need(ls.length*4.3+3);
+      doc.setFillColor(...AZUL);doc.circle(M+2,y-1.2,.9,"F");doc.setTextColor(...INK);doc.text(ls,M+6,y);y+=ls.length*4.3+1.8;});y+=1;};
+  // ---- Portada con identidad ----
+  doc.setFillColor(...NAVY);doc.rect(0,0,W,40,"F");
+  doc.setFillColor(...SKY.sky);doc.rect(0,40,W,1.4,"F");
+  skyBadge(doc,M,7,11,true);
+  skyWordmark(doc,M+14,13.5,12,true);
+  doc.setFont("helvetica","normal");doc.setFontSize(7.4);doc.setTextColor(190,214,238);
+  doc.text("SISTEMAS DE GESTIÓN PARA NEGOCIOS",M+14,17.8);
+  doc.setFont("helvetica","normal");doc.setFontSize(7.6);doc.setTextColor(150,190,230);
+  doc.text("PROPUESTA PARA",M,26.5);
+  doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(17);
+  let tl=doc.splitTextToSize(biz,cw);
+  if(tl.length>1){doc.setFontSize(12.5);tl=doc.splitTextToSize(biz,cw).slice(0,2);doc.text(tl,M,31.5);}
+  else doc.text(tl,M,33.5);
+  doc.setFont("helvetica","normal");doc.setFontSize(8.4);doc.setTextColor(178,206,232);
   const dt=new Date().toLocaleDateString("es-PE",{day:"2-digit",month:"long",year:"numeric"});
-  doc.text([rubro,l.address||"",dt].filter(Boolean).join("   ·   ").slice(0,110),M,30);
-  y=41;
-  // Las dos promesas, grandes y al principio
+  doc.text(doc.splitTextToSize([rubro,l.address||"",dt].filter(Boolean).join("   ·   "),cw)[0],M,38);
+  y=49;
+  // ---- Las dos promesas ----
   (()=>{const gap=4,bw=(cw-gap)/2;
     doc.setFont("helvetica","normal");doc.setFontSize(8.8);
-    const t1=doc.splitTextToSize("Todo lo que hoy lleva en la cabeza y en el cuaderno, lo lleva el sistema por usted.",bw-10);
-    const t2=doc.splitTextToSize("Lo que hoy se escapa sin que se note (fiados, faltantes, vencidos) deja de escaparse.",bw-10);
+    const t1=doc.splitTextToSize("Todo lo que hoy lleva en la cabeza y en el cuaderno, lo lleva el sistema por usted.",bw-11);
+    const t2=doc.splitTextToSize("Lo que hoy se escapa sin que se note (fiados, faltantes, vencidos) deja de escaparse.",bw-11);
     const h=Math.max(t1.length,t2.length)*4.4+19;
-    doc.setFillColor(...AMBW);doc.roundedRect(M,y,bw,h,2.5,2.5,"F");
-    doc.setFillColor(...OKW);doc.roundedRect(M+bw+gap,y,bw,h,2.5,2.5,"F");
-    icoSmile(M+7,y+7,3.3,AMB);icoCoin(M+bw+gap+7,y+7,3.3,OK);
+    doc.setFillColor(...SKY.ambarW);doc.roundedRect(M,y,bw,h,2.5,2.5,"F");
+    doc.setFillColor(...SKY.verdeW);doc.roundedRect(M+bw+gap,y,bw,h,2.5,2.5,"F");
+    icoSmile(M+7,y+7.5,3.4,AMBAR);icoCoin(M+bw+gap+7,y+7.5,3.4,VERDE);
     doc.setFont("helvetica","bold");doc.setFontSize(10.5);
-    doc.setTextColor(...AMB);doc.text("MENOS ESTRÉS",M+13,y+8.4);
-    doc.setTextColor(...OK);doc.text("MÁS DINERO",M+bw+gap+13,y+8.4);
+    doc.setTextColor(...AMBAR);doc.text("MENOS ESTRÉS",M+13,y+8.8);
+    doc.setTextColor(...VERDE);doc.text("MÁS DINERO",M+bw+gap+13,y+8.8);
     doc.setFont("helvetica","normal");doc.setFontSize(8.8);doc.setTextColor(...INK);
     doc.text(t1,M+5,y+15.5);doc.text(t2,M+bw+gap+5,y+15.5);
-    y+=h+6;})();
-  // Graficas con datos reales de su zona
+    y+=h+5;})();
+  // ---- Gráfica: cuántos clientes lo recomiendan ----
   if(S){
-    h2("Dónde está su negocio hoy (datos reales de su zona)",30);
-    para("Comparado con "+S.n+" negocios de "+S.scope+", con datos públicos de Google Maps.",MUT,8.5);
-    const bx=M+46,bw=cw-46-16,max=Math.max(S.top,S.mine,S.avgRev,1);
-    const bar=(lab,val,col,strong)=>{need(11);
-      doc.setFont("helvetica",strong?"bold":"normal");doc.setFontSize(9);doc.setTextColor(...(strong?INK:MUT));
-      doc.text(doc.splitTextToSize(lab,44)[0],M,y+4.6);
-      doc.setFillColor(...LINE);doc.roundedRect(bx,y,bw,6.4,1.6,1.6,"F");
-      doc.setFillColor(...col);doc.roundedRect(bx,y,Math.max(2,bw*Math.min(1,val/max)),6.4,1.6,1.6,"F");
-      doc.setFont("helvetica","bold");doc.setFontSize(9.5);doc.setTextColor(...col);doc.text(String(Math.round(val)),bx+bw+2,y+4.8);
-      y+=10;};
-    bar("Usted",S.mine,ACC,true);
+    h2("Cuántos clientes lo recomiendan, comparado con su competencia",38);
+    para("Reseñas en Google de "+S.n+" negocios de "+S.scope+". Más reseñas = más gente entrando = más que controlar.",MUT,8.4);
+    y+=1.5;
+    const bx=M+50,bw=cw-50-15,max=Math.max(S.top,S.mine,S.avgRev,1);
+    const bar=(lab,val,col,fuerte)=>{need(12);
+      doc.setFont("helvetica",fuerte?"bold":"normal");doc.setFontSize(8.6);doc.setTextColor(...(fuerte?INK:MUT));
+      doc.text(doc.splitTextToSize(lab,48)[0],M,y+4.4);
+      doc.setFillColor(...LINE);doc.roundedRect(bx,y,bw,7,1.8,1.8,"F");
+      const w=Math.max(2.4,bw*Math.min(1,val/max));
+      doc.setFillColor(...col);doc.roundedRect(bx,y,w,7,1.8,1.8,"F");
+      doc.setFont("helvetica","bold");doc.setFontSize(9.5);doc.setTextColor(...col);
+      doc.text(String(Math.round(val)),bx+bw+2.5,y+5.2);
+      y+=10.5;};
+    bar("USTED",S.mine,AZUL,true);
     bar("Promedio de su zona",Math.round(S.avgRev),MUT);
-    bar(S.rank===1?"Usted es el primero":"El primero de su zona",S.top,AMB);
-    doc.setFont("helvetica","normal");doc.setFontSize(7.5);doc.setTextColor(...MUT);
-    doc.text("Reseñas en Google. Más reseñas = más clientes atendidos = más movimiento que controlar.",M,y+1);y+=6;
-    // medidor de puesto
-    need(18);
-    const p=S.n>1?(S.n-S.rank)/(S.n-1):1,mcol=p>=.66?OK:(p>=.33?AMB:RED);
-    doc.setFillColor(...LINE);doc.roundedRect(M,y,cw,6.4,2.4,2.4,"F");
-    const fw=Math.max(5,cw*p);doc.setFillColor(...mcol);doc.roundedRect(M,y,fw,6.4,2.4,2.4,"F");
-    doc.setFillColor(...INK);doc.triangle(M+fw-2.1,y-1.6,M+fw+2.1,y-1.6,M+fw,y+1.3,"F");
-    y+=10;doc.setFont("helvetica","bold");doc.setFontSize(9);doc.setTextColor(...mcol);
-    doc.text("Puesto "+S.rank+" de "+S.n+" en "+S.scope,M,y);
-    doc.setFont("helvetica","normal");doc.setFontSize(7.5);doc.setTextColor(...MUT);
-    doc.text("último de su zona",M,y+4.5);doc.text("1.º de su zona",M+cw,y+4.5,{align:"right"});
-    y+=10;
-    // chips de datos
-    (()=>{const items=[[S.pctNoWeb+"% de su competencia aún sin sistema",ACC,ACCW],
-      [S.myR?("Calificación "+S.myR.toFixed(1)+" vs "+S.avgR.toFixed(1)+" de su zona"):("Sin calificación en Google"),AMB,AMBW],
-      [S.pctTel+"% con WhatsApp para pedidos",OK,OKW]];
-      let x=M;const h=7.5;need(h+5);doc.setFont("helvetica","bold");doc.setFontSize(8);
-      items.forEach(([t,col,weak])=>{const w=doc.getTextWidth(t)+7;
+    bar(S.rank===1?"(usted es el primero)":"El primero de su zona",S.top,ROJO);
+    y+=1;
+    // ---- Posición: un cuadro por cada negocio de su rubro ----
+    need(20);
+    doc.setFont("helvetica","bold");doc.setFontSize(9.6);doc.setTextColor(...INK);
+    doc.text("Su puesto entre los "+S.n+" negocios de su rubro en su zona:",M,y);y+=5;
+    if(S.n<=26){
+      const g=1.4,bwid=Math.min(6.2,(cw-(S.n-1)*g)/S.n),bh=Math.min(7,bwid*1.15);
+      const filaW=S.n*bwid+(S.n-1)*g;
+      for(let i=1;i<=S.n;i++){const x=M+(i-1)*(bwid+g);
+        const mio=i===S.rank;
+        doc.setFillColor(...(mio?AZUL:LINE));doc.roundedRect(x,y,bwid,bh,1,1,"F");
+        if(mio){doc.setFillColor(...AZUL);doc.triangle(x+bwid/2-1.5,y+bh+1,x+bwid/2+1.5,y+bh+1,x+bwid/2,y+bh+3.4,"F");}}
+      y+=bh+7;
+      doc.setFont("helvetica","normal");doc.setFontSize(7.4);doc.setTextColor(...MUT);
+      doc.text("1.º, el que más recomiendan",M,y);
+      doc.text("último",M+filaW,y,{align:"right"});y+=4;
+    }else{
+      const p=(S.rank-1)/(S.n-1);
+      doc.setFillColor(...LINE);doc.roundedRect(M,y,cw,7,2,2,"F");
+      const mx=M+Math.max(3,Math.min(cw-3,cw*p));
+      doc.setFillColor(...AZUL);doc.circle(mx,y+3.5,3.4,"F");
+      y+=11;doc.setFont("helvetica","normal");doc.setFontSize(7.4);doc.setTextColor(...MUT);
+      doc.text("1.º de "+S.n,M,y);doc.text("último",M+cw,y,{align:"right"});y+=4;
+    }
+    doc.setFont("helvetica","bold");doc.setFontSize(11);
+    doc.setTextColor(...(S.rank<=Math.ceil(S.n/3)?VERDE:(S.rank<=Math.ceil(2*S.n/3)?AMBAR:ROJO)));
+    doc.text("Puesto "+S.rank+" de "+S.n,M,y+2.5);y+=8;
+    // ---- chips ----
+    (()=>{const items=[[S.pctNoWeb+"% de su competencia todavía sin sistema",AZUL,SKY.azulW],
+      [S.myR?("Lo califican "+S.myR.toFixed(1)+" y a su zona "+S.avgR.toFixed(1)):"Todavía sin calificación en Google",AMBAR,SKY.ambarW],
+      [S.pctTel+"% ya recibe pedidos por WhatsApp",VERDE,SKY.verdeW]];
+      let x=M;const h=8;need(h+5);doc.setFont("helvetica","bold");doc.setFontSize(8);
+      items.forEach(([t,col,weak])=>{const w=doc.getTextWidth(t)+8;
         if(x+w>M+cw){x=M;y+=h+2.5;}
         doc.setFillColor(...weak);doc.roundedRect(x,y,w,h,2,2,"F");
-        doc.setTextColor(...col);doc.text(t,x+3.5,y+5.1);x+=w+3;});
+        doc.setTextColor(...col);doc.text(t,x+4,y+5.4);x+=w+3;});
       y+=h+6;})();
-    if(INS.length){bullets(INS.slice(0,3));}
+    if(INS.length)bullets(INS.slice(0,2));
   }
-  // Lo que gana cada mes
+  // ---- Lo que gana cada mes ----
   (()=>{const gap=4,bw=(cw-2*gap)/3;
     doc.setFont("helvetica","normal");doc.setFontSize(8.2);
     const txt=[B.t,B.d,B.e].map(t=>doc.splitTextToSize(t,bw-7));
-    const bh=Math.max.apply(null,txt.map(t=>t.length))*4+31;
-    need(bh+16);
+    const bh=Math.max.apply(null,txt.map(t=>t.length))*4+32;
+    need(bh+15);
     h2("Lo que gana cada mes");
-    const heads=["TIEMPO","DINERO","TRANQUILIDAD"],cols=[ACC,OK,AMB],weak=[ACCW,OKW,AMBW],ico=[icoClock,icoCoin,icoSmile];
+    const heads=["TIEMPO","DINERO","TRANQUILIDAD"],cols=[AZUL,VERDE,AMBAR];
+    const weak=[SKY.azulW,SKY.verdeW,SKY.ambarW],ico=[icoClock,icoCoin,icoSmile];
     for(let i=0;i<3;i++){const x=M+i*(bw+gap);
       doc.setFillColor(...weak[i]);doc.roundedRect(x,y,bw,bh,2.5,2.5,"F");
-      ico[i](x+bw/2,y+9.5,4,cols[i]);
+      doc.setFillColor(...cols[i]);doc.roundedRect(x,y,bw,2.2,1.1,1.1,"F");
+      ico[i](x+bw/2,y+11,4,cols[i]);
       doc.setFont("helvetica","bold");doc.setFontSize(10);doc.setTextColor(...cols[i]);
-      doc.text(heads[i],x+bw/2,y+19.5,{align:"center"});
+      doc.text(heads[i],x+bw/2,y+21,{align:"center"});
       doc.setFont("helvetica","normal");doc.setFontSize(8.2);doc.setTextColor(...INK);
-      doc.text(txt[i],x+3.5,y+26.5);}
+      doc.text(txt[i],x+3.5,y+28);}
     y+=bh+3;
     doc.setFont("helvetica","normal");doc.setFontSize(7.2);doc.setTextColor(...MUT);
-    doc.text("Las horas son una estimación conservadora para un negocio de su tamaño; las ajustamos con sus números en la reunión.",M,y);
-    y+=7;})();
+    const nota=doc.splitTextToSize("Las horas son una estimación conservadora para un negocio de su tamaño; las ajustamos con sus números en la reunión.",cw);
+    doc.text(nota,M,y);y+=nota.length*3.6+5;})();
   const P=sysProposal(biz,rubro,c.vertical);
-  // Qué incluye, compacto y con visto bueno
+  // ---- Qué incluye ----
   (()=>{const sl=SYS_LINE[c.vertical];
     const arr=(sl?["Hecho para su rubro: "+sl+"."]:[]).concat(P.incluye),gap=6,bw=(cw-gap)/2;
     doc.setFont("helvetica","normal");doc.setFontSize(8.8);
     const half=Math.ceil(arr.length/2),cols=[arr.slice(0,half),arr.slice(half)];
     const ls=cols.map(cc=>cc.map(t=>doc.splitTextToSize(t,bw-8)));
-    const hh=Math.max.apply(null,ls.map(cc=>cc.reduce((a,b)=>a+b.length*4+2.6,0)));
-    need(hh+16);
-    h2("Qué incluye");
+    const hh=Math.max.apply(null,ls.map(cc=>cc.reduce((a,b)=>a+b.length*4+2.8,0)));
+    need(hh+15);
+    h2("Qué incluye su sistema");
     const y0=y;
     cols.forEach((cc,ci)=>{let yy=y0;const x=M+ci*(bw+gap);
-      cc.forEach((t,i)=>{icoCheck(x,yy-1.3,2.4,OK);doc.setTextColor(...INK);doc.setFont("helvetica","normal");doc.setFontSize(8.8);
-        doc.text(ls[ci][i],x+6,yy);yy+=ls[ci][i].length*4+2.6;});});
+      cc.forEach((t,i)=>{icoCheck(x,yy-1.3,2.5,VERDE);doc.setTextColor(...INK);
+        doc.setFont("helvetica","normal");doc.setFontSize(8.8);
+        doc.text(ls[ci][i],x+6.5,yy);yy+=ls[ci][i].length*4+2.8;});});
     y=y0+hh+5;})();
-  // Antes / después, en dos columnas de color
+  // ---- Hoy vs con el sistema ----
   (()=>{const rows=benchOf(c.vertical),gap=5,bw=(cw-gap)/2;
     doc.setFont("helvetica","normal");doc.setFontSize(8.8);
     const L=rows.map(r=>doc.splitTextToSize(r[1],bw-13)),R=rows.map(r=>doc.splitTextToSize(r[2],bw-13));
-    const hs=rows.map((r,i)=>3.8+Math.max(L[i].length,R[i].length)*4+4.4);
-    const total=14+hs.reduce((a,b)=>a+b,0);
-    need(total+16);
+    const hs=rows.map((r,i)=>3.8+Math.max(L[i].length,R[i].length)*4+4.6);
+    const total=15+hs.reduce((a,b)=>a+b,0);
+    need(total+15);
     h2("Cómo trabaja hoy y cómo quedaría con el sistema");
-    doc.setFillColor(...REDW);doc.roundedRect(M,y,bw,total,2.5,2.5,"F");
-    doc.setFillColor(...OKW);doc.roundedRect(M+bw+gap,y,bw,total,2.5,2.5,"F");
+    doc.setFillColor(...SKY.rojoW);doc.roundedRect(M,y,bw,total,2.5,2.5,"F");
+    doc.setFillColor(...SKY.verdeW);doc.roundedRect(M+bw+gap,y,bw,total,2.5,2.5,"F");
+    doc.setFillColor(...ROJO);doc.roundedRect(M,y,bw,2.2,1.1,1.1,"F");
+    doc.setFillColor(...VERDE);doc.roundedRect(M+bw+gap,y,bw,2.2,1.1,1.1,"F");
     doc.setFont("helvetica","bold");doc.setFontSize(9.5);
-    doc.setTextColor(...RED);doc.text("HOY, A MANO",M+5,y+7.5);
-    doc.setTextColor(...OK);doc.text("CON EL SISTEMA",M+bw+gap+5,y+7.5);
-    let yy=y+14;
+    doc.setTextColor(...ROJO);doc.text("HOY, A MANO",M+5,y+9);
+    doc.setTextColor(...VERDE);doc.text("CON EL SISTEMA",M+bw+gap+5,y+9);
+    let yy=y+15;
     rows.forEach((r,i)=>{
       doc.setFont("helvetica","bold");doc.setFontSize(7);doc.setTextColor(...MUT);
       doc.text(r[0].toUpperCase(),M+9,yy);doc.text(r[0].toUpperCase(),M+bw+gap+9,yy);
       yy+=3.8;
-      icoX(M+4.6,yy-.6,2.5,RED);icoCheck(M+bw+gap+4.4,yy-1.3,2.5,OK);
+      icoX(M+4.6,yy-.6,2.5,ROJO);icoCheck(M+bw+gap+4.4,yy-1.3,2.5,VERDE);
       doc.setFont("helvetica","normal");doc.setFontSize(8.8);doc.setTextColor(...INK);
       doc.text(L[i],M+9,yy);doc.text(R[i],M+bw+gap+9,yy);
-      yy+=Math.max(L[i].length,R[i].length)*4+4.4;});
+      yy+=Math.max(L[i].length,R[i].length)*4+4.6;});
     y+=total+6;})();
-  // Por qué ahora (lo que dicen sus propios datos)
-  if(S&&INS.length>3){(()=>{const extra=INS.slice(3);
+  // ---- Por qué ahora ----
+  if(S&&INS.length>2){(()=>{const extra=INS.slice(2);
     doc.setFont("helvetica","normal");doc.setFontSize(8.4);
-    const ls=extra.map(t=>doc.splitTextToSize(t,cw-12));
-    const hh=ls.reduce((a,b)=>a+b.length*3.9+2.6,0)+11;
-    need(hh+4);
-    doc.setFillColor(...AMBW);doc.roundedRect(M,y,cw,hh,2.5,2.5,"F");
-    doc.setFont("helvetica","bold");doc.setFontSize(8.5);doc.setTextColor(...AMB);doc.text("POR QUÉ AHORA",M+5,y+6.5);
-    let yy=y+12;
+    const ls=extra.map(t=>doc.splitTextToSize(t,cw-13));
+    const hh=ls.reduce((a,b)=>a+b.length*4+3,0)+12;
+    need(hh+5);
+    doc.setFillColor(...SKY.ambarW);doc.roundedRect(M,y,cw,hh,2.5,2.5,"F");
+    doc.setFillColor(...AMBAR);doc.roundedRect(M,y,2.2,hh,1.1,1.1,"F");
+    doc.setFont("helvetica","bold");doc.setFontSize(8.6);doc.setTextColor(...AMBAR);doc.text("POR QUÉ AHORA",M+6,y+7);
+    let yy=y+13;
     ls.forEach(t=>{doc.setFont("helvetica","normal");doc.setFontSize(8.4);doc.setTextColor(...INK);
-      doc.text(t,M+5,yy);yy+=t.length*3.9+2.6;});
+      doc.text(t,M+6,yy);yy+=t.length*4+3;});
     y+=hh+6;})();}
-  // Cierre: QR y enlaces que se pueden tocar
-  (()=>{const h=demo?64:42;need(h+4);
-    doc.setFillColor(...ACC);doc.roundedRect(M,y,cw,h,3,3,"F");
-    const tw=demo?cw-58:cw-10;
-    doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(15);
-    doc.text("Pruébelo sin compromiso",M+6,y+12);
-    doc.setFont("helvetica","normal");doc.setFontSize(9.5);
-    const li=doc.splitTextToSize("Se lo dejo andando con sus propios datos. Lo usa unos días y, si le gusta, seguimos. Si no le sirve, no paga nada y no pasa nada.",tw);
-    doc.text(li,M+6,y+19.5);
-    let yy=y+19.5+li.length*4.6+3;
+  // ---- Cierre: nada se corta, todo se mide antes ----
+  (()=>{
+    const qs=demo?36:0, txtW=demo?cw-qs-20:cw-12;
+    doc.setFont("helvetica","normal");doc.setFontSize(9.4);
+    const l1=doc.splitTextToSize("Se lo dejo andando con sus propios datos. Lo usa unos días y, si le gusta, seguimos. Si no le sirve, no paga nada y no pasa nada.",txtW);
     doc.setFont("helvetica","normal");doc.setFontSize(8);
-    const pasos=doc.splitTextToSize("Cómo seguimos: 1) reunión de 15 minutos, sin costo · 2) lo configuro a su medida · 3) cargo sus datos y capacito a su gente · 4) puesta en marcha y soporte.",tw);
-    doc.text(pasos,M+6,yy);yy+=pasos.length*3.8+3.5;
+    const l2=doc.splitTextToSize("Cómo seguimos: 1) reunión de 15 minutos, sin costo · 2) lo configuro a su medida · 3) cargo sus datos y capacito a su gente · 4) puesta en marcha y soporte.",txtW);
     const info=[sender,contact].filter(Boolean).join("   ·   ");
-    if(info){doc.setFont("helvetica","bold");doc.setFontSize(10);doc.text(doc.splitTextToSize(info,tw)[0],M+6,yy);yy+=6;}
+    doc.setFont("helvetica","bold");doc.setFontSize(9.6);
+    const l3=info?doc.splitTextToSize(info,txtW):[];
+    doc.setFont("helvetica","normal");doc.setFontSize(7.6);
+    const l4=demo?doc.splitTextToSize(demo,txtW):[];
+    const alto=13+l1.length*4.4+3+l2.length*3.7+3.5+(l3.length?l3.length*4.4+3:0)+(demo?11+l4.length*3.4:0)+7;
+    const h=Math.max(alto,demo?qs+14:26);
+    need(h+4);
+    doc.setFillColor(...NAVY);doc.roundedRect(M,y,cw,h,3,3,"F");
+    doc.setFillColor(...SKY.sky);doc.roundedRect(M,y,cw,2.4,1.2,1.2,"F");
+    let yy=y+13;
+    doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(15.5);
+    doc.text("Pruébelo sin compromiso",M+6,yy);yy+=7;
+    doc.setFont("helvetica","normal");doc.setFontSize(9.4);doc.text(l1,M+6,yy);yy+=l1.length*4.4+3;
+    doc.setTextColor(186,212,236);doc.setFontSize(8);doc.text(l2,M+6,yy);yy+=l2.length*3.7+3.5;
+    if(l3.length){doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(9.6);
+      doc.text(l3,M+6,yy);yy+=l3.length*4.4+3;}
     if(demo){
-      const qs=36,qx=M+cw-qs-7,qy=y+(h-qs)/2-3;
+      const qx=M+cw-qs-7,qy=y+(h-qs-6)/2;
       if(drawQR(doc,demo,qx,qy,qs)){doc.link(qx-2.5,qy-2.5,qs+5,qs+5,{url:demo});
         doc.setFont("helvetica","bold");doc.setFontSize(7.2);doc.setTextColor(255,255,255);
         doc.text("Escanee con su celular",qx+qs/2,qy+qs+5,{align:"center"});}
-      doc.setFont("helvetica","bold");doc.setFontSize(10);doc.setTextColor(255,255,255);
-      doc.textWithLink("Abrir la demo ahora",M+6,yy+1,{url:demo});
+      doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(10);
+      doc.textWithLink("Abrir la demo ahora",M+6,yy+2,{url:demo});
       const lw=doc.getTextWidth("Abrir la demo ahora");
-      doc.setLineWidth(.4);doc.setDrawColor(255,255,255);doc.line(M+6,yy+2,M+6+lw,yy+2);
-      doc.setFont("helvetica","normal");doc.setFontSize(7.6);
-      doc.text(doc.splitTextToSize(demo,tw)[0],M+6,yy+6);}
+      doc.setLineWidth(.4);doc.setDrawColor(...SKY.sky);doc.line(M+6,yy+3,M+6+lw,yy+3);
+      doc.setFont("helvetica","normal");doc.setFontSize(7.6);doc.setTextColor(186,212,236);
+      doc.text(l4,M+6,yy+7.5);}
     y+=h+3;})();
   foot();
 }
 function pdfName(l){return "Propuesta - "+((l.title||"negocio").trim()).replace(/[\\/:*?"<>|]+/g,"").slice(0,60)+".pdf";}
 function proposalPDF(l){const lib=window.jspdf&&window.jspdf.jsPDF;if(!lib){openProposalPrint([l]);return;}const doc=new lib({unit:"mm",format:"a4"});drawProposal(doc,l);doc.save(pdfName(l));toast("PDF descargado ✓");}
 function bulkProposalsPDF(list){if(!list||!list.length){toast("No hay leads para exportar");return;}const lib=window.jspdf&&window.jspdf.jsPDF;if(!lib){openProposalPrint(list);return;}const doc=new lib({unit:"mm",format:"a4"});list.forEach((l,i)=>{if(i>0)doc.addPage();drawProposal(doc,l);});doc.save("Propuestas ("+list.length+").pdf");toast(list.length+" propuestas en un PDF ✓");}
+const LOGO_SVG='<svg viewBox="0 0 48 48" width="30" height="30" aria-label="Sky Tech"><rect width="48" height="48" rx="11" fill="#fff"/><rect x="9" y="27" width="6" height="11" rx="1.2" fill="#0B3C68"/><rect x="18" y="22" width="6" height="16" rx="1.2" fill="#0B3C68"/><rect x="27" y="17" width="6" height="21" rx="1.2" fill="#0B3C68"/><path d="M24 22 L35 13" stroke="#1FA2FF" stroke-width="4" stroke-linecap="round" fill="none"/><path d="M39 9 L39 20 L29 12 Z" fill="#1FA2FF"/></svg>';
 function qrSVG(url,cell){
   if(typeof qrcode!=="function")return "";
   try{const q=qrcode(0,"M");q.addData(url);q.make();return q.createSvgTag({cellSize:cell||4,margin:0,scalable:true});}catch(e){return "";}
@@ -859,19 +938,24 @@ function proposalHTMLDoc(list){
     const bar=(lab,val,cls)=>`<div class="brow"><span class="blab">${esc(lab)}</span><span class="btrack"><i class="${cls}" style="width:${Math.max(1.5,100*Math.min(1,val/max)).toFixed(1)}%"></i></span><b class="${cls}">${Math.round(val)}</b></div>`;
     const pos=S?(S.n>1?(S.n-S.rank)/(S.n-1):1):0;
     const grado=pos>=.66?"ok":(pos>=.33?"amb":"bad");
-    const stats=S?`<h2>Dónde está su negocio hoy (datos reales de su zona)</h2>
-      <p class="mut">Comparado con ${S.n} negocios de ${esc(S.scope)}, con datos públicos de Google Maps.</p>
-      <div class="bars">${bar("Usted",S.mine,"me")}${bar("Promedio de su zona",Math.round(S.avgRev),"avg")}${bar(S.rank===1?"Usted es el primero":"El primero de su zona",S.top,"top")}</div>
-      <p class="mut tiny">Reseñas en Google. Más reseñas = más clientes atendidos = más movimiento que controlar.</p>
-      <div class="gauge"><i class="${grado}" style="width:${(pos*100).toFixed(1)}%"></i></div>
-      <p class="rank ${grado}">Puesto ${S.rank} de ${S.n} en ${esc(S.scope)}<span class="mut tiny"> · último de su zona → 1.º de su zona</span></p>
+    const casillas=S?(S.n<=26
+      ? `<div class="puestos">${Array.from({length:S.n},(_,i)=>`<i class="${i+1===S.rank?"mio":""}"></i>`).join("")}</div>
+         <p class="mut tiny extremos"><span>1.º, el que más recomiendan</span><span>último</span></p>`
+      : `<div class="gauge"><i class="${grado}" style="width:${(100*(S.rank-1)/(S.n-1)).toFixed(1)}%"></i></div>
+         <p class="mut tiny extremos"><span>1.º de ${S.n}</span><span>último</span></p>`):"";
+    const stats=S?`<h2>Cuántos clientes lo recomiendan, comparado con su competencia</h2>
+      <p class="mut">Reseñas en Google de ${S.n} negocios de ${esc(S.scope)}. Más reseñas = más gente entrando = más que controlar.</p>
+      <div class="bars">${bar("USTED",S.mine,"me")}${bar("Promedio de su zona",Math.round(S.avgRev),"avg")}${bar(S.rank===1?"(usted es el primero)":"El primero de su zona",S.top,"top")}</div>
+      <p class="sub2">Su puesto entre los ${S.n} negocios de su rubro en su zona:</p>
+      ${casillas}
+      <p class="rank ${grado}">Puesto ${S.rank} de ${S.n}</p>
       <div class="chips"><span class="ch acc">${S.pctNoWeb}% de su competencia aún sin sistema</span><span class="ch amb">${S.myR?("Calificación "+S.myR.toFixed(1)+" vs "+S.avgR.toFixed(1)+" de su zona"):"Sin calificación en Google"}</span><span class="ch ok">${S.pctTel}% con WhatsApp para pedidos</span></div>
       <ul>${li(INS.slice(0,3))}</ul>`:"";
     const rows=benchOf(c.vertical).map(r=>`<div class="ba"><div class="k">${esc(r[0])}</div><div class="hoy"><s>✕</s>${esc(r[1])}</div><div class="sis"><s>✓</s>${esc(r[2])}</div></div>`).join("");
     const inc=(SYS_LINE[c.vertical]?["Hecho para su rubro: "+SYS_LINE[c.vertical]+"."]:[]).concat(P.incluye);
     const porque=S&&INS.length>3?`<div class="why"><b>POR QUÉ AHORA</b>${INS.slice(3).map(t=>`<p>${esc(t)}</p>`).join("")}</div>`:"";
     return `<article>
-      <header><div class="k">PROPUESTA PARA</div><h1>${biz}</h1><div class="sub">${esc([rubro,l.address||"",dt].filter(Boolean).join(" · "))}</div></header>
+      <header><div class="hlogo">${LOGO_SVG}<div><b>SKY <i>TECH</i></b><span>SISTEMAS DE GESTIÓN PARA NEGOCIOS</span></div></div><div class="k">PROPUESTA PARA</div><h1>${biz}</h1><div class="sub">${esc([rubro,l.address||"",dt].filter(Boolean).join(" · "))}</div></header>
       <div class="promesas">
         <div class="pr amb"><b>☺ MENOS ESTRÉS</b><span>Todo lo que hoy lleva en la cabeza y en el cuaderno, lo lleva el sistema por usted.</span></div>
         <div class="pr ok"><b>$ MÁS DINERO</b><span>Lo que hoy se escapa sin que se note (fiados, faltantes, vencidos) deja de escaparse.</span></div>
@@ -896,47 +980,55 @@ function proposalHTMLDoc(list){
       </div>
     </article>`;}).join("");
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Propuesta</title><style>
-*{box-sizing:border-box}body{font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#20233a;margin:0;background:#f4f4fa}
+*{box-sizing:border-box}body{font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#11253A;margin:0;background:#EEF3F8}
 article{max-width:780px;margin:0 auto 24px;background:#fff;padding-bottom:26px}article+article{page-break-before:always}
-header{background:#5b54e6;color:#fff;padding:18px 26px}header .k{font-size:10.5px;letter-spacing:1.2px;opacity:.85}header h1{margin:3px 0 3px;font-size:25px}header .sub{font-size:12px;opacity:.9}
-h2{color:#5b54e6;background:#ecebfd;margin:16px 26px 8px;font-size:14.5px;padding:6px 10px;border-radius:5px}
-p{margin:0 26px 8px}.mut{color:#6a758c}.tiny{font-size:11px}
+header{background:#0B3C68;color:#fff;padding:16px 26px;border-bottom:4px solid #1FA2FF}
+.hlogo{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.hlogo svg{display:block}.hlogo b{font-size:15px;letter-spacing:.5px;font-weight:400}.hlogo b i{font-style:normal;font-weight:800;color:#1FA2FF}
+.hlogo span{font-size:9px;letter-spacing:1px;color:#9FC4E4;display:block}header .k{font-size:10.5px;letter-spacing:1.2px;opacity:.85}header h1{margin:3px 0 3px;font-size:25px}header .sub{font-size:12px;opacity:.9}
+h2{color:#0B3C68;margin:18px 26px 8px;font-size:15px;padding:0 0 6px 10px;border-left:4px solid #0B3C68;border-bottom:1px solid #D7E2EE}
+p{margin:0 26px 8px}.mut{color:#5C7183}.tiny{font-size:11px}
 ul,ol{margin:0 26px 10px;padding-left:20px}li{margin:4px 0}
 ul.check{list-style:none;padding-left:0;columns:2;column-gap:22px}ul.check li{break-inside:avoid;padding-left:20px;position:relative}
-ul.check li:before{content:"✓";position:absolute;left:0;color:#12845a;font-weight:700}
+ul.check li:before{content:"✓";position:absolute;left:0;color:#0E9F6E;font-weight:700}
 .promesas{display:flex;gap:10px;margin:14px 26px}
 .pr{flex:1;border-radius:9px;padding:11px 13px}.pr b{display:block;font-size:12.5px;margin-bottom:4px}.pr span{font-size:12px}
-.pr.amb{background:#fbf0d8;color:#8a5200}.pr.amb span{color:#20233a}
-.pr.ok{background:#e2f6eb;color:#0f6b49}.pr.ok span{color:#20233a}
+.pr.amb{background:#FAF1E1;color:#B7791F}.pr.amb span{color:#20233a}
+.pr.ok{background:#E0F6EE;color:#0E9F6E}.pr.ok span{color:#20233a}
 .bars{margin:8px 26px}.brow{display:flex;align-items:center;gap:8px;margin:6px 0}
 .blab{width:132px;flex:none;font-size:12px;color:#6a758c}.brow:first-child .blab{color:#20233a;font-weight:700}
 .btrack{flex:1;height:9px;background:#e4e7f2;border-radius:5px;overflow:hidden}.btrack i{display:block;height:100%;border-radius:5px}
-.btrack i.me{background:#5b54e6}.btrack i.avg{background:#6e7a94}.btrack i.top{background:#ba7000}
-.brow b{background:none}.brow b.me{color:#5b54e6}.brow b.avg{color:#6e7a94}.brow b.top{color:#ba7000}
+.btrack i.me{background:#1D4ED8}.btrack i.avg{background:#5C7183}.btrack i.top{background:#D92D20}
+.brow b{background:none}.brow b.me{color:#1D4ED8}.brow b.avg{color:#5C7183}.brow b.top{color:#D92D20}
 .brow b{width:38px;text-align:right;font-size:12px}
+.sub2{font-weight:700;font-size:12.5px;margin:10px 26px 6px}
+.puestos{display:flex;gap:4px;margin:0 26px 4px;flex-wrap:wrap}
+.puestos i{width:20px;height:23px;border-radius:3px;background:#DDE5F0;display:block}
+.puestos i.mio{background:#1D4ED8;box-shadow:0 0 0 2px #fff,0 0 0 4px #1D4ED8}
+.extremos{display:flex;justify-content:space-between;margin:2px 26px 6px}
 .gauge{height:9px;background:#e4e7f2;border-radius:5px;margin:10px 26px 5px;overflow:hidden}
-.gauge i{display:block;height:100%;border-radius:5px}.gauge i.ok{background:#12845a}.gauge i.amb{background:#ba7000}.gauge i.bad{background:#c63a3e}
-.rank{font-weight:700;margin:0 26px 10px}.rank.ok{color:#12845a}.rank.amb{color:#ba7000}.rank.bad{color:#c63a3e}
+.gauge i{display:block;height:100%;border-radius:5px}.gauge i.ok{background:#0E9F6E}.gauge i.amb{background:#B7791F}.gauge i.bad{background:#D92D20}
+.rank{font-weight:700;margin:0 26px 10px}.rank.ok{color:#0E9F6E}.rank.amb{color:#B7791F}.rank.bad{color:#D92D20}
 .chips{margin:0 26px 8px;display:flex;flex-wrap:wrap;gap:6px}
 .ch{font-size:11.5px;font-weight:700;border-radius:6px;padding:4px 9px}
-.ch.acc{background:#ecebfd;color:#5b54e6}.ch.amb{background:#fbf0d8;color:#8a5200}.ch.ok{background:#e2f6eb;color:#0f6b49}
+.ch.acc{background:#E5ECFC;color:#1D4ED8}.ch.amb{background:#FAF1E1;color:#B7791F}.ch.ok{background:#E0F6EE;color:#0E9F6E}
 .gain{display:flex;gap:10px;margin:8px 26px}
 .g{flex:1;border-radius:9px;padding:13px}.g b{display:block;text-align:center;font-size:13px;margin-bottom:6px}.g span{font-size:12px;color:#20233a}
-.g.acc{background:#ecebfd}.g.acc b{color:#5b54e6}.g.ok{background:#e2f6eb}.g.ok b{color:#0f6b49}.g.amb{background:#fbf0d8}.g.amb b{color:#8a5200}
+.g{border-top:4px solid}.g.acc{background:#E5ECFC;border-color:#1D4ED8}.g.acc b{color:#1D4ED8}.g.ok{background:#E0F6EE;border-color:#0E9F6E}.g.ok b{color:#0E9F6E}.g.amb{background:#FAF1E1;border-color:#B7791F}.g.amb b{color:#B7791F}
 .bacols{margin:8px 26px;display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
 .bahead{font-weight:700;font-size:12.5px;padding:8px 12px;border-radius:9px 9px 0 0}
-.bahead.red{background:#fde9ea;color:#c63a3e}.bahead.green{background:#e2f6eb;color:#0f6b49}
+.bahead.red{background:#FDE8E6;color:#D92D20;border-top:4px solid #D92D20}.bahead.green{background:#E0F6EE;color:#0E9F6E;border-top:4px solid #0E9F6E}
 .ba{display:contents}.ba .k{display:none}
 .ba .hoy,.ba .sis{font-size:12px;padding:7px 12px}
-.ba .hoy{background:#fde9ea}.ba .sis{background:#e2f6eb}
+.ba .hoy{background:#FDE8E6}.ba .sis{background:#E0F6EE}
 .ba:last-child .hoy{border-radius:0 0 9px 9px}.ba:last-child .sis{border-radius:0 0 9px 9px}
-.ba s{text-decoration:none;font-weight:700;margin-right:6px}.ba .hoy s{color:#c63a3e}.ba .sis s{color:#0f6b49}
-.why{background:#fbf0d8;border-radius:9px;margin:12px 26px;padding:11px 14px}
-.why b{color:#8a5200;font-size:11.5px;letter-spacing:.6px}.why p{margin:6px 0 0;font-size:12px}
-.cta{background:#5b54e6;color:#fff;margin:16px 26px 0;padding:16px 18px;border-radius:11px;display:flex;gap:16px;align-items:center}
+.ba s{text-decoration:none;font-weight:700;margin-right:6px}.ba .hoy s{color:#D92D20}.ba .sis s{color:#0E9F6E}
+.why{background:#FAF1E1;border-left:4px solid #B7791F;border-radius:0 9px 9px 0;margin:12px 26px;padding:11px 14px}
+.why b{color:#B7791F;font-size:11.5px;letter-spacing:.6px}.why p{margin:6px 0 0;font-size:12px}
+.cta{background:#0B3C68;color:#fff;margin:16px 26px 0;padding:16px 18px;border-radius:11px;border-top:5px solid #1FA2FF;display:flex;gap:16px;align-items:center}
 .ctatxt{flex:1}.cta b{font-size:18px;display:block;margin-bottom:6px}.cta p{margin:0 0 6px;font-size:12.5px}
 .cta .pasos{font-size:11px;opacity:.92}.cta .firma{font-weight:700;font-size:13px}
-.cta .lnk{color:#fff;font-weight:700}.qr{flex:none;width:118px;text-align:center}
+.cta .lnk{color:#fff;font-weight:700}.cta .pasos{color:#BAD4EC}.qr{flex:none;width:118px;text-align:center}
 .qr svg{width:112px;height:112px;background:#fff;padding:5px;border-radius:7px;display:block}
 .qr span{font-size:10.5px;font-weight:700;display:block;margin-top:5px}
 @media(max-width:620px){.promesas,.gain,.cta{flex-direction:column}.bacols{grid-template-columns:1fr}ul.check{columns:1}}

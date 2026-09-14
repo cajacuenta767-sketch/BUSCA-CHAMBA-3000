@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 56" width="300" height="56" role="img" aria-label="Sky Tech">
+  <title>Sky Tech</title>
+  <rect x="4" y="4" width="48" height="48" rx="11" fill="#FFFFFF"/>
+  <rect x="13" y="31" width="6" height="11" rx="1.2" fill="#0B3C68"/>
+  <rect x="22" y="26" width="6" height="16" rx="1.2" fill="#0B3C68"/>
+  <rect x="31" y="21" width="6" height="21" rx="1.2" fill="#0B3C68"/>
+  <path d="M28 26 L39 17" stroke="#1FA2FF" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <path d="M43 13 L43 24 L33 16 Z" fill="#1FA2FF"/>
+  <text x="62" y="30" font-family="Helvetica,Arial,sans-serif" font-size="19" fill="#FFFFFF" letter-spacing="1">SKY</text>
+  <text x="107" y="30" font-family="Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#1FA2FF" letter-spacing="1">TECH</text>
+  <text x="62" y="43" font-family="Helvetica,Arial,sans-serif" font-size="7.5" fill="#9FC4E4" letter-spacing="1.4">SISTEMAS DE GESTIÓN PARA NEGOCIOS</text>
+</svg>

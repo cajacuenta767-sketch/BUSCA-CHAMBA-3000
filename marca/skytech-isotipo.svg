@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="Sky Tech">
+  <title>Sky Tech</title>
+  <rect width="48" height="48" rx="11" fill="#0B3C68"/>
+  <rect x="9" y="27" width="6" height="11" rx="1.2" fill="#FFFFFF"/>
+  <rect x="18" y="22" width="6" height="16" rx="1.2" fill="#FFFFFF"/>
+  <rect x="27" y="17" width="6" height="21" rx="1.2" fill="#FFFFFF"/>
+  <path d="M24 22 L35 13" stroke="#1FA2FF" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <path d="M39 9 L39 20 L29 12 Z" fill="#1FA2FF"/>
+</svg>
