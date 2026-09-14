@@ -141,6 +141,7 @@
   .addr{font-size:12.5px;color:var(--muted)}
   .statrow{font-size:12px;color:var(--muted);background:var(--surface-2);border:1px solid var(--border);border-radius:7px;padding:5px 8px;line-height:1.45}
   .statrow b{color:var(--accent)}
+  .statrow .soloTuyo{color:var(--amber);font-weight:600}
   .statrow .lider{color:var(--ok);font-weight:700}
   .desc{font-size:12.5px;color:var(--muted);line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
   .chip.fb{background:#1877f2;border-color:#1877f2;color:#fff}
@@ -292,11 +293,11 @@
         <div class="form-grid tight">
           <div class="fld"><label>Tu contacto (WhatsApp / correo / web)</label><input class="field" id="cfgContact" placeholder="WhatsApp +51 999 999 999 · correo@dominio.com"></div>
           <div class="fld"><label>Link de tu demo — Sistema (para que lo prueben sin compromiso)</label><input class="field" id="cfgDemoSist" placeholder="https://tu-demo-sistema.com"></div>
-          <div class="fld"><label>Precio desde (opcional) — tu gancho de bajo costo</label><input class="field" id="cfgPrecio" placeholder="Ej: 150 (la moneda se pone sola según el país)"></div>
-          <div class="fld"><label>Precio por país (opcional) — se usa la moneda de cada negocio</label><input class="field" id="cfgPrecios" placeholder="PE:150, BO:200, CL:20000, CO:60000"></div>
+          <div class="fld"><label>Tu precio (solo para ti, no sale en el mensaje ni en el PDF)</label><input class="field" id="cfgPrecio" placeholder="Ej: 150 (la moneda se pone sola según el país)"></div>
+          <div class="fld"><label>Tu precio por país (solo para ti) — cada negocio en su moneda</label><input class="field" id="cfgPrecios" placeholder="PE:150, BO:200, CL:20000, CO:60000"></div>
         </div>
         <div class="fld" style="margin-top:12px"><label>Mensaje base para WhatsApp (opcional) — usa {negocio}, {nombre}, {demo}</label><textarea class="field" id="cfgTpl" rows="3" style="resize:vertical;line-height:1.5" placeholder="Déjalo vacío para el mensaje inteligente por rubro. Ej: Hola {negocio} 👋, soy {nombre}. Te muestro cómo vender más: {demo}"></textarea></div>
-        <p class="help" style="margin-top:8px">El contacto y el <b>link de demo</b> se agregan al <b>mensaje de WhatsApp</b>, al <b>correo</b> y al <b>PDF</b> (con <b>QR</b> para que lo escaneen desde el celular). La <b>moneda sale sola</b> según el país del negocio (Perú → S/, Bolivia → Bs, Chile → $ CLP…): escribe solo el número y se le pone el símbolo que toca; si vendes a distinto precio por país, usa <b>Precio por país</b>. Si escribes un <b>mensaje base</b>, se usa ese (con {negocio}/{nombre}/{demo}); si lo dejas vacío, se arma el mensaje ideal por rubro. Tu nombre sale del campo <b>“Tu nombre”</b> de arriba.</p>
+        <p class="help" style="margin-top:8px">El contacto y el <b>link de demo</b> se agregan al <b>mensaje de WhatsApp</b>, al <b>correo</b> y al <b>PDF</b> (con <b>QR</b> para que lo escaneen desde el celular). Al cliente <b>nunca se le dice un precio</b>: primero lo prueba sin compromiso, y si le gusta, se habla. Tu precio queda como <b>chuleta tuya</b> en la ficha del negocio, con la <b>moneda que corresponde</b> a su país (Perú → S/, Bolivia → Bs, Chile → $ CLP…), para que sepas en qué cobrar cuando te pregunten. Si escribes un <b>mensaje base</b>, se usa ese (con {negocio}/{nombre}/{demo}); si lo dejas vacío, se arma el mensaje ideal por rubro. Tu nombre sale del campo <b>“Tu nombre”</b> de arriba.</p>
 
         <div class="subhead">📍 Mis zonas guardadas</div>
         <div class="play-row" style="justify-content:flex-start">
@@ -453,28 +454,29 @@ function scoreOf(l){let s=0;if(!realWeb(l))s+=50;s+=Math.min(l.reviews||0,300)/1
 function daysSince(ts){if(!ts)return null;return Math.floor((Date.now()-ts)/86400000);}
 
 const STATES={nuevo:{l:"Nuevo",c:"var(--muted)"},contactado:{l:"Contactado",c:"var(--mail)"},respondio:{l:"Respondió",c:"var(--star)"},propuesta:{l:"Propuesta",c:"var(--accent)"},cliente:{l:"Cliente ✅",c:"var(--ok)"},descartado:{l:"Descartado",c:"var(--prospect)"}};
-const PRECIO=(l)=>{const v=(typeof precioDe==="function"&&l)?precioDe(l):(store.get("bc3k_precio","")||"").trim();return v?` desde ${v}`:" a un precio accesible";};
+// Al cliente NO se le dice un precio: primero lo prueba. El número queda para después.
+const PRECIO=()=>" a un precio accesible";
 const PITCHES={verticals:{
-  farmacia:{label:"Farmacia / botica",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para boticas: venta rápida, control de stock con alerta de vencimiento y reporte de caja del día. Es a medida y${PRECIO(l)}, pensado para que un negocio como el suyo lo pueda pagar sin complicarse. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
-  taller_celulares:{label:"Taller de celulares",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas para talleres: orden de reparación con ticket, aviso automático al cliente por WhatsApp e inventario de repuestos. Sencillo y${PRECIO(l)}, al alcance de un taller. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
-  restaurante:{label:"Restaurante / comida",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para restaurantes: comandas, control de caja y pedidos por WhatsApp sin pagar comisión a las apps. Es${PRECIO(l)}, hecho para que le convenga desde el primer mes. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
-  dental:{label:"Clínica / dental",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas de citas para clínicas: agenda, recordatorio automático por WhatsApp (baja mucho las inasistencias) y ficha del paciente. Es${PRECIO(l)}, accesible para un consultorio. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
-  inmobiliaria:{label:"Inmobiliaria",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para inmobiliarias: catálogo de propiedades, control de clientes interesados y consultas que le llegan al WhatsApp. Es${PRECIO(l)}, sin mensualidades caras. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
-  gimnasio:{label:"Gimnasio / fitness",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas para gimnasios: control de membresías, asistencia y aviso de pago por WhatsApp (baja la morosidad). Es${PRECIO(l)}, pensado para que se pague solo. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
-  bodega:{label:"Bodega / minimarket",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas de venta para bodegas: registra ventas, controla el stock y lleva los fiados de quién le debe. Es${PRECIO(l)}, hecho para negocios de barrio. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
-  ferreteria:{label:"Ferretería",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas para ferreterías: inventario por producto, cotizaciones rápidas y control de caja. Es${PRECIO(l)}, accesible para el negocio. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
-  hotel:{label:"Hotel / hospedaje",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para hospedajes: control de habitaciones, reservas y confirmación por WhatsApp, sin comisiones de terceros. Es${PRECIO(l)}. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
-  belleza:{label:"Salón / barbería",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas de reservas para salones: agenda por horario, recordatorio al cliente y control de caja. Es${PRECIO(l)}, al alcance del negocio. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
-  veterinaria:{label:"Veterinaria",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para veterinarias: historial de cada mascota, carnet de vacunas y recordatorio al dueño por WhatsApp. Es${PRECIO(l)}. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
-  contable:{label:"Estudio contable",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas para estudios contables: control de clientes, vencimientos y portal para recibir documentos. Es${PRECIO(l)}. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
-  juridico:{label:"Estudio jurídico",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para estudios jurídicos: control de casos, plazos con alerta y agenda de consultas. Es${PRECIO(l)}. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`}
+  farmacia:{label:"Farmacia / botica",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para boticas: venta rápida, control de stock con alerta de vencimiento y reporte de caja del día. Es a medida y${PRECIO(l)}, pensado para que un negocio como el suyo lo pueda pagar sin complicarse. Pruébelo sin compromiso y, si le gusta, seguimos. ¿Le paso el acceso de prueba?`},
+  taller_celulares:{label:"Taller de celulares",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas para talleres: orden de reparación con ticket, aviso automático al cliente por WhatsApp e inventario de repuestos. Sencillo y${PRECIO(l)}, al alcance de un taller. Pruébelo sin compromiso y, si le gusta, seguimos. ¿Le paso el acceso de prueba?`},
+  restaurante:{label:"Restaurante / comida",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para restaurantes: comandas, control de caja y pedidos por WhatsApp sin pagar comisión a las apps. Es${PRECIO(l)}, hecho para que le convenga desde el primer mes. Pruébelo sin compromiso y, si le gusta, seguimos. ¿Le paso el acceso de prueba?`},
+  dental:{label:"Clínica / dental",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas de citas para clínicas: agenda, recordatorio automático por WhatsApp (baja mucho las inasistencias) y ficha del paciente. Es${PRECIO(l)}, accesible para un consultorio. Pruébelo sin compromiso y, si le gusta, seguimos. ¿Le paso el acceso de prueba?`},
+  inmobiliaria:{label:"Inmobiliaria",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para inmobiliarias: catálogo de propiedades, control de clientes interesados y consultas que le llegan al WhatsApp. Es${PRECIO(l)}, sin mensualidades caras. Pruébelo sin compromiso y, si le gusta, seguimos. ¿Le paso el acceso de prueba?`},
+  gimnasio:{label:"Gimnasio / fitness",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas para gimnasios: control de membresías, asistencia y aviso de pago por WhatsApp (baja la morosidad). Es${PRECIO(l)}, pensado para que se pague solo. Pruébelo sin compromiso y, si le gusta, seguimos. ¿Le paso el acceso de prueba?`},
+  bodega:{label:"Bodega / minimarket",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas de venta para bodegas: registra ventas, controla el stock y lleva los fiados de quién le debe. Es${PRECIO(l)}, hecho para negocios de barrio. Pruébelo sin compromiso y, si le gusta, seguimos. ¿Le paso el acceso de prueba?`},
+  ferreteria:{label:"Ferretería",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas para ferreterías: inventario por producto, cotizaciones rápidas y control de caja. Es${PRECIO(l)}, accesible para el negocio. Pruébelo sin compromiso y, si le gusta, seguimos. ¿Le paso el acceso de prueba?`},
+  hotel:{label:"Hotel / hospedaje",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para hospedajes: control de habitaciones, reservas y confirmación por WhatsApp, sin comisiones de terceros. Es${PRECIO(l)}. Pruébelo sin compromiso y, si le gusta, seguimos. ¿Le paso el acceso de prueba?`},
+  belleza:{label:"Salón / barbería",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas de reservas para salones: agenda por horario, recordatorio al cliente y control de caja. Es${PRECIO(l)}, al alcance del negocio. Pruébelo sin compromiso y, si le gusta, seguimos. ¿Le paso el acceso de prueba?`},
+  veterinaria:{label:"Veterinaria",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para veterinarias: historial de cada mascota, carnet de vacunas y recordatorio al dueño por WhatsApp. Es${PRECIO(l)}. Pruébelo sin compromiso y, si le gusta, seguimos. ¿Le paso el acceso de prueba?`},
+  contable:{label:"Estudio contable",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas para estudios contables: control de clientes, vencimientos y portal para recibir documentos. Es${PRECIO(l)}. Pruébelo sin compromiso y, si le gusta, seguimos. ¿Le paso el acceso de prueba?`},
+  juridico:{label:"Estudio jurídico",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo sistemas para estudios jurídicos: control de casos, plazos con alerta y agenda de consultas. Es${PRECIO(l)}. Pruébelo sin compromiso y, si le gusta, seguimos. ¿Le paso el acceso de prueba?`}
 },servicios:{
-  sistema:{label:"Sistema a medida (general)",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas a medida para negocios: controlar ventas, stock y cuentas en un solo lugar, y saber sus números del día sin cuadernos. Es${PRECIO(l)}, pensado para que un negocio como el suyo lo pueda pagar. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
-  caja:{label:"Control de caja e inventario",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo un sistema simple de caja e inventario: sabe cuánto vendió hoy, qué le queda y quién le debe. Es${PRECIO(l)} y se aprende en una tarde. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
-  citas:{label:"Sistema de citas / reservas",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas de citas con recordatorio automático por WhatsApp, para que no se le caigan clientes. Es${PRECIO(l)}. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`},
-  fiados:{label:"Control de fiados y cobros",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo un sistema para llevar los fiados y cobros: quién le debe, cuánto y desde cuándo, con recordatorio por WhatsApp. Es${PRECIO(l)}. Lo puede probar sin compromiso antes de decidir. ¿Le paso el acceso de prueba?`}
+  sistema:{label:"Sistema a medida (general)",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas a medida para negocios: controlar ventas, stock y cuentas en un solo lugar, y saber sus números del día sin cuadernos. Es${PRECIO(l)}, pensado para que un negocio como el suyo lo pueda pagar. Pruébelo sin compromiso y, si le gusta, seguimos. ¿Le paso el acceso de prueba?`},
+  caja:{label:"Control de caja e inventario",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo un sistema simple de caja e inventario: sabe cuánto vendió hoy, qué le queda y quién le debe. Es${PRECIO(l)} y se aprende en una tarde. Pruébelo sin compromiso y, si le gusta, seguimos. ¿Le paso el acceso de prueba?`},
+  citas:{label:"Sistema de citas / reservas",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Hago sistemas de citas con recordatorio automático por WhatsApp, para que no se le caigan clientes. Es${PRECIO(l)}. Pruébelo sin compromiso y, si le gusta, seguimos. ¿Le paso el acceso de prueba?`},
+  fiados:{label:"Control de fiados y cobros",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armo un sistema para llevar los fiados y cobros: quién le debe, cuánto y desde cuándo, con recordatorio por WhatsApp. Es${PRECIO(l)}. Pruébelo sin compromiso y, si le gusta, seguimos. ¿Le paso el acceso de prueba?`}
 }};
-const FOLLOWUP=(n,g,l)=>`Hola de nuevo 👋, le escribí hace unos días por el sistema para ${g}. Se lo dejo${PRECIO(l)} y lo puede probar sin compromiso antes de decidir. ¿Se lo muestro en 5 minutos? — ${n}`;
+const FOLLOWUP=(n,g,l)=>`Hola de nuevo 👋, le escribí hace unos días por el sistema para ${g}. Se lo dejo${PRECIO(l)}, pero primero pruébelo sin compromiso: si le gusta, seguimos. ¿Se lo muestro en 5 minutos? — ${n}`;
 const VR=[[/farmac|botica/,"farmacia"],[/celular|reparaci|t[eé]cnico|phone|electr[oó]nic/,"taller_celulares"],[/restaur|comida|cevich|poller|caf[eé]|pizzer|chifa|men[uú]|parrill/,"restaurante"],[/dental|dentist|odont/,"dental"],[/inmobili|bienes ra|propiedad/,"inmobiliaria"],[/gimnas|gym|fitness|crossfit/,"gimnasio"],[/bodega|minimarket|abarrote|market|licorer/,"bodega"],[/ferret/,"ferreteria"],[/hotel|hostal|hosped|lodge/,"hotel"],[/peluquer|sal[oó]n|barber|belleza|spa|est[eé]tica|u[nñ]as/,"belleza"],[/veterin|mascota/,"veterinaria"],[/contab|contador/,"contable"],[/abogad|jur[ií]dic|legal|notari/,"juridico"]];
 const detectV=c=>{c=(c||"").toLowerCase();for(const[re,k]of VR)if(re.test(c))return k;return null;};
 const pitchBy=v=>{const g=v.slice(0,1),k=v.slice(2);return(g==="v"?PITCHES.verticals:PITCHES.servicios)[k];};
@@ -639,13 +641,13 @@ function drawQR(doc,url,x,y,size){
   for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q.isDark(r,k))doc.rect(x+k*c,y+r*c,c+0.02,c+0.02,"F");
   return true;
 }
-function sysProposal(biz,rubro,v){const extra=SYS_LINE[v]?(" Para su rubro: "+SYS_LINE[v]+"."):"";const pr=(store.get("bc3k_precio","")||"").trim();return{title:"Un sistema a medida para su negocio, a un costo accesible",diag:biz+" puede llevar el control de sus ventas, su inventario y sus cuentas en un solo sistema hecho a su medida: menos errores manuales, menos pérdidas y sus números al día."+extra+" Lo armamos "+(pr?("desde "+pr):"a un precio accesible")+", pensado para que un negocio como el suyo pueda tenerlo sin una inversión grande, y lo puede probar sin compromiso antes de decidir.",incluye:["Registro de ventas y cierre de caja diario.","Inventario con alertas de stock bajo y de vencimiento.","Control de cuentas y fiados, con los cobros al día.","Reportes claros de qué se vende más y cuándo.","Avisos y recordatorios a sus clientes por WhatsApp."],result:["Menos pérdidas, robos y errores de conteo.","Conoce sus números en tiempo real.","Cobra a tiempo y mejora su flujo de caja.","Ahorra horas de trabajo manual cada semana.","Se paga solo: costo accesible y sin mensualidades caras."],plan:["Reunión de 15 minutos para mapear su proceso (sin costo).","Configuración del sistema a su medida.","Carga de sus productos y capacitación de su personal.","Puesta en marcha, periodo de prueba sin compromiso y soporte."]};}
+function sysProposal(biz,rubro,v){const extra=SYS_LINE[v]?(" Para su rubro: "+SYS_LINE[v]+"."):"";return{title:"Un sistema a medida para su negocio, a un costo accesible",diag:biz+" puede llevar el control de sus ventas, su inventario y sus cuentas en un solo sistema hecho a su medida: menos errores manuales, menos pérdidas y sus números al día."+extra+" Lo armamos a un precio accesible, pensado para que un negocio como el suyo pueda tenerlo sin una inversión grande. Antes de hablar de nada, pruébelo sin compromiso: si le gusta, seguimos.",incluye:["Registro de ventas y cierre de caja diario.","Inventario con alertas de stock bajo y de vencimiento.","Control de cuentas y fiados, con los cobros al día.","Reportes claros de qué se vende más y cuándo.","Avisos y recordatorios a sus clientes por WhatsApp."],result:["Menos pérdidas, robos y errores de conteo.","Conoce sus números en tiempo real.","Cobra a tiempo y mejora su flujo de caja.","Ahorra horas de trabajo manual cada semana.","Se paga solo: costo accesible y sin mensualidades caras."],plan:["Reunión de 15 minutos para mapear su proceso (sin costo).","Configuración del sistema a su medida.","Carga de sus productos y capacitación de su personal.","Puesta en marcha, periodo de prueba sin compromiso y soporte."]};}
 function drawProposal(doc,l){
   const c=classify(l),S=statsFor(l),INS=insightsFor(l,S),B=benefOf(c.vertical);
   const sender=(($("#myName")&&$("#myName").value)||store.get("bc3k_name","")||"").trim();
   const contact=(($("#cfgContact")&&$("#cfgContact").value)||store.get("bc3k_contact","")||"").trim();
   const biz=(l.title||"tu negocio").trim(),rubro=(normCat(l.category)||l.category||"tu rubro").trim();
-  const cur=curOf(l),precio=precioDe(l),demo=(store.get("bc3k_demo_sist","")||"").trim();
+  const demo=(store.get("bc3k_demo_sist","")||"").trim();
   const W=210,M=16,cw=W-2*M;
   const ACC=[91,84,230],ACCW=[236,235,253],INK=[32,35,54],MUT=[110,120,140],LINE=[224,228,242];
   const OK=[18,132,90],OKW=[226,246,235],RED=[198,58,62],REDW=[253,233,234],AMB=[186,112,0],AMBW=[251,240,216];
@@ -809,11 +811,11 @@ function drawProposal(doc,l){
   // Cierre: QR y enlaces que se pueden tocar
   (()=>{const h=demo?64:42;need(h+4);
     doc.setFillColor(...ACC);doc.roundedRect(M,y,cw,h,3,3,"F");
-    const tw=demo?cw-52:cw-10;
+    const tw=demo?cw-58:cw-10;
     doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(15);
     doc.text("Pruébelo sin compromiso",M+6,y+12);
     doc.setFont("helvetica","normal");doc.setFontSize(9.5);
-    const li=doc.splitTextToSize("Se lo dejo andando con sus propios datos"+(precio?(" desde "+precio):"")+". Lo usa unos días, y si no le sirve no paga nada.",tw);
+    const li=doc.splitTextToSize("Se lo dejo andando con sus propios datos. Lo usa unos días y, si le gusta, seguimos. Si no le sirve, no paga nada y no pasa nada.",tw);
     doc.text(li,M+6,y+19.5);
     let yy=y+19.5+li.length*4.6+3;
     doc.setFont("helvetica","normal");doc.setFontSize(8);
@@ -852,7 +854,7 @@ function proposalHTMLDoc(list){
   const body=list.map(l=>{
     const c=classify(l),S=statsFor(l),INS=insightsFor(l,S),B=benefOf(c.vertical);
     const biz=esc(l.title||"tu negocio"),rubro=normCat(l.category)||l.category||"tu rubro";
-    const P=sysProposal(l.title||"tu negocio",rubro,c.vertical),precio=precioDe(l);
+    const P=sysProposal(l.title||"tu negocio",rubro,c.vertical);
     const max=S?Math.max(S.top,S.mine,S.avgRev,1):1;
     const bar=(lab,val,cls)=>`<div class="brow"><span class="blab">${esc(lab)}</span><span class="btrack"><i class="${cls}" style="width:${Math.max(1.5,100*Math.min(1,val/max)).toFixed(1)}%"></i></span><b class="${cls}">${Math.round(val)}</b></div>`;
     const pos=S?(S.n>1?(S.n-S.rank)/(S.n-1):1):0;
@@ -885,7 +887,7 @@ function proposalHTMLDoc(list){
       <div class="cta">
         <div class="ctatxt">
           <b>Pruébelo sin compromiso</b>
-          <p>Se lo dejo andando con sus propios datos${precio?(" desde "+esc(precio)):""}. Lo usa unos días, y si no le sirve no paga nada.</p>
+          <p>Se lo dejo andando con sus propios datos. Lo usa unos días y, si le gusta, seguimos. Si no le sirve, no paga nada y no pasa nada.</p>
           <p class="pasos">Cómo seguimos: 1) reunión de 15 minutos, sin costo · 2) lo configuro a su medida · 3) cargo sus datos y capacito a su gente · 4) puesta en marcha y soporte.</p>
           <p class="firma">${esc([sender,contact].filter(Boolean).join(" · "))}</p>
           ${demo?`<p><a class="lnk" href="${esc(demo)}">Abrir la demo ahora</a><br><span class="tiny">${esc(demo)}</span></p>`:""}
@@ -1184,7 +1186,9 @@ function cardMailHref(l){const email=(l.emails&&l.emails[0])||"";if(!email)retur
 function buildMsg(){const link=demoLinkFor(current);let t;if($("#mFollow").checked){t=FOLLOWUP(myName(),current.title,current);if(link)t+="\n\n👉 Aquí lo puede probar usted mismo (demo): "+link;}else{const tpl=(store.get("bc3k_tpl","")||"").trim();if(tpl)t=applyTpl(tpl,current,link);else{t=pitchBy($("#mService").value).build(myName(),current.title,current);if(link)t+="\n\n👉 Aquí lo puede probar usted mismo (demo): "+link;}}$("#mText").value=t;}
 function openModal(l){current=l;const id=idOf(l),m=getMeta(id);
   $("#mTitle").textContent=l.title;$("#mSub").textContent=((l.phone?("📞 "+l.phone):"")+(l.emails[0]?("   ✉️ "+l.emails[0]):""))||"Sin contacto directo";$("#mFollow").checked=false;
-  const ms=$("#mStats");if(ms){const r=statLine(l);ms.hidden=!r;ms.innerHTML=r?r.txt:"";}
+  const ms=$("#mStats");if(ms){const r=statLine(l),cur=curOf(l),pr=precioDe(l);
+    const nota=`<span class="soloTuyo">💵 solo para ti · cobra en ${esc(cur.sym)} (${esc(cur.name)})${pr?" · tu precio aquí: "+esc(pr):""} · no va en el mensaje</span>`;
+    ms.hidden=false;ms.innerHTML=(r?r.txt+"<br>":"")+nota;}
   const G=[["Vender un sistema (por rubro)","v",PITCHES.verticals],["Servicio general","s",PITCHES.servicios]];
   $("#mService").innerHTML=G.map(([lb,g,o])=>`<optgroup label="${lb}">`+Object.entries(o).map(([k,v])=>`<option value="${g}:${k}">${v.label}</option>`).join("")+`</optgroup>`).join("");
   const vk=detectV(l.category);$("#mService").value=vk?("v:"+vk):"s:sistema";
