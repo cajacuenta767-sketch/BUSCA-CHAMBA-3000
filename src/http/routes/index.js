@@ -5,8 +5,10 @@
  */
 const fs = require("fs");
 const { Router } = require("../router");
-const { sendText } = require("../middleware");
+const { sendText, sendJson } = require("../middleware");
 const { CATEGORIES } = require("../../config/categories");
+const taxonomy = require("../../domain/taxonomy");
+const insights = require("../../domain/insights");
 
 function buildRoutes(app) {
   const { env, store, settings, bus, scanner, enricher, proxies, notifier, logger } = app;
@@ -32,6 +34,17 @@ function buildRoutes(app) {
   });
   r.get("/api/stream", (ctx) => { bus.subscribe(ctx.req, ctx.res, { type: "status", data: scanner.status() }); });
   r.get("/api/logs", (ctx) => sendText(ctx.res, logger.text()));
+
+  // ---- Inteligencia de la propuesta ----
+  r.get("/api/taxonomy", () => ({ verticals: taxonomy.VERTICALS, groups: taxonomy.GROUPS, rules: taxonomy.RULES.map((x) => ({ label: x[1], vertical: x[2], group: x[3] })), counts: store.categoryCounts() }));
+  r.get("/api/insights", (ctx) => {
+    const id = ctx.url.searchParams.get("id") || "";
+    const lead = store.getLead(id);
+    if (!lead) return sendJson(ctx.res, { error: "no existe" }, 404);
+    const peers = store.listLeadsByCatKey(taxonomy.categoryKey(lead.category));
+    const r = insights.analyze(lead, peers);
+    return { id, ok: r.ok, reason: r.reason || null, cat: r.cat, stats: r.stats, insights: r.insights, anchor: r.anchor };
+  });
 
   // ---- Escaneo ----
   r.post("/api/scan/start", async (ctx) => scanner.start(await ctx.body()));

@@ -11,8 +11,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<!-- @css:start -->
 <style>
-  :root{
+:root{
     --bg:#f3f4fb;--surface:#ffffff;--surface-2:#eef0f8;--text:#141726;--muted:#616b84;--border:#e4e7f2;
     --accent:#5b54e6;--accent-weak:#ecebfd;--accent-ink:#fff;
     --ok:#12a150;--ok-weak:#e4f6ea;--amber:#c77700;--amber-weak:#fbf0da;--danger:#e0484d;--danger-weak:#fbe9ea;
@@ -203,6 +204,7 @@
   .leaflet-popup-content{font:13px var(--font-b);margin:12px}.leaflet-tooltip{font:12px var(--font-b);padding:9px;border-radius:9px}
   @media (max-width:720px){.stats{grid-template-columns:repeat(2,1fr)}.brand{width:100%}}
 </style>
+<!-- @css:end -->
 </head>
 <body>
 <div class="wrap">
@@ -484,7 +486,466 @@
 <!-- QR Code Generator for JavaScript - (c) 2009 Kazuhiko Arase - licencia MIT - http://www.d-project.com/
      Va incrustado (no por CDN) para que el QR de la propuesta funcione aunque estes sin internet. -->
 <script>var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],f={},c=function(t,r){o=function(t){for(var r=new Array(t),e=0;e<t;e+=1){r[e]=new Array(t);for(var n=0;n<t;n+=1)r[e][n]=null}return r}(i=4*e+17),l(0,0),l(i-7,0),l(0,i-7),s(),h(),d(t,r),e>=7&&v(t),null==a&&(a=p(e,n,u)),w(a,r)},l=function(t,r){for(var e=-1;e<=7;e+=1)if(!(t+e<=-1||i<=t+e))for(var n=-1;n<=7;n+=1)r+n<=-1||i<=r+n||(o[t+e][r+n]=0<=e&&e<=6&&(0==n||6==n)||0<=n&&n<=6&&(0==e||6==e)||2<=e&&e<=4&&2<=n&&n<=4)},h=function(){for(var t=8;t<i-8;t+=1)null==o[t][6]&&(o[t][6]=t%2==0);for(var r=8;r<i-8;r+=1)null==o[6][r]&&(o[6][r]=r%2==0)},s=function(){for(var t=B.getPatternPosition(e),r=0;r<t.length;r+=1)for(var n=0;n<t.length;n+=1){var i=t[r],a=t[n];if(null==o[i][a])for(var u=-2;u<=2;u+=1)for(var f=-2;f<=2;f+=1)o[i+u][a+f]=-2==u||2==u||-2==f||2==f||0==u&&0==f}},v=function(t){for(var r=B.getBCHTypeNumber(e),n=0;n<18;n+=1){var a=!t&&1==(r>>n&1);o[Math.floor(n/3)][n%3+i-8-3]=a}for(n=0;n<18;n+=1){a=!t&&1==(r>>n&1);o[n%3+i-8-3][Math.floor(n/3)]=a}},d=function(t,r){for(var e=n<<3|r,a=B.getBCHTypeInfo(e),u=0;u<15;u+=1){var f=!t&&1==(a>>u&1);u<6?o[u][8]=f:u<8?o[u+1][8]=f:o[i-15+u][8]=f}for(u=0;u<15;u+=1){f=!t&&1==(a>>u&1);u<8?o[8][i-u-1]=f:u<9?o[8][15-u-1+1]=f:o[8][15-u-1]=f}o[i-8][8]=!t},w=function(t,r){for(var e=-1,n=i-1,a=7,u=0,f=B.getMaskFunction(r),c=i-1;c>0;c-=2)for(6==c&&(c-=1);;){for(var g=0;g<2;g+=1)if(null==o[n][c-g]){var l=!1;u<t.length&&(l=1==(t[u]>>>a&1)),f(n,c-g)&&(l=!l),o[n][c-g]=l,-1==(a-=1)&&(u+=1,a=7)}if((n+=e)<0||i<=n){n-=e,e=-e;break}}},p=function(t,r,e){for(var n=A.getRSBlocks(t,r),o=b(),i=0;i<e.length;i+=1){var a=e[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var u=0;for(i=0;i<n.length;i+=1)u+=n[i].dataCount;if(o.getLengthInBits()>8*u)throw"code length overflow. ("+o.getLengthInBits()+">"+8*u+")";for(o.getLengthInBits()+4<=8*u&&o.put(0,4);o.getLengthInBits()%8!=0;)o.putBit(!1);for(;!(o.getLengthInBits()>=8*u||(o.put(236,8),o.getLengthInBits()>=8*u));)o.put(17,8);return function(t,r){for(var e=0,n=0,o=0,i=new Array(r.length),a=new Array(r.length),u=0;u<r.length;u+=1){var f=r[u].dataCount,c=r[u].totalCount-f;n=Math.max(n,f),o=Math.max(o,c),i[u]=new Array(f);for(var g=0;g<i[u].length;g+=1)i[u][g]=255&t.getBuffer()[g+e];e+=f;var l=B.getErrorCorrectPolynomial(c),h=k(i[u],l.getLength()-1).mod(l);for(a[u]=new Array(l.getLength()-1),g=0;g<a[u].length;g+=1){var s=g+h.getLength()-a[u].length;a[u][g]=s>=0?h.getAt(s):0}}var v=0;for(g=0;g<r.length;g+=1)v+=r[g].totalCount;var d=new Array(v),w=0;for(g=0;g<n;g+=1)for(u=0;u<r.length;u+=1)g<i[u].length&&(d[w]=i[u][g],w+=1);for(g=0;g<o;g+=1)for(u=0;u<r.length;u+=1)g<a[u].length&&(d[w]=a[u][g],w+=1);return d}(o,n)};f.addData=function(t,r){var e=null;switch(r=r||"Byte"){case"Numeric":e=M(t);break;case"Alphanumeric":e=x(t);break;case"Byte":e=m(t);break;case"Kanji":e=L(t);break;default:throw"mode:"+r}u.push(e),a=null},f.isDark=function(t,r){if(t<0||i<=t||r<0||i<=r)throw t+","+r;return o[t][r]},f.getModuleCount=function(){return i},f.make=function(){if(e<1){for(var t=1;t<40;t++){for(var r=A.getRSBlocks(t,n),o=b(),i=0;i<u.length;i++){var a=u[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var g=0;for(i=0;i<r.length;i++)g+=r[i].dataCount;if(o.getLengthInBits()<=8*g)break}e=t}c(!1,function(){for(var t=0,r=0,e=0;e<8;e+=1){c(!0,e);var n=B.getLostPoint(f);(0==e||t>n)&&(t=n,r=e)}return r}())},f.createTableTag=function(t,r){t=t||2;var e="";e+='<table style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: "+(r=void 0===r?4*t:r)+"px;",e+='">',e+="<tbody>";for(var n=0;n<f.getModuleCount();n+=1){e+="<tr>";for(var o=0;o<f.getModuleCount();o+=1)e+='<td style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: 0px;",e+=" width: "+t+"px;",e+=" height: "+t+"px;",e+=" background-color: ",e+=f.isDark(n,o)?"#000000":"#ffffff",e+=";",e+='"/>';e+="</tr>"}return e+="</tbody>",e+="</table>"},f.createSvgTag=function(t,r,e,n){var o={};"object"==typeof arguments[0]&&(t=(o=arguments[0]).cellSize,r=o.margin,e=o.alt,n=o.title),t=t||2,r=void 0===r?4*t:r,(e="string"==typeof e?{text:e}:e||{}).text=e.text||null,e.id=e.text?e.id||"qrcode-description":null,(n="string"==typeof n?{text:n}:n||{}).text=n.text||null,n.id=n.text?n.id||"qrcode-title":null;var i,a,u,c,g=f.getModuleCount()*t+2*r,l="";for(c="l"+t+",0 0,"+t+" -"+t+",0 0,-"+t+"z ",l+='<svg version="1.1" xmlns="http://www.w3.org/2000/svg"',l+=o.scalable?"":' width="'+g+'px" height="'+g+'px"',l+=' viewBox="0 0 '+g+" "+g+'" ',l+=' preserveAspectRatio="xMinYMin meet"',l+=n.text||e.text?' role="img" aria-labelledby="'+y([n.id,e.id].join(" ").trim())+'"':"",l+=">",l+=n.text?'<title id="'+y(n.id)+'">'+y(n.text)+"</title>":"",l+=e.text?'<description id="'+y(e.id)+'">'+y(e.text)+"</description>":"",l+='<rect width="100%" height="100%" fill="white" cx="0" cy="0"/>',l+='<path d="',a=0;a<f.getModuleCount();a+=1)for(u=a*t+r,i=0;i<f.getModuleCount();i+=1)f.isDark(a,i)&&(l+="M"+(i*t+r)+","+u+c);return l+='" stroke="transparent" fill="black"/>',l+="</svg>"},f.createDataURL=function(t,r){t=t||2,r=void 0===r?4*t:r;var e=f.getModuleCount()*t+2*r,n=r,o=e-r;return I(e,e,function(r,e){if(n<=r&&r<o&&n<=e&&e<o){var i=Math.floor((r-n)/t),a=Math.floor((e-n)/t);return f.isDark(a,i)?0:1}return 1})},f.createImgTag=function(t,r,e){t=t||2,r=void 0===r?4*t:r;var n=f.getModuleCount()*t+2*r,o="";return o+="<img",o+=' src="',o+=f.createDataURL(t,r),o+='"',o+=' width="',o+=n,o+='"',o+=' height="',o+=n,o+='"',e&&(o+=' alt="',o+=y(e),o+='"'),o+="/>"};var y=function(t){for(var r="",e=0;e<t.length;e+=1){var n=t.charAt(e);switch(n){case"<":r+="&lt;";break;case">":r+="&gt;";break;case"&":r+="&amp;";break;case'"':r+="&quot;";break;default:r+=n}}return r};return f.createASCII=function(t,r){if((t=t||1)<2)return function(t){t=void 0===t?2:t;var r,e,n,o,i,a=1*f.getModuleCount()+2*t,u=t,c=a-t,g={"██":"█","█ ":"▀"," █":"▄","  ":" "},l={"██":"▀","█ ":"▀"," █":" ","  ":" "},h="";for(r=0;r<a;r+=2){for(n=Math.floor((r-u)/1),o=Math.floor((r+1-u)/1),e=0;e<a;e+=1)i="█",u<=e&&e<c&&u<=r&&r<c&&f.isDark(n,Math.floor((e-u)/1))&&(i=" "),u<=e&&e<c&&u<=r+1&&r+1<c&&f.isDark(o,Math.floor((e-u)/1))?i+=" ":i+="█",h+=t<1&&r+1>=c?l[i]:g[i];h+="\n"}return a%2&&t>0?h.substring(0,h.length-a-1)+Array(a+1).join("▀"):h.substring(0,h.length-1)}(r);t-=1,r=void 0===r?2*t:r;var e,n,o,i,a=f.getModuleCount()*t+2*r,u=r,c=a-r,g=Array(t+1).join("██"),l=Array(t+1).join("  "),h="",s="";for(e=0;e<a;e+=1){for(o=Math.floor((e-u)/t),s="",n=0;n<a;n+=1)i=1,u<=n&&n<c&&u<=e&&e<c&&f.isDark(o,Math.floor((n-u)/t))&&(i=0),s+=i?g:l;for(o=0;o<t;o+=1)h+=s+"\n"}return h.substring(0,h.length-1)},f.renderTo2dContext=function(t,r){r=r||2;for(var e=f.getModuleCount(),n=0;n<e;n++)for(var o=0;o<e;o++)t.fillStyle=f.isDark(n,o)?"black":"white",t.fillRect(n*r,o*r,r,r)},f};t.stringToBytes=(t.stringToBytesFuncs={default:function(t){for(var r=[],e=0;e<t.length;e+=1){var n=t.charCodeAt(e);r.push(255&n)}return r}}).default,t.createStringToBytes=function(t,r){var e=function(){for(var e=S(t),n=function(){var t=e.read();if(-1==t)throw"eof";return t},o=0,i={};;){var a=e.read();if(-1==a)break;var u=n(),f=n()<<8|n();i[String.fromCharCode(a<<8|u)]=f,o+=1}if(o!=r)throw o+" != "+r;return i}(),n="?".charCodeAt(0);return function(t){for(var r=[],o=0;o<t.length;o+=1){var i=t.charCodeAt(o);if(i<128)r.push(i);else{var a=e[t.charAt(o)];"number"==typeof a?(255&a)==a?r.push(a):(r.push(a>>>8),r.push(255&a)):r.push(n)}}return r}};var r,e,n,o,i,a=1,u=2,f=4,c=8,g={L:1,M:0,Q:3,H:2},l=0,h=1,s=2,v=3,d=4,w=5,p=6,y=7,B=(r=[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],[6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],[6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],[6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],[6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],[6,26,54,82,110,138,166],[6,30,58,86,114,142,170]],e=1335,n=7973,i=function(t){for(var r=0;0!=t;)r+=1,t>>>=1;return r},(o={}).getBCHTypeInfo=function(t){for(var r=t<<10;i(r)-i(e)>=0;)r^=e<<i(r)-i(e);return 21522^(t<<10|r)},o.getBCHTypeNumber=function(t){for(var r=t<<12;i(r)-i(n)>=0;)r^=n<<i(r)-i(n);return t<<12|r},o.getPatternPosition=function(t){return r[t-1]},o.getMaskFunction=function(t){switch(t){case l:return function(t,r){return(t+r)%2==0};case h:return function(t,r){return t%2==0};case s:return function(t,r){return r%3==0};case v:return function(t,r){return(t+r)%3==0};case d:return function(t,r){return(Math.floor(t/2)+Math.floor(r/3))%2==0};case w:return function(t,r){return t*r%2+t*r%3==0};case p:return function(t,r){return(t*r%2+t*r%3)%2==0};case y:return function(t,r){return(t*r%3+(t+r)%2)%2==0};default:throw"bad maskPattern:"+t}},o.getErrorCorrectPolynomial=function(t){for(var r=k([1],0),e=0;e<t;e+=1)r=r.multiply(k([1,C.gexp(e)],0));return r},o.getLengthInBits=function(t,r){if(1<=r&&r<10)switch(t){case a:return 10;case u:return 9;case f:case c:return 8;default:throw"mode:"+t}else if(r<27)switch(t){case a:return 12;case u:return 11;case f:return 16;case c:return 10;default:throw"mode:"+t}else{if(!(r<41))throw"type:"+r;switch(t){case a:return 14;case u:return 13;case f:return 16;case c:return 12;default:throw"mode:"+t}}},o.getLostPoint=function(t){for(var r=t.getModuleCount(),e=0,n=0;n<r;n+=1)for(var o=0;o<r;o+=1){for(var i=0,a=t.isDark(n,o),u=-1;u<=1;u+=1)if(!(n+u<0||r<=n+u))for(var f=-1;f<=1;f+=1)o+f<0||r<=o+f||0==u&&0==f||a==t.isDark(n+u,o+f)&&(i+=1);i>5&&(e+=3+i-5)}for(n=0;n<r-1;n+=1)for(o=0;o<r-1;o+=1){var c=0;t.isDark(n,o)&&(c+=1),t.isDark(n+1,o)&&(c+=1),t.isDark(n,o+1)&&(c+=1),t.isDark(n+1,o+1)&&(c+=1),0!=c&&4!=c||(e+=3)}for(n=0;n<r;n+=1)for(o=0;o<r-6;o+=1)t.isDark(n,o)&&!t.isDark(n,o+1)&&t.isDark(n,o+2)&&t.isDark(n,o+3)&&t.isDark(n,o+4)&&!t.isDark(n,o+5)&&t.isDark(n,o+6)&&(e+=40);for(o=0;o<r;o+=1)for(n=0;n<r-6;n+=1)t.isDark(n,o)&&!t.isDark(n+1,o)&&t.isDark(n+2,o)&&t.isDark(n+3,o)&&t.isDark(n+4,o)&&!t.isDark(n+5,o)&&t.isDark(n+6,o)&&(e+=40);var g=0;for(o=0;o<r;o+=1)for(n=0;n<r;n+=1)t.isDark(n,o)&&(g+=1);return e+=Math.abs(100*g/r/r-50)/5*10},o),C=function(){for(var t=new Array(256),r=new Array(256),e=0;e<8;e+=1)t[e]=1<<e;for(e=8;e<256;e+=1)t[e]=t[e-4]^t[e-5]^t[e-6]^t[e-8];for(e=0;e<255;e+=1)r[t[e]]=e;var n={glog:function(t){if(t<1)throw"glog("+t+")";return r[t]},gexp:function(r){for(;r<0;)r+=255;for(;r>=256;)r-=255;return t[r]}};return n}();function k(t,r){if(void 0===t.length)throw t.length+"/"+r;var e=function(){for(var e=0;e<t.length&&0==t[e];)e+=1;for(var n=new Array(t.length-e+r),o=0;o<t.length-e;o+=1)n[o]=t[o+e];return n}(),n={getAt:function(t){return e[t]},getLength:function(){return e.length},multiply:function(t){for(var r=new Array(n.getLength()+t.getLength()-1),e=0;e<n.getLength();e+=1)for(var o=0;o<t.getLength();o+=1)r[e+o]^=C.gexp(C.glog(n.getAt(e))+C.glog(t.getAt(o)));return k(r,0)},mod:function(t){if(n.getLength()-t.getLength()<0)return n;for(var r=C.glog(n.getAt(0))-C.glog(t.getAt(0)),e=new Array(n.getLength()),o=0;o<n.getLength();o+=1)e[o]=n.getAt(o);for(o=0;o<t.getLength();o+=1)e[o]^=C.gexp(C.glog(t.getAt(o))+r);return k(e,0).mod(t)}};return n}var A=function(){var t=[[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,44,34],[1,44,28],[1,44,22],[1,44,16],[1,70,55],[1,70,44],[2,35,17],[2,35,13],[1,100,80],[2,50,32],[2,50,24],[4,25,9],[1,134,108],[2,67,43],[2,33,15,2,34,16],[2,33,11,2,34,12],[2,86,68],[4,43,27],[4,43,19],[4,43,15],[2,98,78],[4,49,31],[2,32,14,4,33,15],[4,39,13,1,40,14],[2,121,97],[2,60,38,2,61,39],[4,40,18,2,41,19],[4,40,14,2,41,15],[2,146,116],[3,58,36,2,59,37],[4,36,16,4,37,17],[4,36,12,4,37,13],[2,86,68,2,87,69],[4,69,43,1,70,44],[6,43,19,2,44,20],[6,43,15,2,44,16],[4,101,81],[1,80,50,4,81,51],[4,50,22,4,51,23],[3,36,12,8,37,13],[2,116,92,2,117,93],[6,58,36,2,59,37],[4,46,20,6,47,21],[7,42,14,4,43,15],[4,133,107],[8,59,37,1,60,38],[8,44,20,4,45,21],[12,33,11,4,34,12],[3,145,115,1,146,116],[4,64,40,5,65,41],[11,36,16,5,37,17],[11,36,12,5,37,13],[5,109,87,1,110,88],[5,65,41,5,66,42],[5,54,24,7,55,25],[11,36,12,7,37,13],[5,122,98,1,123,99],[7,73,45,3,74,46],[15,43,19,2,44,20],[3,45,15,13,46,16],[1,135,107,5,136,108],[10,74,46,1,75,47],[1,50,22,15,51,23],[2,42,14,17,43,15],[5,150,120,1,151,121],[9,69,43,4,70,44],[17,50,22,1,51,23],[2,42,14,19,43,15],[3,141,113,4,142,114],[3,70,44,11,71,45],[17,47,21,4,48,22],[9,39,13,16,40,14],[3,135,107,5,136,108],[3,67,41,13,68,42],[15,54,24,5,55,25],[15,43,15,10,44,16],[4,144,116,4,145,117],[17,68,42],[17,50,22,6,51,23],[19,46,16,6,47,17],[2,139,111,7,140,112],[17,74,46],[7,54,24,16,55,25],[34,37,13],[4,151,121,5,152,122],[4,75,47,14,76,48],[11,54,24,14,55,25],[16,45,15,14,46,16],[6,147,117,4,148,118],[6,73,45,14,74,46],[11,54,24,16,55,25],[30,46,16,2,47,17],[8,132,106,4,133,107],[8,75,47,13,76,48],[7,54,24,22,55,25],[22,45,15,13,46,16],[10,142,114,2,143,115],[19,74,46,4,75,47],[28,50,22,6,51,23],[33,46,16,4,47,17],[8,152,122,4,153,123],[22,73,45,3,74,46],[8,53,23,26,54,24],[12,45,15,28,46,16],[3,147,117,10,148,118],[3,73,45,23,74,46],[4,54,24,31,55,25],[11,45,15,31,46,16],[7,146,116,7,147,117],[21,73,45,7,74,46],[1,53,23,37,54,24],[19,45,15,26,46,16],[5,145,115,10,146,116],[19,75,47,10,76,48],[15,54,24,25,55,25],[23,45,15,25,46,16],[13,145,115,3,146,116],[2,74,46,29,75,47],[42,54,24,1,55,25],[23,45,15,28,46,16],[17,145,115],[10,74,46,23,75,47],[10,54,24,35,55,25],[19,45,15,35,46,16],[17,145,115,1,146,116],[14,74,46,21,75,47],[29,54,24,19,55,25],[11,45,15,46,46,16],[13,145,115,6,146,116],[14,74,46,23,75,47],[44,54,24,7,55,25],[59,46,16,1,47,17],[12,151,121,7,152,122],[12,75,47,26,76,48],[39,54,24,14,55,25],[22,45,15,41,46,16],[6,151,121,14,152,122],[6,75,47,34,76,48],[46,54,24,10,55,25],[2,45,15,64,46,16],[17,152,122,4,153,123],[29,74,46,14,75,47],[49,54,24,10,55,25],[24,45,15,46,46,16],[4,152,122,18,153,123],[13,74,46,32,75,47],[48,54,24,14,55,25],[42,45,15,32,46,16],[20,147,117,4,148,118],[40,75,47,7,76,48],[43,54,24,22,55,25],[10,45,15,67,46,16],[19,148,118,6,149,119],[18,75,47,31,76,48],[34,54,24,34,55,25],[20,45,15,61,46,16]],r=function(t,r){var e={};return e.totalCount=t,e.dataCount=r,e},e={};return e.getRSBlocks=function(e,n){var o=function(r,e){switch(e){case g.L:return t[4*(r-1)+0];case g.M:return t[4*(r-1)+1];case g.Q:return t[4*(r-1)+2];case g.H:return t[4*(r-1)+3];default:return}}(e,n);if(void 0===o)throw"bad rs block @ typeNumber:"+e+"/errorCorrectionLevel:"+n;for(var i=o.length/3,a=[],u=0;u<i;u+=1)for(var f=o[3*u+0],c=o[3*u+1],l=o[3*u+2],h=0;h<f;h+=1)a.push(r(c,l));return a},e}(),b=function(){var t=[],r=0,e={getBuffer:function(){return t},getAt:function(r){var e=Math.floor(r/8);return 1==(t[e]>>>7-r%8&1)},put:function(t,r){for(var n=0;n<r;n+=1)e.putBit(1==(t>>>r-n-1&1))},getLengthInBits:function(){return r},putBit:function(e){var n=Math.floor(r/8);t.length<=n&&t.push(0),e&&(t[n]|=128>>>r%8),r+=1}};return e},M=function(t){var r=a,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+2<r.length;)t.put(o(r.substring(n,n+3)),10),n+=3;n<r.length&&(r.length-n==1?t.put(o(r.substring(n,n+1)),4):r.length-n==2&&t.put(o(r.substring(n,n+2)),7))}},o=function(t){for(var r=0,e=0;e<t.length;e+=1)r=10*r+i(t.charAt(e));return r},i=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);throw"illegal char :"+t};return n},x=function(t){var r=u,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+1<r.length;)t.put(45*o(r.charAt(n))+o(r.charAt(n+1)),11),n+=2;n<r.length&&t.put(o(r.charAt(n)),6)}},o=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);if("A"<=t&&t<="Z")return t.charCodeAt(0)-"A".charCodeAt(0)+10;switch(t){case" ":return 36;case"$":return 37;case"%":return 38;case"*":return 39;case"+":return 40;case"-":return 41;case".":return 42;case"/":return 43;case":":return 44;default:throw"illegal char :"+t}};return n},m=function(r){var e=f,n=t.stringToBytes(r),o={getMode:function(){return e},getLength:function(t){return n.length},write:function(t){for(var r=0;r<n.length;r+=1)t.put(n[r],8)}};return o},L=function(r){var e=c,n=t.stringToBytesFuncs.SJIS;if(!n)throw"sjis not supported.";!function(){var t=n("友");if(2!=t.length||38726!=(t[0]<<8|t[1]))throw"sjis not supported."}();var o=n(r),i={getMode:function(){return e},getLength:function(t){return~~(o.length/2)},write:function(t){for(var r=o,e=0;e+1<r.length;){var n=(255&r[e])<<8|255&r[e+1];if(33088<=n&&n<=40956)n-=33088;else{if(!(57408<=n&&n<=60351))throw"illegal char at "+(e+1)+"/"+n;n-=49472}n=192*(n>>>8&255)+(255&n),t.put(n,13),e+=2}if(e<r.length)throw"illegal char at "+(e+1)}};return i},D=function(){var t=[],r={writeByte:function(r){t.push(255&r)},writeShort:function(t){r.writeByte(t),r.writeByte(t>>>8)},writeBytes:function(t,e,n){e=e||0,n=n||t.length;for(var o=0;o<n;o+=1)r.writeByte(t[o+e])},writeString:function(t){for(var e=0;e<t.length;e+=1)r.writeByte(t.charCodeAt(e))},toByteArray:function(){return t},toString:function(){var r="";r+="[";for(var e=0;e<t.length;e+=1)e>0&&(r+=","),r+=t[e];return r+="]"}};return r},S=function(t){var r=t,e=0,n=0,o=0,i={read:function(){for(;o<8;){if(e>=r.length){if(0==o)return-1;throw"unexpected end of file./"+o}var t=r.charAt(e);if(e+=1,"="==t)return o=0,-1;t.match(/^\s$/)||(n=n<<6|a(t.charCodeAt(0)),o+=6)}var i=n>>>o-8&255;return o-=8,i}},a=function(t){if(65<=t&&t<=90)return t-65;if(97<=t&&t<=122)return t-97+26;if(48<=t&&t<=57)return t-48+52;if(43==t)return 62;if(47==t)return 63;throw"c:"+t};return i},I=function(t,r,e){for(var n=function(t,r){var e=t,n=r,o=new Array(t*r),i={setPixel:function(t,r,n){o[r*e+t]=n},write:function(t){t.writeString("GIF87a"),t.writeShort(e),t.writeShort(n),t.writeByte(128),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(255),t.writeByte(255),t.writeByte(255),t.writeString(","),t.writeShort(0),t.writeShort(0),t.writeShort(e),t.writeShort(n),t.writeByte(0);var r=a(2);t.writeByte(2);for(var o=0;r.length-o>255;)t.writeByte(255),t.writeBytes(r,o,255),o+=255;t.writeByte(r.length-o),t.writeBytes(r,o,r.length-o),t.writeByte(0),t.writeString(";")}},a=function(t){for(var r=1<<t,e=1+(1<<t),n=t+1,i=u(),a=0;a<r;a+=1)i.add(String.fromCharCode(a));i.add(String.fromCharCode(r)),i.add(String.fromCharCode(e));var f,c,g,l=D(),h=(f=l,c=0,g=0,{write:function(t,r){if(t>>>r!=0)throw"length over";for(;c+r>=8;)f.writeByte(255&(t<<c|g)),r-=8-c,t>>>=8-c,g=0,c=0;g|=t<<c,c+=r},flush:function(){c>0&&f.writeByte(g)}});h.write(r,n);var s=0,v=String.fromCharCode(o[s]);for(s+=1;s<o.length;){var d=String.fromCharCode(o[s]);s+=1,i.contains(v+d)?v+=d:(h.write(i.indexOf(v),n),i.size()<4095&&(i.size()==1<<n&&(n+=1),i.add(v+d)),v=d)}return h.write(i.indexOf(v),n),h.write(e,n),h.flush(),l.toByteArray()},u=function(){var t={},r=0,e={add:function(n){if(e.contains(n))throw"dup key:"+n;t[n]=r,r+=1},size:function(){return r},indexOf:function(r){return t[r]},contains:function(r){return void 0!==t[r]}};return e};return i}(t,r),o=0;o<r;o+=1)for(var i=0;i<t;i+=1)n.setPixel(i,o,e(i,o));var a=D();n.write(a);for(var u=function(){var t=0,r=0,e=0,n="",o={},i=function(t){n+=String.fromCharCode(a(63&t))},a=function(t){if(t<0);else{if(t<26)return 65+t;if(t<52)return t-26+97;if(t<62)return t-52+48;if(62==t)return 43;if(63==t)return 47}throw"n:"+t};return o.writeByte=function(n){for(t=t<<8|255&n,r+=8,e+=1;r>=6;)i(t>>>r-6),r-=6},o.flush=function(){if(r>0&&(i(t<<6-r),t=0,r=0),e%3!=0)for(var o=3-e%3,a=0;a<o;a+=1)n+="="},o.toString=function(){return n},o}(),f=a.toByteArray(),c=0;c<f.length;c+=1)u.writeByte(f[c]);return u.flush(),"data:image/gif;base64,"+u};return t}();qrcode.stringToBytesFuncs["UTF-8"]=function(t){return function(t){for(var r=[],e=0;e<t.length;e++){var n=t.charCodeAt(e);n<128?r.push(n):n<2048?r.push(192|n>>6,128|63&n):n<55296||n>=57344?r.push(224|n>>12,128|n>>6&63,128|63&n):(e++,n=65536+((1023&n)<<10|1023&t.charCodeAt(e)),r.push(240|n>>18,128|n>>12&63,128|n>>6&63,128|63&n))}return r}(t)},function(t){"function"==typeof define&&define.amd?define([],t):"object"==typeof exports&&(module.exports=t())}(function(){return qrcode});</script>
+<!-- @bundle:start -->
 <script>
+/* Generado por scripts/build-dashboard.js — NO editar aquí: edita src/ y ejecuta `npm run build`. */
+window.SkyLib=(function(){var defs={},cache={};function req(n){n=String(n).replace(/^.*\//,"").replace(/\.js$/,"");if(cache[n])return cache[n].exports;if(!defs[n])throw new Error("SkyLib: módulo no incluido: "+n);var m={exports:{}};cache[n]=m;defs[n](m,m.exports,req);return m.exports;}
+defs["lead"]=function(module,exports,require){
+"use strict";
+/**
+ * Dominio "Lead": normalización de una fila del scraper a un negocio,
+ * identidad (dedupe), correos, redes sociales y descripción.
+ * Todo puro: sin I/O.
+ */
+
+const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+const MAIL_JUNK = /sentry|wixpress|wix\.com|example\.|yourdomain|yourmail|domain\.com|email\.com|@2x|\.(png|jpg|jpeg|gif|svg|webp|css|js)$/i;
+
+/** Una red social NO es página web propia; se guardan aparte a propósito. */
+const SOCIAL_HOSTS = /facebook\.|fb\.me|instagram\.|instagr\.am|tiktok\.|linktr|beacons|wa\.me|api\.whatsapp|twitter\.|x\.com|youtube\./i;
+const SOCIAL_PATTERNS = {
+  fb: /(?:https?:\/\/)?(?:[\w-]+\.)?(?:facebook\.com|fb\.me)\/[^\s",;)]+/i,
+  ig: /(?:https?:\/\/)?(?:[\w-]+\.)?(?:instagram\.com|instagr\.am)\/[^\s",;)]+/i,
+  tt: /(?:https?:\/\/)?(?:[\w-]+\.)?tiktok\.com\/[^\s",;)]+/i,
+};
+
+function extractEmails(s) {
+  if (!s) return [];
+  const m = String(s).match(EMAIL_RE) || [];
+  return [...new Set(m.map((x) => x.toLowerCase()))];
+}
+
+function cleanEmails(list) {
+  return [...new Set((list || []).filter((m) => m.length < 80 && !MAIL_JUNK.test(m)))].slice(0, 5);
+}
+
+function isOwnWebsite(u) {
+  return !!u && /^https?:\/\//i.test(u) && !SOCIAL_HOSTS.test(u);
+}
+
+/**
+ * Descripción: si es texto, se deja; si es el JSON de atributos de Google
+ * (lo que ofrece el negocio), se convierte en texto legible en vez de descartarlo.
+ */
+function describe(s) {
+  s = String(s == null ? "" : s).trim();
+  if (!s) return "";
+  if (!/^[\[{]/.test(s)) return s;
+  try {
+    const o = JSON.parse(s);
+    const arr = Array.isArray(o) ? o : [o];
+    const out = [];
+    for (const gg of arr) {
+      if (gg == null) continue;
+      if (typeof gg === "string") { out.push(gg); continue; }
+      const opts = gg.options || gg.Options;
+      if (!Array.isArray(opts)) continue;
+      for (const op of opts) {
+        if (typeof op === "string") out.push(op);
+        else if (op && typeof op === "object") {
+          if (op.enabled === false || op.Enabled === false) continue;
+          const nm = op.name || op.Name;
+          if (nm) out.push(nm);
+        }
+      }
+    }
+    const uniq = [...new Set(out.map((x) => String(x).trim()).filter((x) => x.length > 1 && !/^\d+$/.test(x)))];
+    return uniq.slice(0, 14).join(" · ").slice(0, 240);
+  } catch (e) { return ""; }
+}
+
+/** Busca redes sociales en TODAS las columnas de la fila (no solo "website"). */
+function extractSocial(values) {
+  const t = (values || []).filter((x) => typeof x === "string").join(" ");
+  const o = {};
+  for (const k of Object.keys(SOCIAL_PATTERNS)) {
+    const m = t.match(SOCIAL_PATTERNS[k]);
+    if (!m) continue;
+    let u = m[0].replace(/[),.;]+$/, "");
+    if (!/^https?:/i.test(u)) u = "https://" + u;
+    o[k] = u;
+  }
+  return o;
+}
+
+function parseJsonAddress(str) {
+  try {
+    let o = JSON.parse(str);
+    if (Array.isArray(o)) o = o[0] || {};
+    if (!o || typeof o !== "object") return null;
+    const street = String(o.street || "").replace(/^[A-Z0-9]{4,}\+[A-Z0-9]+,?\s*/, "").trim();
+    const address = [street, o.borough, o.city, o.state, o.country].map((x) => String(x || "").trim()).filter(Boolean).join(", ");
+    return { address, city: String(o.city || "").trim(), country: String(o.country || "").trim().toUpperCase() };
+  } catch (e) { return null; }
+}
+
+function parseAddress(get) {
+  const plain = (get("address") || "").trim();
+  const complete = (get("complete_address") || "").trim();
+  const j = /^[\[{]/.test(complete) ? complete : (/^[\[{]/.test(plain) ? plain : "");
+  if (j) { const r = parseJsonAddress(j); if (r) return r; }
+  const a = plain && !/^[\[{]/.test(plain) ? plain : (complete && !/^[\[{]/.test(complete) ? complete : "");
+  const parts = a.split(",").map((s) => s.trim()).filter(Boolean);
+  return { address: a, city: parts[parts.length - 1] || "", country: "" };
+}
+
+/** Fila CSV del scraper (con cabecera H en minúsculas) → lead normalizado, o null si no tiene título. */
+function rowToLead(headers, row) {
+  const get = (name) => { const i = headers.indexOf(name); return i >= 0 ? (row[i] || "").trim() : ""; };
+  const title = get("title");
+  if (!title) return null;
+  const addr = parseAddress(get);
+  return {
+    title,
+    social: extractSocial(row),
+    category: get("category"),
+    address: addr.address,
+    city: addr.city,
+    country: addr.country || "",
+    phone: get("phone"),
+    website: get("website"),
+    emails: extractEmails(get("emails")),
+    rating: parseFloat(get("review_rating")) || 0,
+    reviews: parseInt((get("review_count") || "").replace(/\D/g, ""), 10) || 0,
+    lat: parseFloat(get("latitude")) || 0,
+    lon: parseFloat(get("longitude")) || 0,
+    link: get("link"),
+    place_id: get("place_id") || get("cid"),
+    thumb: get("thumbnail"),
+    about: describe(get("descriptions") || get("about")),
+    images: (get("images") || "").split(/[|;,\s]+/).filter((u) => /^https?:/.test(u)).slice(0, 6),
+  };
+}
+
+/** Identidad estable para dedupe: place_id → link → teléfono → título|dirección. */
+function leadId(l) {
+  const ph = (l.phone || "").replace(/\D/g, "");
+  return l.place_id || l.link || (ph ? "tel:" + ph : l.title + "|" + l.address);
+}
+
+module.exports = {
+  extractEmails, cleanEmails, isOwnWebsite, describe, extractSocial,
+  parseJsonAddress, parseAddress, rowToLead, leadId, SOCIAL_HOSTS,
+};
+
+};
+defs["taxonomy"]=function(module,exports,require){
+"use strict";
+/**
+ * Taxonomía de rubros: categoría cruda de Google → rubro normalizado → vertical → grupo.
+ * Una sola tabla para el backend (SQL, insights) y el panel (tarjetas, filtros, mensajes).
+ * Puro: sin I/O. Se incluye en dashboard.html mediante el build (scripts/build-dashboard.js).
+ */
+
+/** Minúsculas, sin acentos ni signos raros: "Cafetería & Panadería" → "cafeteria & panaderia". */
+function fold(s) {
+  return String(s == null ? "" : s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
+}
+function slug(s) { return fold(s).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""); }
+
+/** Verticales con sistema listo (las que tienen mensaje, beneficios y tabla hoy/con sistema). */
+const VERTICALS = Object.freeze({
+  farmacia:         { label: "Farmacia / botica",     sistema: "control de stock con alertas de vencimiento, ventas rápidas y recordatorios a clientes" },
+  taller_celulares: { label: "Taller de celulares",   sistema: "órdenes de reparación con ticket, aviso por WhatsApp e inventario de repuestos" },
+  restaurante:      { label: "Restaurante / comida",  sistema: "carta digital con QR, pedidos y reservas por WhatsApp, y control de caja" },
+  dental:           { label: "Clínica / dental",      sistema: "agenda de citas con recordatorios por WhatsApp y ficha de pacientes" },
+  inmobiliaria:     { label: "Inmobiliaria",          sistema: "cartera de propiedades, agenda de visitas y seguimiento de interesados" },
+  gimnasio:         { label: "Gimnasio / fitness",    sistema: "membresías, control de asistencia y avisos de pago por WhatsApp" },
+  bodega:           { label: "Bodega / minimarket",   sistema: "punto de venta (POS) con inventario y control de fiados" },
+  ferreteria:       { label: "Ferretería",            sistema: "catálogo con cotizaciones rápidas y control de stock" },
+  hotel:            { label: "Hotel / hospedaje",     sistema: "reservas con confirmación por WhatsApp y control de habitaciones" },
+  belleza:          { label: "Salón / barbería",      sistema: "reservas online con recordatorios por WhatsApp" },
+  veterinaria:      { label: "Veterinaria",           sistema: "citas, carnet de vacunas digital y recordatorios por WhatsApp" },
+  contable:         { label: "Estudio contable",      sistema: "panel por cliente con documentos, vencimientos y cobros" },
+  juridico:         { label: "Estudio jurídico",      sistema: "expedientes digitales con plazos, avances y estado de cuenta" },
+});
+
+const GROUPS = Object.freeze({
+  comida: "Comida y bebida", salud: "Salud", belleza: "Belleza y cuidado", comercio: "Tiendas y comercio",
+  servicios: "Servicios técnicos", profesionales: "Profesionales", hospedaje: "Hospedaje", educacion: "Educación",
+  transporte: "Transporte", otros: "Otros",
+});
+
+/**
+ * Reglas en orden de prioridad. Se evalúan sobre el texto "plegado" (sin acentos, minúsculas).
+ * [patrón, rubro normalizado, vertical|null, grupo, servicio sugerido si no hay vertical]
+ */
+const RULES = [
+  [/farmac|botica|droguer|drugstore/, "Farmacia / Botica", "farmacia", "salud"],
+  [/cevich/, "Cevichería", "restaurante", "comida"],
+  [/poller|\bpollo|broaster/, "Pollería", "restaurante", "comida"],
+  [/chifa|chin[ao]\b|\bwok|sushi|japon/, "Chifa / Comida asiática", "restaurante", "comida"],
+  [/pizzer|pizza/, "Pizzería", "restaurante", "comida"],
+  [/\bcafe|coffee/, "Cafetería", "restaurante", "comida"],
+  [/juguer|jugos|smoothie/, "Juguería", "restaurante", "comida"],
+  [/panader|pasteler|reposter|bizcoch/, "Panadería / Pastelería", "restaurante", "comida"],
+  [/hambur|sandwich|fast food|comida rapida|salchipap/, "Comida rápida", "restaurante", "comida"],
+  [/\bbar\b|cervec|\bpub\b|licorer|discotec|karaoke/, "Bar / Licorería", "restaurante", "comida"],
+  [/restaur|comida|\bmenu|parrill|cocina|marisc|pique|almuerz/, "Restaurante", "restaurante", "comida"],
+  [/dental|dentist|odont/, "Clínica dental", "dental", "salud"],
+  [/veterin|mascota|petshop|pet shop/, "Veterinaria", "veterinaria", "salud"],
+  [/optic/, "Óptica", null, "salud", "caja"],
+  [/laboratorio/, "Laboratorio clínico", null, "salud", "citas"],
+  [/medic|clinic|consultorio|salud|hospital|psicolog|fisioterap/, "Consultorio / Clínica", null, "salud", "citas"],
+  [/peluquer|barber|salon de belleza|belleza|estetic|\bunas\b|\bspa\b|manicur/, "Peluquería / Barbería", "belleza", "belleza"],
+  [/gimnas|\bgym|fitness|crossfit/, "Gimnasio", "gimnasio", "belleza"],
+  [/hotel|hostal|hosped|lodge|alojam|apart/, "Hotel / Hospedaje", "hotel", "hospedaje"],
+  [/celular|phone|reparacion de|tecnic|electronic|informatic|computa/, "Taller de celulares / PC", "taller_celulares", "servicios"],
+  [/ferret|construcci|materiales/, "Ferretería", "ferreteria", "comercio"],
+  [/bodega|minimarket|abarrote|market|almacen|tienda de barrio/, "Bodega / Minimarket", "bodega", "comercio"],
+  [/\bropa|boutique|textil|calzado|zapat|\bmoda/, "Ropa / Calzado", null, "comercio", "caja"],
+  [/librer|papeler|utiles/, "Librería / Papelería", null, "comercio", "caja"],
+  [/flor(er|ist)/, "Florería", null, "comercio", "caja"],
+  [/juguet/, "Juguetería", null, "comercio", "caja"],
+  [/lavander|tintorer/, "Lavandería", null, "servicios", "sistema"],
+  [/cerrajer/, "Cerrajería", null, "servicios", "sistema"],
+  [/imprent|grafic|serigraf|publicidad/, "Imprenta / Publicidad", null, "servicios", "sistema"],
+  [/mecanic|automotr|llanter|lubricentro|taller/, "Taller mecánico", null, "servicios", "sistema"],
+  [/contab|contador/, "Estudio contable", "contable", "profesionales"],
+  [/abogad|juridic|legal|notari/, "Estudio jurídico", "juridico", "profesionales"],
+  [/inmobili|bienes ra|propiedad/, "Inmobiliaria", "inmobiliaria", "profesionales"],
+  [/viaje|turismo|agencia de/, "Agencia de viajes", null, "servicios", "citas"],
+  [/escuela|colegio|instituto|academia|educa/, "Educación", null, "educacion", "sistema"],
+  [/transport|courier|envios|logistic/, "Transporte / Envíos", null, "transporte", "sistema"],
+];
+
+const _memo = new Map();
+/**
+ * @returns {{raw:string, label:string, key:string, vertical:string|null, group:string, service:string, known:boolean}}
+ */
+function classifyCategory(raw) {
+  const r = String(raw == null ? "" : raw).trim();
+  if (_memo.has(r)) return _memo.get(r);
+  const f = fold(r);
+  let out = null;
+  if (f) {
+    for (const rule of RULES) {
+      if (rule[0].test(f)) { out = { raw: r, label: rule[1], key: slug(rule[1]), vertical: rule[2], group: rule[3], service: rule[4] || "sistema", known: true }; break; }
+    }
+  }
+  if (!out) out = { raw: r, label: r, key: r ? slug(r) : "", vertical: null, group: r ? "otros" : "", service: "sistema", known: false };
+  Object.freeze(out);
+  if (_memo.size < 5000) _memo.set(r, out);
+  return out;
+}
+
+const normalizeCategory = (raw) => classifyCategory(raw).label;
+const categoryKey = (raw) => classifyCategory(raw).key;
+const verticalOf = (raw) => classifyCategory(raw).vertical;
+const verticalLabel = (v) => (VERTICALS[v] ? VERTICALS[v].label : "");
+
+module.exports = { fold, slug, classifyCategory, normalizeCategory, categoryKey, verticalOf, verticalLabel, VERTICALS, GROUPS, RULES };
+
+};
+defs["insights"]=function(module,exports,require){
+"use strict";
+/**
+ * Motor de comparación e insights: con qué competidores se compara un negocio, qué números salen
+ * y qué frases (máximo 3, sin contradicciones) alimentan la propuesta y el mensaje.
+ *
+ * Reglas duras:
+ *  - Solo se compara con el MISMO rubro normalizado (taxonomía). Nunca con "toda la base".
+ *  - La zona es por distancia real: 2 km → 5 km → misma ciudad. Con < 5 negocios no hay ranking.
+ *  - Dos rankings: visibilidad (reseñas) y calidad (calificación con promedio bayesiano).
+ *    La propuesta usa el que favorece o motiva al negocio (`focus`).
+ * Puro: sin I/O. Se incluye en dashboard.html mediante el build.
+ */
+const { isOwnWebsite } = require("./lead");
+const T = require("./taxonomy");
+
+const MIN_PEERS = 5;      // incluye al propio negocio
+const RADII_KM = [2, 5];
+const BAYES_M = 10;       // reseñas "de confianza" para el promedio bayesiano
+
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const R = 6371, toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+const hasCoords = (l) => !!(l && Number(l.lat) && Number(l.lon));
+const hasSocial = (l) => !!(l && l.social && (l.social.fb || l.social.ig || l.social.tt));
+const hasPhone = (l) => !!(l && l.phone && String(l.phone).replace(/\D/g, "").length >= 7);
+function cityOf(l) {
+  if (!l) return "";
+  if (l.city) return String(l.city).trim();
+  const parts = String(l.address || "").split(",").map((s) => s.trim()).filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : "";
+}
+const leadKey = (l) => l.place_id || l.link || (l.title + "|" + l.address);
+
+/** Vocabulario por vertical para que las frases suenen al rubro y no a plantilla. */
+const VOCAB = {
+  farmacia: { cliente: "cliente", plural: "clientes", queja: "productos vencidos o que se acabaron" },
+  taller_celulares: { cliente: "cliente", plural: "clientes", queja: "demoras y equipos que no se avisan cuando están listos" },
+  restaurante: { cliente: "comensal", plural: "comensales", queja: "demoras y pedidos mal anotados" },
+  dental: { cliente: "paciente", plural: "pacientes", queja: "citas cruzadas y esperas" },
+  inmobiliaria: { cliente: "interesado", plural: "interesados", queja: "falta de seguimiento" },
+  gimnasio: { cliente: "socio", plural: "socios", queja: "cobros y membresías mal llevadas" },
+  bodega: { cliente: "cliente", plural: "clientes", queja: "productos que faltan y fiados olvidados" },
+  ferreteria: { cliente: "cliente", plural: "clientes", queja: "cotizaciones lentas y stock que no cuadra" },
+  hotel: { cliente: "huésped", plural: "huéspedes", queja: "reservas confusas y sobreventa" },
+  belleza: { cliente: "cliente", plural: "clientes", queja: "horas cruzadas y esperas" },
+  veterinaria: { cliente: "dueño de mascota", plural: "dueños de mascotas", queja: "vacunas que se olvidan" },
+  contable: { cliente: "cliente", plural: "clientes", queja: "vencimientos que se pasan" },
+  juridico: { cliente: "cliente", plural: "clientes", queja: "no saber cómo va el caso" },
+};
+const vocabOf = (v) => VOCAB[v] || { cliente: "cliente", plural: "clientes", queja: "demoras y errores al anotar" };
+
+/** Índice por rubro normalizado; se construye una vez por lista de leads. */
+function createIndex(leads) {
+  const byKey = new Map();
+  for (const l of leads || []) {
+    const key = T.categoryKey(l.category);
+    if (!key) continue;
+    let g = byKey.get(key);
+    if (!g) { g = []; byKey.set(key, g); }
+    g.push(l);
+  }
+  return { byKey, size: (leads || []).length, memo: new WeakMap() };
+}
+
+/** Competidores: mismo rubro, por radio; si no alcanza, misma ciudad; si no, nada. */
+function findPeers(lead, index) {
+  const cat = T.classifyCategory(lead.category);
+  if (!cat.key) return { level: "none", peers: [], cat, reason: "sin rubro" };
+  const all = index.byKey.get(cat.key) || [];
+  const me = leadKey(lead);
+  const list = all.some((x) => x === lead || leadKey(x) === me) ? all : all.concat([lead]);
+  if (hasCoords(lead)) {
+    for (const r of RADII_KM) {
+      const peers = list.filter((x) => x === lead || leadKey(x) === me || (hasCoords(x) && haversineKm(lead.lat, lead.lon, x.lat, x.lon) <= r));
+      if (peers.length >= MIN_PEERS) return { level: "radius", radiusKm: r, peers, cat };
+    }
+  }
+  const city = T.fold(cityOf(lead));
+  if (city) {
+    const peers = list.filter((x) => x === lead || leadKey(x) === me || T.fold(cityOf(x)) === city);
+    if (peers.length >= MIN_PEERS) return { level: "city", city: cityOf(lead), peers, cat };
+  }
+  return { level: "none", peers: list, cat, reason: list.length < MIN_PEERS ? "pocos competidores" : "sin ubicación" };
+}
+
+function scopeLabel(f, n) {
+  const what = n + " negocios de " + f.cat.label.toLowerCase();
+  if (f.level === "radius") return what + " a menos de " + f.radiusKm + " km";
+  if (f.level === "city") return what + " en " + f.city;
+  return what;
+}
+
+function computeStats(lead, f) {
+  const peers = f.peers, n = peers.length;
+  const revs = peers.map((x) => +x.reviews || 0).sort((a, b) => a - b);
+  const mine = +lead.reviews || 0, myR = +lead.rating || 0;
+  const rated = peers.filter((x) => +x.rating > 0);
+  const avgR = rated.length ? rated.reduce((s, x) => s + +x.rating, 0) / rated.length : 0;
+  const avgRev = revs.reduce((s, v) => s + v, 0) / n;
+  const medianRev = revs[Math.floor((n - 1) / 2)];
+  const top = revs[n - 1] || 0;
+  const bayes = (x) => { const v = +x.reviews || 0, r = +x.rating || 0; return v && r ? (v / (v + BAYES_M)) * r + (BAYES_M / (v + BAYES_M)) * avgR : 0; };
+  const myQ = bayes(lead);
+  const rankVis = revs.filter((v) => v > mine).length + 1;
+  const rankQual = myQ ? peers.filter((x) => bayes(x) > myQ).length + 1 : null;
+  const third = Math.ceil(n / 3);
+  let focus = "crecimiento";
+  if (rankVis <= third) focus = "visibilidad";
+  else if (rankQual && (rankQual <= third || rankQual < rankVis)) focus = "calidad";
+  const tierOf = (r) => (r == null ? null : r <= third ? "lider" : r <= 2 * third ? "medio" : "cola");
+  const pct = (fn) => Math.round((100 * peers.filter(fn).length) / n);
+  return {
+    n, level: f.level, radiusKm: f.radiusKm || null, city: f.city || cityOf(lead), scope: scopeLabel(f, n),
+    cat: f.cat.label, catKey: f.cat.key, vertical: f.cat.vertical,
+    mine, myR, avgRev, medianRev, avgR, top,
+    rank: rankVis, rankVis, rankQual, focus, tier: tierOf(rankVis), tierQual: tierOf(rankQual),
+    pctNoWeb: pct((x) => !isOwnWebsite(x.website)), pctTel: pct(hasPhone), pctSoc: pct(hasSocial),
+    pctBetter: Math.round((100 * revs.filter((v) => v < mine).length) / n),
+  };
+}
+
+/**
+ * Reglas de insight. Cada grupo aporta como máximo una frase; se ordenan por prioridad y se
+ * toman 3. Así nunca salen dos frases sobre reseñas que se contradigan.
+ */
+const RULES = [
+  { id: "lider-resenas", group: "resenas", priority: 10, when: (S) => S.rankVis === 1 && S.mine > 0,
+    text: (S, V) => `Es el negocio con más reseñas de ${S.scope.replace(/^\d+ negocios de /, "")}: ${S.mine} ${V.plural} lo recomendaron. Ese volumen es justo el que más se desordena cuando todo se anota a mano.` },
+  { id: "sobre-promedio", group: "resenas", priority: 20, when: (S) => S.mine > S.avgRev && S.rankVis > 1,
+    text: (S) => `Tiene ${S.mine} reseñas, ${Math.round(S.mine - S.avgRev)} más que el promedio de su zona (${Math.round(S.avgRev)}). Está en el puesto ${S.rankVis} de ${S.n}; el primero tiene ${S.top}.` },
+  { id: "bajo-promedio", group: "resenas", priority: 30, when: (S) => S.mine <= S.avgRev && S.rankVis > 1,
+    text: (S) => `Tiene ${S.mine} reseñas y el promedio de su zona es ${Math.round(S.avgRev)}. La diferencia no es de calidad: es que nadie pide la reseña después de atender. El sistema la pide solo, por WhatsApp.` },
+  { id: "calidad-alta", group: "calidad", priority: 15, when: (S) => S.myR > 0 && S.avgR > 0 && S.myR >= S.avgR + 0.2,
+    text: (S) => `Lo califican con ${S.myR.toFixed(1)} y a su zona con ${S.avgR.toFixed(1)}: la gente sale contenta. Lo que falta es que esa satisfacción se convierta en reseñas y en clientes que vuelven.` },
+  { id: "calidad-baja", group: "calidad", priority: 25, when: (S) => S.myR > 0 && S.avgR > 0 && S.myR <= S.avgR - 0.2,
+    text: (S, V) => `Su calificación es ${S.myR.toFixed(1)} y la de su zona ${S.avgR.toFixed(1)}. En este rubro casi toda la queja es por ${V.queja}: dos cosas que un sistema evita antes de que pasen.` },
+  { id: "calidad-par", group: "calidad", priority: 40, when: (S) => S.myR > 0 && S.avgR > 0 && Math.abs(S.myR - S.avgR) < 0.2,
+    text: (S) => `Su calificación (${S.myR.toFixed(1)}) está a la par de su zona (${S.avgR.toFixed(1)}). Quien se despegue va a ser el que deje de fallar en lo pequeño, y eso se ordena con sistema.` },
+  { id: "competencia-sin-sistema", group: "competencia", priority: 22, when: (S) => S.pctNoWeb >= 50,
+    text: (S) => `El ${S.pctNoWeb}% de los ${S.n} negocios de su rubro en su zona sigue sin sistema ni web propia: entrar ahora lo deja por delante de más de la mitad de su competencia directa.` },
+  { id: "competencia-ordenandose", group: "competencia", priority: 35, when: (S) => S.pctNoWeb < 50,
+    text: (S) => `Solo el ${S.pctNoWeb}% de su competencia sigue sin sistema: la mayoría ya se está ordenando, y quedarse con el cuaderno empieza a notarse en los ${100 - S.pctNoWeb}% restantes.` },
+  { id: "sin-presencia", group: "presencia", priority: 28, when: (S, l) => !isOwnWebsite(l.website) && !hasSocial(l),
+    text: () => `No encontramos web ni redes suyas: hoy el registro depende de la memoria y del cuaderno. Ahí es donde más dinero se escapa sin que se note.` },
+  { id: "solo-redes", group: "presencia", priority: 32, when: (S, l) => !isOwnWebsite(l.website) && hasSocial(l),
+    text: (S, V, l) => `Ya atiende por ${socialNames(l)}, así que los pedidos le llegan por chat y quedan sueltos entre mensajes. Un panel los junta con su estado: pendiente, entregado, pagado.` },
+  { id: "canal-whatsapp", group: "canal", priority: 45, when: (S) => S.pctTel < 100 && S.pctTel > 0,
+    text: (S) => `Solo el ${S.pctTel}% de esos negocios tiene un número por el que se pueda pedir por WhatsApp. Con sistema, su WhatsApp deja de ser un chat suelto y pasa a ser un canal de pedidos con registro.` },
+];
+function socialNames(l) {
+  const s = l.social || {};
+  return [s.fb && "Facebook", s.ig && "Instagram", s.tt && "TikTok"].filter(Boolean).join(", ");
+}
+
+function buildInsights(lead, S, max = 3) {
+  const V = vocabOf(S.vertical);
+  const used = new Set(), out = [];
+  for (const r of RULES.slice().sort((a, b) => a.priority - b.priority)) {
+    if (out.length >= max || used.has(r.group)) continue;
+    if (!r.when(S, lead)) continue;
+    used.add(r.group);
+    out.push({ id: r.id, group: r.group, text: r.text(S, V, lead) });
+  }
+  return out;
+}
+
+/** Hecho real y corto (≤ 90 caracteres) para abrir un mensaje sin sonar a plantilla. */
+function anchorFact(S) {
+  if (!S) return null;
+  if (S.rankVis === 1 && S.mine > 0) return `vi que son los más reseñados de su zona (${S.mine} reseñas en Google)`;
+  if (S.focus === "visibilidad") return `vi que tienen ${S.mine} reseñas en Google, más que el promedio de su zona`;
+  if (S.focus === "calidad" && S.myR) return `vi que los califican con ${S.myR.toFixed(1)} estrellas, por encima de su zona`;
+  if (S.pctNoWeb >= 50) return `vi que el ${S.pctNoWeb}% de los negocios de su rubro en su zona sigue sin sistema`;
+  return null;
+}
+
+/**
+ * Análisis completo de un negocio contra su rubro y zona.
+ * @param {object} lead
+ * @param {object[]|{byKey:Map}} leadsOrIndex lista de leads o índice de createIndex()
+ */
+function analyze(lead, leadsOrIndex) {
+  if (!lead) return { ok: false, stats: null, insights: [], anchor: null, reason: "sin negocio" };
+  const index = leadsOrIndex && leadsOrIndex.byKey ? leadsOrIndex : createIndex(leadsOrIndex || []);
+  const hit = index.memo.get(lead);
+  if (hit) return hit;
+  const f = findPeers(lead, index);
+  let out;
+  if (f.level === "none") out = { ok: false, stats: null, insights: [], anchor: null, reason: f.reason, cat: f.cat, candidates: f.peers.length };
+  else {
+    const stats = computeStats(lead, f);
+    out = { ok: true, stats, insights: buildInsights(lead, stats), anchor: anchorFact(stats), cat: f.cat };
+  }
+  index.memo.set(lead, out);
+  return out;
+}
+
+module.exports = { analyze, createIndex, findPeers, computeStats, buildInsights, anchorFact, haversineKm, cityOf, vocabOf, MIN_PEERS, RADII_KM, RULES };
+
+};
+return {require:req,has:function(n){return !!defs[n];}};})();
+</script>
+<!-- @bundle:end -->
+<script>
+const SkyTax=SkyLib.require("taxonomy"),SkyIns=SkyLib.require("insights");
 "use strict";
 const $=s=>document.querySelector(s);
 const store={get:(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -532,15 +993,14 @@ const PITCHES={verticals:{
   fiados:{label:"Control de fiados y cobros",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armamos un control de fiados y cobranzas 100% gratis. Solo buscamos su feedback para entender mejor las necesidades reales de su negocio. ¿Se lo paso sin costo?`}
 }};
 const FOLLOWUP=(n,g,l)=>`Hola de nuevo 👋, le escribí por la herramienta 100% gratis para ${g}. No tiene costo ni compromiso, solo queremos su feedback para entender mejor sus necesidades. ¿Le gustaría probarla? — ${n}`;
-const VR=[[/farmac|botica/,"farmacia"],[/celular|reparaci|t[eé]cnico|phone|electr[oó]nic/,"taller_celulares"],[/restaur|comida|cevich|poller|caf[eé]|pizzer|chifa|men[uú]|parrill/,"restaurante"],[/dental|dentist|odont/,"dental"],[/inmobili|bienes ra|propiedad/,"inmobiliaria"],[/gimnas|gym|fitness|crossfit/,"gimnasio"],[/bodega|minimarket|abarrote|market|licorer/,"bodega"],[/ferret/,"ferreteria"],[/hotel|hostal|hosped|lodge/,"hotel"],[/peluquer|sal[oó]n|barber|belleza|spa|est[eé]tica|u[nñ]as/,"belleza"],[/veterin|mascota/,"veterinaria"],[/contab|contador/,"contable"],[/abogad|jur[ií]dic|legal|notari/,"juridico"]];
-const detectV=c=>{c=(c||"").toLowerCase();for(const[re,k]of VR)if(re.test(c))return k;return null;};
+const detectV=c=>SkyTax.verticalOf(c);
 const pitchBy=v=>{const g=v.slice(0,1),k=v.slice(2);return(g==="v"?PITCHES.verticals:PITCHES.servicios)[k];};
 // ---- Clasificación de leads ----
 const SYSTEM_V={farmacia:1,taller_celulares:1,restaurante:1,dental:1,gimnasio:1,bodega:1,ferreteria:1,hotel:1,belleza:1,veterinaria:1};
 function classify(l){const needsWeb=!realWeb(l);const v=detectV(l.category);const needsSystem=!!(v&&SYSTEM_V[v]);const offer="sistema";const s=scoreOf(l);const tier=s>=70?"alta":(s>=40?"media":"baja");return{offer,needsWeb,needsSystem,vertical:v,tier,score:Math.round(s)};}
 const OFFER_LABEL={sistema:"🧾 Sistema de gestión"};
 const TIER_LABEL={alta:"🔥 Prioridad alta",media:"⭐ Prioridad media",baja:"Prioridad baja"};
-const SYS_LINE={farmacia:"control de stock con alertas de vencimiento, ventas rápidas y recordatorios a clientes",taller_celulares:"órdenes de reparación con ticket, aviso por WhatsApp e inventario de repuestos",restaurante:"carta digital con QR, pedidos y reservas por WhatsApp, y control de caja",dental:"agenda de citas con recordatorios por WhatsApp y ficha de pacientes",gimnasio:"membresías, control de asistencia y avisos de pago por WhatsApp",bodega:"punto de venta (POS) con inventario y control de fiados",ferreteria:"catálogo con cotizaciones rápidas y control de stock",hotel:"reservas con confirmación por WhatsApp y control de habitaciones",belleza:"reservas online con recordatorios por WhatsApp",veterinaria:"citas, carnet de vacunas digital y recordatorios por WhatsApp"};
+const SYS_LINE=Object.fromEntries(Object.entries(SkyTax.VERTICALS).map(([k,v])=>[k,v.sistema]));
 // ---- Moneda automática por país del negocio ----
 // Símbolos en WinAnsi (los que dibuja el PDF sin caracteres raros).
 const CURR={
@@ -595,64 +1055,11 @@ function precioDe(l){
 // ---- Estadísticas REALES por negocio (se calculan con TUS leads escaneados) ----
 // Se indexa una sola vez por base y se reutiliza: así el cálculo también sirve en las tarjetas.
 let SIDX=null,SIDXN=-1;
-function statsIndex(){
-  if(SIDX&&SIDXN===LEADS.length)return SIDX;
-  const byCat=new Map(),byCatCity=new Map(),byCity=new Map();
-  const put=(m,k,l)=>{let g=m.get(k);if(!g){g=[];m.set(k,g);}g.push(l);};
-  for(const l of LEADS){const c=normCat(l.category||""),ci=(cityOf(l)||"").trim().toLowerCase();
-    if(c)put(byCat,c,l);if(ci)put(byCity,ci,l);if(c&&ci)put(byCatCity,c+"|"+ci,l);}
-  SIDX={byCat,byCatCity,byCity,agg:new Map()};SIDXN=LEADS.length;return SIDX;
-}
-function aggOf(ix,key,peers){
-  let a=ix.agg.get(key);if(a)return a;
-  const n=peers.length;let sumR=0,cntR=0,sumRev=0,noWeb=0,soc=0,tel=0;const revs=new Array(n);
-  for(let i=0;i<n;i++){const x=peers[i],r=+x.rating||0,v=+x.reviews||0;
-    if(r>0){sumR+=r;cntR++;}revs[i]=v;sumRev+=v;
-    if(!realWeb(x))noWeb++;if(hasSoc(x))soc++;if(waN(x.phone))tel++;}
-  revs.sort((p,q)=>p-q);
-  a={n,revs,avgR:cntR?sumR/cntR:0,avgRev:sumRev/n,top:revs[n-1]||0,
-     pctNoWeb:Math.round(100*noWeb/n),pctSoc:Math.round(100*soc/n),pctTel:Math.round(100*tel/n)};
-  ix.agg.set(key,a);return a;
-}
-const cntGT=(a,v)=>{let lo=0,hi=a.length;while(lo<hi){const m=(lo+hi)>>1;if(a[m]<=v)lo=m+1;else hi=m;}return a.length-lo;};
-const cntLT=(a,v)=>{let lo=0,hi=a.length;while(lo<hi){const m=(lo+hi)>>1;if(a[m]<v)lo=m+1;else hi=m;}return lo;};
-function statsFor(l){
-  if(!l||!LEADS||LEADS.length<6)return null;
-  if(l._stats&&l._statsN===LEADS.length)return l._stats;
-  const ix=statsIndex();
-  const cat=normCat(l.category||""),city=(cityOf(l)||"").trim(),cl=city.toLowerCase();
-  let peers=null,key="",scope="";
-  if(cat&&cl){const k=cat+"|"+cl,g=ix.byCatCity.get(k);if(g&&g.length>=5){peers=g;key="cc:"+k;scope=cat+" en "+city;}}
-  if(!peers&&cat){const g=ix.byCat.get(cat);if(g&&g.length>=5){peers=g;key="c:"+cat;scope=cat+" (toda su base escaneada)";}}
-  if(!peers&&cl){const g=ix.byCity.get(cl);if(g&&g.length>=5){peers=g;key="t:"+cl;scope="negocios de "+city;}}
-  if(!peers){peers=LEADS;key="all";scope="negocios de su base";}
-  if(peers.length<5)return null;
-  const a=aggOf(ix,key,peers);
-  const mine=+l.reviews||0,myR=+l.rating||0;
-  l._statsN=LEADS.length;
-  l._stats={n:a.n,scope,cat:cat||"su rubro",city,avgR:a.avgR,avgRev:a.avgRev,mine,myR,
-    rank:cntGT(a.revs,mine)+1,top:a.top,pctNoWeb:a.pctNoWeb,pctSoc:a.pctSoc,pctTel:a.pctTel,
-    pctBetter:Math.round(100*cntLT(a.revs,mine)/a.n)};
-  return l._stats;
-}
-function insightsFor(l,S){
-  const o=[];if(!S)return o;
-  if(S.avgRev>0){
-    const d=Math.round(S.mine-S.avgRev);
-    o.push(d>=0
-      ?"Tiene "+S.mine+" reseñas: "+d+" más que el promedio de "+S.scope+" ("+Math.round(S.avgRev)+"). Ese volumen de clientes es justo el que más se desordena cuando todo se anota a mano."
-      :"Tiene "+S.mine+" reseñas y el promedio de "+S.scope+" es "+Math.round(S.avgRev)+": le faltan "+Math.abs(d)+" para alcanzarlo. El sistema pide la reseña solo, por WhatsApp, después de cada venta.");
-  }
-  o.push("Puesto "+S.rank+" de "+S.n+" en "+S.scope+" por número de reseñas"+(S.top>S.mine?("; el primero de su zona tiene "+S.top+", o sea "+(S.top-S.mine)+" más que usted."):"; hoy encabeza la lista de su zona."));
-  if(S.myR&&S.avgR){const a=S.myR.toFixed(1),b=S.avgR.toFixed(1);
-    o.push("Su calificación es "+a+" estrellas y el promedio de "+S.scope+" es "+b+(+a>+b?". Mantenerla depende de no fallar en stock ni en tiempos de entrega, que es exactamente lo que ordena el sistema.":(+a===+b?". Están empatados: quien se despegue va a ser el que deje de fallar en stock y en tiempos, y eso lo ordena el sistema.":". En este rubro casi toda la queja es por demoras y por productos que se acabaron: dos cosas que el sistema evita antes de que pasen.")));}
-  o.push(S.pctNoWeb+"% de los "+S.n+" negocios de "+S.scope+" sigue sin sistema ni web propia"+(S.pctNoWeb>=50?": entrar ahora lo deja por delante de más de la mitad de su competencia directa.":": la mayoría ya se está ordenando, y quedarse con el cuaderno empieza a notarse."));
-  if(S.pctTel<100)o.push("Solo "+S.pctTel+"% de esos negocios tiene un número por el que se pueda pedir por WhatsApp. Con el sistema, su WhatsApp deja de ser un chat suelto y pasa a ser un canal de pedidos con registro.");
-  const so=socialOf(l),red=[so.fb?"Facebook":"",so.ig?"Instagram":"",so.tt?"TikTok":""].filter(Boolean);
-  if(red.length)o.push("Ya tiene "+red.join(", ")+", así que los pedidos le llegan por chat y quedan sueltos entre mensajes. El sistema los junta en un solo panel, cada uno con su estado (pendiente, entregado, pagado).");
-  else if(!realWeb(l))o.push("No encontramos web ni redes suyas: hoy su registro depende de la memoria y del cuaderno. Ahí es donde más dinero se escapa sin que se note.");
-  return o;
-}
+function statsIndex(){if(SIDX&&SIDXN===LEADS.length)return SIDX;SIDX=SkyIns.createIndex(LEADS);SIDXN=LEADS.length;return SIDX;}
+function analyzeLead(l){return l?SkyIns.analyze(l,statsIndex()):{ok:false,insights:[],anchor:null};}
+function statsFor(l){if(!l||!LEADS||LEADS.length<SkyIns.MIN_PEERS)return null;const r=analyzeLead(l);return r.ok?r.stats:null;}
+function insightsFor(l,S){if(!S)return[];return analyzeLead(l).insights.map(x=>x.text);}
+function anchorFor(l){return analyzeLead(l).anchor||"";}
 // ---- Comparativa real por rubro: cómo trabaja hoy vs con el sistema ----
 const BENCH_GEN=[["Ventas","Cuaderno o Excel; el cierre de caja sale al tanteo","Cada venta registrada; cierre de caja exacto en 1 clic"],["Inventario","Se cuenta a mano y se entera cuando ya faltó","Stock al día, con aviso antes de quedarse sin producto"],["Fiados y cobros","Se apuntan en papel y algunos se olvidan","Quién debe, cuánto y desde cuándo, con recordatorio por WhatsApp"],["Clientes","No sabe quién volvió ni qué compró","Historial por cliente y mensaje de recompra automático"],["Números del mes","Los saca a fin de mes, si le alcanza el tiempo","Reporte listo: lo que más deja, por día y por hora"]];
 const BENCH={
@@ -814,7 +1221,7 @@ function drawProposal(doc,l){
   // ---- Gráfica: cuántos clientes lo recomiendan ----
   if(S){
     h2("Cuántos clientes lo recomiendan, comparado con su competencia",38);
-    para("Reseñas en Google de "+S.n+" negocios de "+S.scope+". Más reseñas = más gente entrando = más que controlar.",MUT,8.4);
+    para("Reseñas en Google de "+S.scope+". Más reseñas = más gente entrando = más que controlar.",MUT,8.4);
     y+=1.5;
     const bx=M+50,bw=cw-50-15,max=Math.max(S.top,S.mine,S.avgRev,1);
     const bar=(lab,val,col,fuerte)=>{need(12);
@@ -1117,45 +1524,8 @@ const RUBRO_GROUPS=[
 const RUBROS=RUBRO_GROUPS.flatMap(g=>g.items);
 // Normaliza la categoría de Google a una sola etiqueta por rubro, para que no
 // se fragmente en decenas de variantes ("Restaurante de pollos", "Pollería", …).
-const CATNORM=[
- [/farmac|botica|droguer/i,"Farmacia / Botica"],
- [/cevich/i,"Cevichería"],
- [/poller|pollo|broaster/i,"Pollería"],
- [/chifa|chin[ao]|wok|sushi|japon/i,"Chifa / Comida asiática"],
- [/pizzer|pizza/i,"Pizzería"],
- [/caf[eé]|coffee/i,"Cafetería"],
- [/juguer|jugos|smoothie/i,"Juguería"],
- [/panader|pasteler|reposter|bizcoch/i,"Panadería / Pastelería"],
- [/hambur|sandwich|s[aá]ndwich|fast food|comida r[aá]pida|salchipap/i,"Comida rápida"],
- [/bar\b|cervec|pub|licorer|discotec|karaoke/i,"Bar / Licorería"],
- [/restaur|comida|men[uú]|parrill|cocina|marisc|pique|almuerz/i,"Restaurante"],
- [/dental|dentist|odont/i,"Clínica dental"],
- [/veterin|mascota|petshop|pet shop/i,"Veterinaria"],
- [/[oó]ptic/i,"Óptica"],
- [/laboratorio/i,"Laboratorio clínico"],
- [/m[eé]dic|cl[ií]nic|consultorio|salud|hospital|psicolog|fisioterap/i,"Consultorio / Clínica"],
- [/peluquer|barber|sal[oó]n de belleza|belleza|est[eé]tica|u[nñ]as|spa/i,"Peluquería / Barbería"],
- [/gimnas|gym|fitness|crossfit/i,"Gimnasio"],
- [/hotel|hostal|hosped|lodge|alojam|apart/i,"Hotel / Hospedaje"],
- [/celular|phone|reparaci[oó]n de|t[eé]cnic|electr[oó]nic|inform[aá]tic|computa/i,"Taller de celulares / PC"],
- [/ferret|construcci|materiales/i,"Ferretería"],
- [/bodega|minimarket|abarrote|market|almac[eé]n|tienda de barrio/i,"Bodega / Minimarket"],
- [/ropa|boutique|textil|calzado|zapat|moda/i,"Ropa / Calzado"],
- [/librer|papeler|[uú]tiles/i,"Librería / Papelería"],
- [/flor(er|ist)/i,"Florería"],
- [/juguet/i,"Juguetería"],
- [/lavander|tintorer/i,"Lavandería"],
- [/cerrajer/i,"Cerrajería"],
- [/imprent|gr[aá]fic|serigraf|publicidad/i,"Imprenta / Publicidad"],
- [/mec[aá]nic|automotr|llanter|lubricentro|taller/i,"Taller mecánico"],
- [/contab|contador/i,"Estudio contable"],
- [/abogad|jur[ií]dic|legal|notari/i,"Estudio jurídico"],
- [/inmobili|bienes ra|propiedad/i,"Inmobiliaria"],
- [/viaje|turismo|agencia de/i,"Agencia de viajes"],
- [/escuela|colegio|instituto|academia|educa/i,"Educación"],
- [/transport|courier|env[ií]os|log[ií]stic/i,"Transporte / Envíos"],
-];
-function normCat(c){c=(""+(c||"")).trim();if(!c)return"";for(const [re,lab] of CATNORM)if(re.test(c))return lab;return c;}
+// Rubros: taxonomía compartida con el backend (src/domain/taxonomy.js)
+function normCat(c){return SkyTax.normalizeCategory(c);}
 // Zonas por país. Cada zona = [nombre, lat, lon, radioKm]. Empezamos por Perú
 // (24 departamentos + Callao) y nos expandimos a países de habla hispana + EE. UU.
 const COUNTRIES_ALL=[
@@ -1264,7 +1634,7 @@ function render(){
 }
 function statLine(l){const S=statsFor(l);if(!S)return null;
   const pos=S.rank===1?'<span class="lider">1.º de '+S.n+'</span>':('<b>'+S.rank+'</b> de '+S.n);
-  return{S,txt:'📊 Puesto '+pos+' en '+esc(S.scope)+' · '+S.mine+' reseñas (prom. '+Math.round(S.avgRev)+')'+(S.myR?' · ★ '+S.myR.toFixed(1)+' vs '+S.avgR.toFixed(1):'')+' · '+S.pctNoWeb+'% de su rubro sin sistema'};}
+  return{S,txt:'📊 Puesto '+pos+' entre '+esc(S.scope)+' · '+S.mine+' reseñas (prom. '+Math.round(S.avgRev)+')'+(S.myR?' · ★ '+S.myR.toFixed(1)+' vs '+S.avgR.toFixed(1):'')+' · '+S.pctNoWeb+'% de su rubro sin sistema'};}
 function statRowHTML(l){const r=statLine(l);if(!r)return"";
   return `<div class="statrow" title="Calculado con los ${r.S.n} negocios de ${esc(r.S.scope)} que ya escaneaste">${r.txt}</div>`;}
 function card(l){

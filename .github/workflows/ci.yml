@@ -15,6 +15,7 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - run: node --version
+      - run: npm run build:check
       - run: npm test
       - name: Arranque en frío (JSON y SQLite)
         run: |

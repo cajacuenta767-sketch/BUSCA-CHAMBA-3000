@@ -6,7 +6,7 @@
  *   saveLead(id, lead) · updateLeadMeta(id, patch) → meta|null · resetLeads()
  *   scannedKeys() · countScanned() · isScanned(key) · addScanned(key) · addScannedMany(keys)
  *   history() · addHistory(entry) · getActiveScan() · setActiveScan(obj|null)
- *   batch(fn) · flush() · close()
+ *   listLeadsByCatKey(key) · categoryCounts() · batch(fn) · flush() · close()
  */
 const { JsonStore } = require("./json-store");
 

@@ -5,6 +5,7 @@
  * Sirve para instalaciones pequeñas o cuando `node:sqlite` no está disponible.
  */
 const fs = require("fs");
+const { categoryKey } = require("../../domain/taxonomy");
 
 const EMPTY = () => ({ leads: {}, order: [], history: [], scanned: [], activeScan: null });
 
@@ -68,6 +69,12 @@ class JsonStore {
   listLeads({ offset = 0, limit = 0 } = {}) {
     const ids = limit > 0 ? this.db.order.slice(offset, offset + limit) : (offset ? this.db.order.slice(offset) : this.db.order);
     return ids.map((id) => this.db.leads[id]).filter(Boolean);
+  }
+  listLeadsByCatKey(key) { return key ? this.listLeads().filter((l) => categoryKey(l.category) === key) : []; }
+  categoryCounts() {
+    const m = new Map();
+    for (const l of this.listLeads()) { const k = categoryKey(l.category); m.set(k, (m.get(k) || 0) + 1); }
+    return [...m].map(([key, n]) => ({ key, n })).sort((a, b) => b.n - a.n);
   }
   /** Inserta solo si no existe. Un lead ya guardado nunca se sobreescribe. */
   insertLead(id, lead) {

@@ -6,6 +6,7 @@
  * Escrituras incrementales (una fila por lead) en vez de reescribir todo el archivo.
  */
 const { DatabaseSync } = require("node:sqlite");
+const { categoryKey } = require("../../domain/taxonomy");
 
 const MIGRATIONS = [
   {
@@ -53,6 +54,20 @@ const MIGRATIONS = [
       );
     `,
   },
+  {
+    version: 2,
+    sql: `
+      ALTER TABLE leads ADD COLUMN catkey TEXT;
+      CREATE INDEX IF NOT EXISTS idx_leads_catkey ON leads(catkey);
+      CREATE INDEX IF NOT EXISTS idx_leads_latlon ON leads(lat, lon);
+    `,
+    /** Rellena catkey en filas existentes con la taxonomía. */
+    after(db) {
+      const rows = db.prepare("SELECT id, category FROM leads WHERE catkey IS NULL").all();
+      const upd = db.prepare("UPDATE leads SET catkey = ? WHERE id = ?");
+      for (const r of rows) upd.run(categoryKey(r.category), r.id);
+    },
+  },
 ];
 
 function rowToLead(row) {
@@ -86,6 +101,7 @@ class SqliteStore {
       this.db.exec("BEGIN");
       try {
         this.db.exec(m.sql);
+        if (m.after) m.after(this.db);
         this.db.prepare("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)").run(m.version, Date.now());
         this.db.exec("COMMIT");
       } catch (e) { this.db.exec("ROLLBACK"); throw e; }
@@ -100,13 +116,15 @@ class SqliteStore {
       get: p("SELECT data, meta, enriched FROM leads WHERE id = ?"),
       listAll: p("SELECT data, meta, enriched FROM leads ORDER BY seq"),
       listPage: p("SELECT data, meta, enriched FROM leads ORDER BY seq LIMIT ? OFFSET ?"),
-      insert: p(`INSERT OR IGNORE INTO leads (id, title, category, city, country, phone, website, rating, reviews, lat, lon, data, meta, enriched, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
-      upsert: p(`INSERT INTO leads (id, title, category, city, country, phone, website, rating, reviews, lat, lon, data, meta, enriched, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      insert: p(`INSERT OR IGNORE INTO leads (id, title, category, city, country, phone, website, rating, reviews, lat, lon, data, meta, enriched, created_at, updated_at, catkey)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+      upsert: p(`INSERT INTO leads (id, title, category, city, country, phone, website, rating, reviews, lat, lon, data, meta, enriched, created_at, updated_at, catkey)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                  ON CONFLICT(id) DO UPDATE SET title=excluded.title, category=excluded.category, city=excluded.city, country=excluded.country,
                  phone=excluded.phone, website=excluded.website, rating=excluded.rating, reviews=excluded.reviews, lat=excluded.lat, lon=excluded.lon,
-                 data=excluded.data, meta=excluded.meta, enriched=excluded.enriched, updated_at=excluded.updated_at`),
+                 data=excluded.data, meta=excluded.meta, enriched=excluded.enriched, updated_at=excluded.updated_at, catkey=excluded.catkey`),
+      byCatKey: p("SELECT data, meta, enriched FROM leads WHERE catkey = ? ORDER BY seq"),
+      catCounts: p("SELECT catkey, COUNT(*) AS n FROM leads GROUP BY catkey ORDER BY n DESC"),
       getMeta: p("SELECT meta FROM leads WHERE id = ?"),
       setMeta: p("UPDATE leads SET meta = ?, updated_at = ? WHERE id = ?"),
       deleteLeads: p("DELETE FROM leads"),
@@ -126,7 +144,7 @@ class SqliteStore {
     const { data, meta, enriched } = splitLead(lead);
     return [id, lead.title || "", lead.category || "", lead.city || "", lead.country || "", lead.phone || "", lead.website || "",
       Number(lead.rating) || 0, Number(lead.reviews) || 0, Number(lead.lat) || null, Number(lead.lon) || null,
-      JSON.stringify(data), meta ? JSON.stringify(meta) : null, enriched, createdAt, now];
+      JSON.stringify(data), meta ? JSON.stringify(meta) : null, enriched, createdAt, now, categoryKey(lead.category)];
   }
 
   transaction(fn) {
@@ -143,6 +161,9 @@ class SqliteStore {
     const rows = limit > 0 ? this.q.listPage.all(limit, offset) : (offset ? this.q.listPage.all(-1, offset) : this.q.listAll.all());
     return rows.map(rowToLead);
   }
+  /** Leads del mismo rubro normalizado (para comparar solo con competidores reales). */
+  listLeadsByCatKey(key) { return key ? this.q.byCatKey.all(key).map(rowToLead) : []; }
+  categoryCounts() { return this.q.catCounts.all().map((r) => ({ key: r.catkey, n: r.n })); }
   insertLead(id, lead) {
     const now = Date.now();
     return this.q.insert.run(...this._params(id, lead, now, now)).changes > 0;

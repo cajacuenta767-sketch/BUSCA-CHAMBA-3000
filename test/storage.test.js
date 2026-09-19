@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const { JsonStore } = require("../src/infra/storage/json-store");
-const { SqliteStore } = require("../src/infra/storage/sqlite-store");
+const { SqliteStore, MIGRATIONS } = require("../src/infra/storage/sqlite-store");
 const { migrateJsonToSqlite } = require("../src/infra/storage/migrate");
 
 const sample = (i) => ({ title: "N" + i, category: "Farmacia", city: "Lima", country: "PE", phone: "+51 9" + i, website: "", emails: [], rating: 4, reviews: i, lat: -12, lon: -77, link: "", place_id: "p" + i, thumb: "", about: "", images: [] });
@@ -21,6 +21,8 @@ function contract(name, make) {
     assert.equal(s.getLead("a").title, "N1");
     assert.deepEqual(s.listLeads().map((l) => l.title), ["N1", "N2"]);
     assert.deepEqual(s.listLeads({ offset: 1, limit: 1 }).map((l) => l.title), ["N2"]);
+    assert.equal(s.listLeadsByCatKey("farmacia-botica").length, 2);
+    assert.deepEqual(s.categoryCounts(), [{ key: "farmacia-botica", n: 2 }]);
     assert.deepEqual(s.updateLeadMeta("a", { state: "contactado" }), { state: "contactado" });
     assert.deepEqual(s.updateLeadMeta("a", { notes: "x" }), { state: "contactado", notes: "x" });
     assert.equal(s.updateLeadMeta("zz", {}), null);
@@ -77,7 +79,8 @@ test("SqliteStore: persiste en archivo y las migraciones son idempotentes", () =
   const a = new SqliteStore({ file }); a.insertLead("a", sample(1)); a.close();
   const b = new SqliteStore({ file });
   assert.equal(b.countLeads(), 1);
-  assert.equal(b.db.prepare("SELECT COUNT(*) AS n FROM schema_migrations").get().n, 1);
+  assert.equal(b.db.prepare("SELECT COUNT(*) AS n FROM schema_migrations").get().n, MIGRATIONS.length);
+  assert.equal(b.db.prepare("SELECT catkey FROM leads WHERE id = 'a'").get().catkey, "farmacia-botica", "rubro normalizado indexado");
   assert.equal(b.db.prepare("SELECT category FROM leads WHERE id = 'a'").get().category, "Farmacia", "columna proyectada indexable");
   b.close();
 });
