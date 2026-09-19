@@ -26,3 +26,8 @@ debug.log
 # Sistema
 .DS_Store
 
+
+# SQLite (data/ ya está ignorado; por si se define DATA_DIR fuera)
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm

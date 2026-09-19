@@ -137,6 +137,33 @@ Activado por defecto en **⚙️ Ajustes**. Para que Google no bloquee tu IP al 
 - **Detección de bloqueos** (ERR_TUNNEL, 429, 403, captcha) con **backoff exponencial** y **auto-pausa**: si varias celdas seguidas salen bloqueadas, el escaneo se **pausa solo** y te avisa. Configura proxies o espera un rato y pulsa **Reanudar**.
 - **Empieza suave**: celdas de 2–3 km y modo "Por rubro" generan menos búsquedas y menos bloqueos que "Todo el área".
 
+## Arquitectura, base de datos y desarrollo (v2)
+
+El servidor se reorganizó en módulos (`src/`) sin cambiar la API ni el panel. Detalle en
+[`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md), endpoints en [`docs/API.md`](docs/API.md) y la
+auditoría con los errores corregidos en [`docs/REVISION.md`](docs/REVISION.md).
+
+```
+src/config     env · settings · categories
+src/domain     grid · lead · csv · proxy        (funciones puras)
+src/infra      storage (SQLite | JSON) · scraper-runner · http-client · logger
+src/services   scanner · enricher · notifier · proxies · event-bus · demo
+src/http       router · middleware · routes
+src/app.js     raíz de composición   ·   src/server.js  arranque
+```
+
+- **Base de datos:** SQLite (`data/busca-chamba.sqlite`, con `node:sqlite`, sin instalar nada) en
+  Node ≥ 22.13; si no está disponible se usa el `data/db.json` de siempre. La primera vez que
+  arranca con SQLite **migra solo** tu `db.json` (y lo conserva como respaldo). Fuerza un driver
+  con `DB_DRIVER=sqlite|json`; migra a mano con `npm run migrate`.
+- **Variables de entorno:** `PORT`, `HOST`, `BASIC_AUTH=usuario:clave`, `SCRAPER_BIN`,
+  `SCRAPER_MODE=docker`, `DB_DRIVER`, `DATA_DIR`, `PROXIES`, `MAX_BODY_BYTES`.
+- **Tests:** `npm test` (34 pruebas con `node:test`, ~15 s, sin dependencias). Cubren dominio,
+  ambos almacenes, el orquestador con un scraper simulado, la API completa y SSE.
+- **Docker del panel:** `docker compose up -d panel` construye la imagen y lanza el scraper por
+  Docker (necesita el socket montado, ya configurado en `docker-compose.yml`).
+- **Salud:** `GET /api/health` → `{ok, driver, leads, scanning, uptime}`.
+
 ## Uso responsable
 
 - Extraer datos de Google Maps va **contra los Términos de Servicio de Google**. El riesgo aquí no es tu cuenta (no usas login), sino bloqueos de IP: úsalo con mesura y con proxies si haces volumen.
