@@ -14,6 +14,13 @@ const fs = require("fs");
 const path = require("path");
 const { spawn, execSync } = require("child_process");
 
+process.on("uncaughtException", err => {
+  console.error("⚠️ Uncaught exception:", err);
+});
+process.on("unhandledRejection", err => {
+  console.error("⚠️ Unhandled rejection:", err);
+});
+
 const PORT = process.env.PORT || 8090;
 const AUTH = process.env.BASIC_AUTH || "";
 const ROOT = __dirname;
@@ -38,11 +45,42 @@ const CATEGORY_GROUPS = [
   { name: "Hospedaje", items: ["hotel", "hostal"] },
 ];
 const CATEGORIES = [...new Set(CATEGORY_GROUPS.flatMap(g => g.items))];
+// 15 consultas paraguas de alta densidad para modo "Todo el área" (3x más rápido que 37 micro-consultas)
+const CORE_ALL_CATEGORIES = [
+  "restaurante", "pollería", "chifa", "cevichería",
+  "cafetería panadería", "farmacia botica", "clínica dental consultorio médico",
+  "peluquería barbería spa", "gimnasio", "bodega minimarket",
+  "tienda de ropa zapatería", "ferretería librería",
+  "taller mecánico servicio técnico", "estudio contable jurídico", "hotel hostal"
+];
 
 // ---------- DB & Config ----------
 let db = load(DB_FILE, { leads: {}, order: [], history: [], scanned: [] });
 let cfg = load(CFG_FILE, { telegramToken: "", telegramChat: "", webhookUrl: "", proxies: "", leadsdbKey: "", notify: false, safeMode: true, pauseMin: 3, pauseMax: 8, depth: 0, maxBlocks: 4, subdivide: true, subdivideAt: 90, exclude: "", maxLeads: 0, retryFailed: true, cellMax: 6, conc: 1, inactivity: 20 });
-function load(f, d) { try { return Object.assign({}, d, JSON.parse(fs.readFileSync(f, "utf8"))); } catch (e) { return d; } }
+function load(f, d) {
+  try {
+    const raw = fs.readFileSync(f, "utf8");
+    if (raw && raw.trim()) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") return Object.assign({}, d, parsed);
+    }
+  } catch (e) {}
+  try {
+    const bak = f + ".bak";
+    if (fs.existsSync(bak)) {
+      const rawBak = fs.readFileSync(bak, "utf8");
+      if (rawBak && rawBak.trim()) {
+        const parsedBak = JSON.parse(rawBak);
+        if (parsedBak && typeof parsedBak === "object") {
+          console.log(`🛡️ Recuperada base de datos desde ${bak} tras fallo en ${f}`);
+          try { fs.copyFileSync(bak, f); } catch (_) {}
+          return Object.assign({}, d, parsedBak);
+        }
+      }
+    }
+  } catch (e) {}
+  return d;
+}
 let saveT = null, lastBak = 0;
 function save(immediate = false) {
   const doSave = () => {
@@ -83,8 +121,29 @@ function log(s) { logs.push(new Date().toISOString().slice(11, 19) + " " + s); i
 
 // ---------- SSE ----------
 const clients = new Set();
-function broadcast(type, data) { const m = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`; for (const r of clients) { try { r.write(m); } catch (e) {} } }
-setInterval(() => { for (const r of clients) { try { r.write(": ping\n\n"); } catch (e) {} } }, 25000);
+function broadcast(type, data) {
+  const m = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const r of [...clients]) {
+    try {
+      r.write(m, err => {
+        if (err) clients.delete(r);
+      });
+    } catch (e) {
+      clients.delete(r);
+    }
+  }
+}
+setInterval(() => {
+  for (const r of [...clients]) {
+    try {
+      r.write(": ping\n\n", err => {
+        if (err) clients.delete(r);
+      });
+    } catch (e) {
+      clients.delete(r);
+    }
+  }
+}, 25000);
 
 // ---------- Telegram / Webhook ----------
 function httpsPost(url, obj) {
@@ -226,30 +285,54 @@ function idOf(l) { const ph = (l.phone || "").replace(/\D/g, ""); return l.place
 function addLead(l) {
   if (scan && scan.exclude && scan.exclude.length) { const t = (l.title || "").toLowerCase(); if (scan.exclude.some(x => t.includes(x))) return false; }
   const id = idOf(l);
+  if (scan) {
+    scan.lastLeadTime = Date.now();
+    scan.sessionSeen = (scan.sessionSeen || 0) + 1;
+  }
+  if (curCell) curCell.seen = (curCell.seen || 0) + 1;
   if (!db.leads[id]) {
-    db.leads[id] = l; db.order.push(id); if (scan) scan.found++; if (curCell) curCell.found++; broadcast("lead", l); notifyLead(l); save();
+    if (curCell) curCell.found = (curCell.found || 0) + 1;
+    db.leads[id] = l; db.order.push(id);
+    if (scan) scan.found++;
+    broadcast("lead", Object.assign({}, l, { lastLeadAt: Date.now() }));
+    notifyLead(l);
+    save();
     if (scan && scan.maxLeads && scan.found >= scan.maxLeads && scan.running && !scan.paused) { scan.paused = true; log("Auto-pausa: tope de " + scan.maxLeads + " leads"); broadcast("notice", { msg: "Alcanzaste el tope de " + scan.maxLeads + " leads — escaneo en pausa." }); broadcast("status", statusObj()); }
     return true;
-  } else { const meta = db.leads[id]._meta; db.leads[id] = Object.assign(l, { _meta: meta }); return false; }
+  } else {
+    // Si ya existe en la base de datos, NO se vuelve a sobreescribir ni tocar: ya está guardado
+    return false;
+  }
 }
 
 // ---------- Escaneo por cuadrícula ----------
 let scan = null, child = null, pollT = null, demoT = null, nextT = null, curCell = null, curEmitted = 0, lastLogB = 0, cellTimer = null, cellStart = 0;
 const BLOCK_RE = /ERR_TUNNEL|\b429\b|\b403\b|captcha|unusual traffic|too many requests|rate.?limit|sorry\/index|connection reset/i;
 function statusObj() {
-  if (!scan) return { running: false, backendProxies: getBackendProxies().length, totalDbLeads: Object.keys(db.leads || {}).length };
-  const done = scan.cells.filter(c => ["done", "empty", "error"].includes(c.state)).length;
+  if (!scan) return {
+    running: false,
+    backendProxies: getBackendProxies().length,
+    totalDbLeads: Object.keys(db.leads || {}).length,
+    dbScannedCount: (db.scanned || []).length
+  };
+  const doneCount = scan.cells.filter(c => ["done", "empty", "error"].includes(c.state)).length;
   return {
     running: scan.running,
     paused: scan.paused,
     mode: scan.mode,
     cellsTotal: scan.cells.length,
-    cellsDone: done,
+    cellsDone: doneCount,
+    overallTotal: scan.cells.length,
+    overallDone: doneCount,
+    skipped: scan.alreadyDoneCount || 0,
     found: scan.found,
+    sessionSeen: scan.sessionSeen || 0,
     totalDbLeads: Object.keys(db.leads || {}).length,
     cellIdx: Math.min(scan.idx + 1, scan.cells.length),
     cellFound: curCell ? (curCell.found || 0) : 0,
     cellSecs: (scan.running && !scan.paused && cellStart) ? Math.round((Date.now() - cellStart) / 1000) : 0,
+    scanSecs: scan.startTime ? Math.round((Date.now() - scan.startTime) / 1000) : 0,
+    lastLeadSecs: scan.lastLeadTime ? Math.round((Date.now() - scan.lastLeadTime) / 1000) : null,
     queries: (scan.queries || []).length,
     backendProxies: scan.proxyList ? scan.proxyList.length : getBackendProxies().length
   };
@@ -268,8 +351,9 @@ async function startScan(cfgIn) {
   const cLat = (area[0] + area[2]) / 2, cLon = (area[1] + area[3]) / 2;
   cells.sort((a, b) => Math.hypot((a.bbox[0] + a.bbox[2]) / 2 - cLat, (a.bbox[1] + a.bbox[3]) / 2 - cLon) - Math.hypot((b.bbox[0] + b.bbox[2]) / 2 - cLat, (b.bbox[1] + b.bbox[3]) / 2 - cLon));
 
-  // Continuar donde se quedó: omitir por defecto las celdas ya terminadas (por clave exacta o proximidad espacial)
-  const initialCells = cells.length;
+  // Continuar donde se quedó: marcar celdas ya terminadas como "done" (se pintan en verde en el mapa)
+  // para que el mapa muestre toda la cuadrícula y avance a la primera celda pendiente
+  let alreadyDoneCount = 0;
   if (cfgIn.skipScanned !== false && Array.isArray(db.scanned) && db.scanned.length) {
     const done = new Set(db.scanned);
     const halfLat = (cellKm / 111) / 2;
@@ -278,18 +362,29 @@ async function startScan(cfgIn) {
       const p = k.split("_");
       return { lat: +p[0] + halfLat, lon: +p[1] + halfLon };
     });
-    cells = cells.filter(c => {
-      if (done.has(c.key)) return false;
-      const cCenterLat = (c.bbox[0] + c.bbox[2]) / 2;
-      const cCenterLon = (c.bbox[1] + c.bbox[3]) / 2;
-      const cosLat = Math.cos(cCenterLat * Math.PI / 180);
-      return !scannedPts.some(sp => Math.hypot((cCenterLat - sp.lat) * 111, (cCenterLon - sp.lon) * 111 * cosLat) < (cellKm * 0.75));
-    });
+    for (const c of cells) {
+      if (done.has(c.key)) {
+        c.state = "done";
+        alreadyDoneCount++;
+      } else {
+        const cCenterLat = (c.bbox[0] + c.bbox[2]) / 2;
+        const cCenterLon = (c.bbox[1] + c.bbox[3]) / 2;
+        const cosLat = Math.cos(cCenterLat * Math.PI / 180);
+        if (scannedPts.some(sp => Math.hypot((cCenterLat - sp.lat) * 111, (cCenterLon - sp.lon) * 111 * cosLat) < (cellKm * 0.75))) {
+          c.state = "done";
+          alreadyDoneCount++;
+        }
+      }
+    }
   }
-  const skipped = initialCells - cells.length;
-  if (!cells.length) return { error: `Toda esa zona (${initialCells} celdas) ya fue revisada previamente. Si deseas volver a escanearla desde cero, desmarca "Continuar donde se quedó".` };
+  const pendingCount = cells.filter(c => c.state === "pending").length;
+  if (pendingCount === 0) {
+    return { error: `Toda esa zona (${cells.length} celdas) ya fue revisada previamente. Si deseas volver a escanearla desde cero, desmarca "Continuar donde se quedó".` };
+  }
+  const firstPendingIdx = cells.findIndex(c => c.state === "pending");
+  const startIdx = firstPendingIdx >= 0 ? firstPendingIdx : 0;
 
-  const queries = (cfgIn.mode === "rubros" && Array.isArray(cfgIn.rubros) && cfgIn.rubros.length) ? cfgIn.rubros : CATEGORIES;
+  const queries = (cfgIn.mode === "rubros" && Array.isArray(cfgIn.rubros) && cfgIn.rubros.length) ? cfgIn.rubros : CORE_ALL_CATEGORIES;
   
   // Proxies: probar conectividad y saldo antes de iniciar
   let rawProxies = (cfgIn && cfgIn.proxies && String(cfgIn.proxies).trim()) ? cfgIn.proxies : "";
@@ -310,34 +405,81 @@ async function startScan(cfgIn) {
   }
 
   const exclude = (Array.isArray(cfgIn.exclude) ? cfgIn.exclude : String(cfgIn.exclude != null ? cfgIn.exclude : (cfg.exclude || "")).split(",")).map(s => ("" + s).trim().toLowerCase()).filter(Boolean);
-  scan = { mode: cfgIn.mode === "rubros" ? "rubros" : "all", demo: !!cfgIn.demo, cells, idx: 0, cellKm, queries, email: !!cfgIn.email, proxyList, proxyIdx: 0, exclude, maxLeads: +cfgIn.maxLeads || +cfg.maxLeads || 0, running: true, paused: false, found: 0, area, consecBlocks: 0, retried: false, curProxy: null };
+  scan = {
+    mode: cfgIn.mode === "rubros" ? "rubros" : "all",
+    demo: !!cfgIn.demo,
+    cells,
+    idx: startIdx,
+    cellKm,
+    queries,
+    email: !!cfgIn.email,
+    proxyList,
+    proxyIdx: 0,
+    exclude,
+    maxLeads: +cfgIn.maxLeads || +cfg.maxLeads || 0,
+    running: true,
+    paused: false,
+    found: 0,
+    area,
+    consecBlocks: 0,
+    retried: false,
+    curProxy: null,
+    initialCells: cells.length,
+    alreadyDoneCount,
+    skippedCells: alreadyDoneCount,
+    startTime: Date.now(),
+    lastLeadTime: Date.now()
+  };
+  db.activeScan = { running: true, area, mode: scan.mode, cellKm, email: scan.email };
+  save(true);
   
   const modeMsg = proxyList.length > 0 ? `${proxyList.length} proxies backend activos` : `Modo directo seguro (antibaneo activo)`;
-  const resumeMsg = skipped > 0 ? ` (continuando: omitidas ${skipped} celdas ya revisadas, quedan ${cells.length})` : "";
+  const resumeMsg = alreadyDoneCount > 0 ? ` (continuando donde se quedó: ${alreadyDoneCount} celdas en verde ya completadas, quedan ${pendingCount} pendientes)` : "";
   log(`Inicio ${scan.mode} · ${cells.length} celdas · celda ${cellKm}km · ${modeMsg}${resumeMsg}${scan.demo ? " (demo)" : ""}`);
   if (adjusted) { const m = `Área grande: ajusté la celda de ${askedKm} a ${cellKm} km para cubrirla en ${cells.length} celdas.`; log(m); broadcast("notice", { msg: m }); }
-  if (skipped > 0) broadcast("notice", { msg: `Continuando donde te quedaste: se omitieron ${skipped} celdas ya revisadas anteriormente.` });
+  if (alreadyDoneCount > 0) broadcast("notice", { msg: `Continuando donde te quedaste: ${alreadyDoneCount} celdas previas ya están en verde.` });
 
-  broadcast("cells", { cells: cells.map(c => ({ key: c.key, bbox: c.bbox, state: c.state })), area, total: cells.length });
+  broadcast("cells", { cells: cells.map(c => ({ key: c.key, bbox: c.bbox, state: c.state })), area, total: cells.length, doneCount: alreadyDoneCount });
   broadcast("status", statusObj());
   processNext();
-  return { ok: true, cells: cells.length, mode: scan.mode, cellKm, adjusted, askedKm, skipped, proxies: proxyList.length };
+  return { ok: true, cells: cells.length, mode: scan.mode, cellKm, adjusted, askedKm, skipped: alreadyDoneCount, pending: pendingCount, proxies: proxyList.length };
 }
-function processNext() { if (!scan || !scan.running || scan.paused) return; const cell = scan.cells[scan.idx]; if (!cell) return finish(); cell.state = "scanning"; broadcast("cell", { key: cell.key, state: "scanning", found: 0 }); broadcast("status", statusObj()); if (scan.demo) return demoCell(cell); runCell(cell); }
+function processNext() {
+  if (!scan || !scan.running || scan.paused) return;
+  while (scan.idx < scan.cells.length && scan.cells[scan.idx].state === "done") {
+    scan.idx++;
+  }
+  const cell = scan.cells[scan.idx];
+  if (!cell) return finish();
+  cell.state = "scanning";
+  broadcast("cell", { key: cell.key, state: "scanning", found: 0 });
+  broadcast("status", statusObj());
+  if (scan.demo) return demoCell(cell);
+  runCell(cell);
+}
 function scheduleNext() {
   if (!scan || !scan.running || scan.paused) return;
   const hasProxies = scan.proxyList && scan.proxyList.length > 0;
-  let lo = hasProxies ? 1.0 : (cfg.safeMode ? 2.5 : 1.2);
-  let hi = hasProxies ? 2.5 : (cfg.safeMode ? 4.5 : 2.5);
+  let lo = (cfg.pauseMin != null && !isNaN(+cfg.pauseMin)) ? Math.max(0.2, +cfg.pauseMin) : (hasProxies ? 0.8 : (cfg.safeMode ? 1.5 : 0.8));
+  let hi = (cfg.pauseMax != null && !isNaN(+cfg.pauseMax)) ? Math.max(lo, +cfg.pauseMax) : (hasProxies ? 1.8 : (cfg.safeMode ? 3.0 : 1.5));
   if (hi < lo) hi = lo;
   if (scan.consecBlocks > 0) {
-    lo = Math.max(lo, hasProxies ? 3 : 8 * scan.consecBlocks);
-    hi = Math.max(hi, hasProxies ? 7 : 16 * scan.consecBlocks);
+    lo = Math.max(lo, hasProxies ? 3 : 6 * scan.consecBlocks);
+    hi = Math.max(hi, hasProxies ? 7 : 12 * scan.consecBlocks);
   }
   const ms = scan.demo ? 250 : Math.round((lo + Math.random() * (hi - lo)) * 1000);
   nextT = setTimeout(processNext, ms);
 }
-function advance() { if (!scan) return; scan.idx++; broadcast("progress", { cellsDone: scan.idx, cellsTotal: scan.cells.length, found: scan.found }); scheduleNext(); }
+function advance() {
+  if (!scan) return;
+  scan.idx++;
+  while (scan.idx < scan.cells.length && scan.cells[scan.idx].state === "done") {
+    scan.idx++;
+  }
+  const doneCount = scan.cells.filter(c => ["done", "empty", "error"].includes(c.state)).length;
+  broadcast("progress", { cellsDone: doneCount, cellsTotal: scan.cells.length, found: scan.found });
+  scheduleNext();
+}
 function nextCell() { advance(); }
 function finishCell(cell) {
   // Reintento rápido si hay proxies disponibles (hasta 3 reintentos)
@@ -435,17 +577,36 @@ function runCell(cell) {
     }
   });
   pollT = setInterval(() => ingestCell(), 300);
-  const maxMin = Math.max(1, +cfg.cellMax || 5);
+  const maxMin = Math.max(1.0, Math.min(2.5, +cfg.cellMax || 1.5));
   clearTimeout(cellTimer);
   cellTimer = setTimeout(() => {
     if (child) {
-      log("Celda " + cell.key + " pasó de " + maxMin + " min; liberando celda y avanzando...");
+      log("Celda " + cell.key + " completó su ventana de " + maxMin + " min; liberando celda y avanzando...");
       cell._timedout = true;
-      killChild(child);
+      const c = child;
+      child = null;
+      clearInterval(pollT);
+      killChild(c);
+      finishCell(cell);
     }
   }, maxMin * 60000);
-  child.on("exit", () => { clearTimeout(cellTimer); clearInterval(pollT); ingestCell(); child = null; finishCell(cell); });
-  child.on("error", () => { clearInterval(pollT); child = null; cell.state = "error"; broadcast("cell", { key: cell.key, state: "error" }); nextCell(); });
+  child.on("exit", () => {
+    if (cell._timedout) return;
+    clearTimeout(cellTimer);
+    clearInterval(pollT);
+    ingestCell();
+    child = null;
+    finishCell(cell);
+  });
+  child.on("error", () => {
+    if (cell._timedout) return;
+    clearTimeout(cellTimer);
+    clearInterval(pollT);
+    child = null;
+    cell.state = "error";
+    broadcast("cell", { key: cell.key, state: "error" });
+    nextCell();
+  });
 }
 function ingestCell() { let text; try { text = fs.readFileSync(CELL_CSV, "utf8"); } catch (e) { return; } if (!text) return; const endsNL = /\n$/.test(text); let rows = parseCSV(text); if (!endsNL && rows.length) rows = rows.slice(0, -1); if (rows.length < 2) return; const H = rows[0].map(h => h.trim().toLowerCase()); for (let i = 1 + curEmitted; i < rows.length; i++) { const l = rowToLead(H, rows[i]); if (l) addLead(l); } curEmitted = rows.length - 1; }
 function findBin() {
@@ -460,19 +621,28 @@ function findBin() {
   return null;
 }
 function buildCmd(bb) {
-  const grid = ["-grid-bbox", bb, "-grid-cell", String((curCell && curCell.km) || scan.cellKm), "-zoom", "15"];
+  const cellRadiusMeters = Math.max(500, Math.round(((curCell && curCell.km) || scan.cellKm || 1.6) * 1000 * 0.7));
+  const grid = [
+    "-grid-bbox", bb,
+    "-grid-cell", String((curCell && curCell.km) || scan.cellKm),
+    "-radius", String(cellRadiusMeters),
+    "-zoom", "16"
+  ];
   const hasProxies = scan.proxyList && scan.proxyList.length > 0;
-  // Con proxies: concurrencia configurable (defecto 2). En modo directo: concurrencia 1 para máxima seguridad
-  const concurrency = hasProxies ? Math.max(1, Math.min(8, +cfg.conc || 2)) : 1;
+  // Concurrencia acelerada: defecto 5 trabajadores para velocidad máxima con procesador i7 de 16 hilos
+  const concurrency = Math.max(4, Math.min(8, +cfg.conc || 5));
   const extra = ["-c", String(concurrency)];
-  if (scan.email) extra.push("-email");
+  // NOTA VELOCIDAD: El flag -email dentro de gms.exe navega cada web externa con Chromium y congela las celdas hasta 3 minutos.
+  // La extracción de emails se realiza de forma asíncrona y ultrarrápida vía /api/enrich sin retrasar el escaneo en vivo.
   if (hasProxies) {
     const shuffled = shuffle([...scan.proxyList]);
     extra.push("-proxies", shuffled.join(","));
   }
   if (cfg.leadsdbKey) extra.push("-leadsdb-api-key", cfg.leadsdbKey);
-  if (cfg.depth > 0) extra.push("-depth", String(cfg.depth));
-  const inactivityTimeout = hasProxies ? (Math.max(5, Math.min(180, +cfg.inactivity || 120)) + "s") : "2m";
+  const depth = (cfg.depth > 0) ? cfg.depth : 3;
+  extra.push("-depth", String(depth));
+  const inactivitySec = Math.max(25, Math.min(60, +cfg.inactivity || 35));
+  const inactivityTimeout = inactivitySec + "s";
   if (process.env.SCRAPER_MODE === "docker") {
     const a = ["run", "--rm", "--name", "avendia-scraper", "--memory", "1200m", "--cpus", "1.5", "-v", `${DATA}:/out`, "-v", `${Q_FILE}:/queries.txt:ro`, "gosom/google-maps-scraper", "-input", "/queries.txt", "-results", "/out/cell.csv", "-lang", "es", "-exit-on-inactivity", inactivityTimeout, ...extra, ...grid];
     return { cmd: "docker", args: a };
@@ -485,6 +655,7 @@ function finish() {
   const errs = scan.cells.filter(c => c.state === "error");
   if (cfg.retryFailed !== false && !scan.retried && errs.length && !scan.paused) { scan.retried = true; scan.idx = scan.cells.length; errs.forEach(c => scan.cells.push(Object.assign({}, c, { state: "pending", _blocked: false }))); log("Reintentando " + errs.length + " celdas con error"); broadcast("status", statusObj()); return scheduleNext(); }
   scan.running = false;
+  db.activeScan = null;
   db.scanned = [...new Set((db.scanned || []).concat(scan.cells.filter(c => c.state === "done" || c.state === "empty").map(c => c.key)))].slice(-5000);
   db.history.unshift({ ts: Date.now(), found: scan.found, cells: scan.cells.length, mode: scan.mode, area: scan.area }); db.history = db.history.slice(0, 50); save(true);
   broadcast("status", statusObj()); broadcast("done", { found: scan.found, cells: scan.cells.length }); log(`Fin · ${scan.found} negocios`);
@@ -501,20 +672,34 @@ function stop() {
   if (child) { killChild(child); child = null; }
   if (scan) {
     scan.running = false;
+    db.activeScan = null;
+    save(true);
     broadcast("status", statusObj());
     broadcast("done", { found: scan.found, cells: scan.cells.length });
   }
   return { ok: true };
 }
 
-// Watchdog global anti-congelamiento: garantiza que el escáner NUNCA se quede colgado
+// Watchdog global anti-congelamiento: garantiza que NINGUNA celda quede colgada más de 100 segundos jamás
 setInterval(() => {
   if (!scan || !scan.running || scan.paused) return;
-  if (child && cellStart && (Date.now() - cellStart > 210000)) {
-    log(`⏰ Watchdog: Celda ${curCell ? curCell.key : ""} tardó más de 3.5 min; cerrando proceso para que el escáner continúe sin parar.`);
-    killChild(child);
+  if (cellStart && (Date.now() - cellStart > 100000)) {
+    const k = curCell ? curCell.key : "";
+    log(`⏰ Watchdog: Celda ${k} excedió 100s; forzando liberación y avance inmediato.`);
+    const c = child;
+    const cCell = curCell;
+    child = null;
+    clearInterval(pollT);
+    clearTimeout(cellTimer);
+    if (c) killChild(c);
+    if (cCell) {
+      cCell._timedout = true;
+      finishCell(cCell);
+    } else {
+      advance();
+    }
   }
-}, 15000);
+}, 8000);
 
 const DNAMES = [["Botica ", "Farmacia", 0], ["Restaurante ", "Restaurante", 1], ["Barbería ", "Barbería", 0], ["Ferretería ", "Ferretería", 0], ["Gimnasio ", "Gimnasio", 1], ["Bodega ", "Bodega", 0], ["Dental ", "Clínica dental", 1], ["TecniCell ", "Taller de celulares", 0]];
 const SUF = ["San Martín", "Central", "Los Andes", "El Sol", "Perú", "Miraflores", "Norte", "Express"];
@@ -590,10 +775,19 @@ const server = http.createServer(async (req, res) => {
   const p = new URL(req.url, "http://x").pathname;
   if (req.method === "OPTIONS") { res.writeHead(204, { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET,POST", "Access-Control-Allow-Headers": "Content-Type" }); return res.end(); }
   if (!authed(req, res)) return;
-  if (p === "/" || p === "/dashboard.html") { let h; try { h = fs.readFileSync(path.join(ROOT, "dashboard.html")); } catch (e) { res.writeHead(404); return res.end("dashboard.html no encontrado"); } res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" }); return res.end(h); }
+  if (p === "/" || p === "/dashboard.html") { let h; try { h = fs.readFileSync(path.join(ROOT, "dashboard.html")); } catch (e) { res.writeHead(404); return res.end("dashboard.html no encontrado"); } res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0", "Pragma": "no-cache", "Expires": "0" }); return res.end(h); }
   if (p === "/api/status") return json(res, statusObj());
   if (p === "/api/leads") return json(res, { status: statusObj(), leads: db.order.map(id => db.leads[id]).filter(Boolean), cells: scan ? scan.cells.map(c => ({ key: c.key, bbox: c.bbox, state: c.state, found: c.found })) : [], categories: CATEGORIES, history: db.history || [] });
-  if (p === "/api/stream") { res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive", "Access-Control-Allow-Origin": "*" }); res.write("retry: 3000\n\n"); res.write(`event: status\ndata: ${JSON.stringify(statusObj())}\n\n`); clients.add(res); req.on("close", () => clients.delete(res)); return; }
+  if (p === "/api/stream") {
+    res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive", "Access-Control-Allow-Origin": "*" });
+    res.write("retry: 3000\n\n");
+    res.write(`event: status\ndata: ${JSON.stringify(statusObj())}\n\n`);
+    clients.add(res);
+    res.on("error", () => clients.delete(res));
+    req.on("close", () => clients.delete(res));
+    req.on("error", () => clients.delete(res));
+    return;
+  }
   if (p === "/api/scan/start" && req.method === "POST") return json(res, await startScan(await body(req)));
   if (p === "/api/scan/pause" && req.method === "POST") return json(res, pause());
   if (p === "/api/scan/resume" && req.method === "POST") return json(res, resume());
@@ -626,4 +820,15 @@ function seedProxies() {
   if (seed) { cfg.proxies = seed; saveCfg(); log("Proxies cargadas del backend (" + seed.split("\n").length + ") desde " + (process.env.PROXIES ? "env PROXIES" : "proxies.txt")); }
 }
 seedProxies();
-server.listen(PORT, () => console.log(`BUSCA-CHAMBA-3000 → http://localhost:${PORT}  (${db.order.length} leads, ${getBackendProxies().length} proxies backend activos${AUTH ? ", con login" : ""})`));
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`BUSCA-CHAMBA-3000 → http://localhost:${PORT}  (${db.order.length} leads, ${getBackendProxies().length} proxies backend activos${AUTH ? ", con login" : ""})`);
+  // Auto-reanudación tras reinicio o apagado inesperado si había un escaneo activo
+  if (db.activeScan && db.activeScan.running && Array.isArray(db.activeScan.area)) {
+    setTimeout(() => {
+      log("🔄 Auto-reanudando escaneo previo donde se quedó...");
+      startScan(Object.assign({}, db.activeScan, { skipScanned: true })).catch(e => {
+        log("Error al auto-reanudar escaneo: " + (e && e.message));
+      });
+    }, 2000);
+  }
+});

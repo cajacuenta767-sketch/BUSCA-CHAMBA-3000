@@ -13,10 +13,16 @@ package-lock.json
 # Binarios compilados
 gms
 google-maps-scraper
+*.exe
+gms.exe
+google_maps_scraper.exe
 
 # Credenciales / config local
 .env
 proxies.txt
+debug.log
+*.log
 
 # Sistema
 .DS_Store
+
