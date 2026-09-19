@@ -428,6 +428,9 @@
     <div class="card-panel"><h3 style="margin:0 0 12px;font-size:15px">Clasificación de prospectos</h3><div id="mClass"></div>
       <p class="help" style="margin-top:12px">La oferta y prioridad las decide el sistema por cada negocio. Filtra por <b>Prospecto web</b> o <b>Prospecto sistema</b> en Resultados.</p>
     </div>
+    <div class="card-panel" id="varPanel" hidden><h3 style="margin:0 0 12px;font-size:15px">Respuestas por variante de mensaje</h3><div id="mVariants"></div>
+      <p class="help" style="margin-top:12px">Cada negocio recibe siempre la misma variante (A, B o C) y la base se reparte entre las tres. "Respondió" = pasó a Respondió, Propuesta o Cliente. Con 30+ negocios por variante ya se puede elegir la mejor.</p>
+    </div>
     <div class="card-panel" id="ctryPanel" hidden><h3 style="margin:0 0 12px;font-size:15px">Prospectos por país</h3><div id="mCountry"></div></div>
     <div class="card-panel" id="histPanel" hidden><h3 style="margin:0 0 12px;font-size:15px">Historial de escaneos</h3><div id="mHist"></div></div>
   </section>
@@ -456,8 +459,8 @@
 <div class="modal-bg" id="modalBg"><div class="modal">
   <h3 id="mTitle">Mensaje</h3><p class="sub" id="mSub"></p><div id="mStats" class="statrow" style="margin:-4px 0 10px" hidden></div>
   <label>Qué ofrecer</label><select class="field" id="mService"></select>
-  <label class="chk" style="margin-top:10px;text-transform:none"><input type="checkbox" id="mFollow"> Mensaje de seguimiento (2º toque)</label>
-  <label>Mensaje</label><textarea class="field" id="mText"></textarea>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px"><div style="flex:1;min-width:180px"><label>Paso de la secuencia</label><select class="field" id="mStep"><option value="1">1º mensaje · inicial</option><option value="2">2º · recordatorio (día 3)</option><option value="3">3º · cierre con salida (día 7)</option></select></div><div style="flex:1;min-width:180px;align-self:end" class="help" id="mMsgHist"></div></div>
+  <label>Mensaje <span id="mChars" style="font-weight:400;text-transform:none;letter-spacing:0"></span></label><textarea class="field" id="mText"></textarea>
   <div style="display:flex;gap:10px;flex-wrap:wrap">
     <div style="flex:1;min-width:150px"><label>Estado</label><select class="field" id="mState"></select></div>
     <div style="flex:1;min-width:150px"><label>Recontactar el</label><input class="field" type="date" id="mFollowDate"></div>
@@ -948,6 +951,165 @@ function analyze(lead, leadsOrIndex) {
 }
 
 module.exports = { analyze, createIndex, findPeers, computeStats, buildInsights, anchorFact, haversineKm, cityOf, vocabOf, MIN_PEERS, RADII_KM, RULES };
+
+};
+defs["messages"]=function(module,exports,require){
+"use strict";
+/**
+ * Motor de mensajes de prospección (WhatsApp y correo).
+ *
+ * Anatomía fija, textos variables:
+ *   apertura personal (con un hecho real del negocio si lo hay) → problema del rubro en una frase
+ *   → oferta en una línea → pregunta que se responde con "sí".
+ * Tres variantes por vertical (A/B/C) repartidas de forma estable por negocio, secuencia de tres
+ * pasos (día 0 → día 3 → día 7 con salida) y tope de 350 caracteres (vista previa de WhatsApp).
+ * Puro: sin I/O. Se incluye en dashboard.html mediante el build.
+ */
+const T = require("./taxonomy");
+
+const MAX_CHARS = 350;
+const VARIANTS = ["A", "B", "C"];
+/** Días de espera antes del siguiente paso. */
+const STEP_DAYS = { 1: 3, 2: 4 };
+
+/** Gancho: el problema del rubro en una frase (sin tecnicismos), tres variantes. */
+const HOOKS = {
+  farmacia: ["En las boticas lo que más duele es el vencido que se descubre en el estante.", "Casi toda botica pierde plata en vencidos y en productos que se acabaron sin aviso.", "Contar stock y revisar fechas una por una se lleva horas cada mes."],
+  taller_celulares: ["En los talleres el problema es el papelito con el equipo que se pierde.", "El cliente llama tres veces a preguntar si su celular ya está.", "Reparaciones que se olvidan cobrar y repuestos que no aparecen: pasa en casi todo taller."],
+  restaurante: ["En restaurantes los pedidos se cruzan y la caja no cuadra de noche.", "Cada cambio de precio termina en reimprimir la carta.", "Los pedidos por WhatsApp quedan sueltos entre mensajes y alguno se pierde."],
+  dental: ["En consultorios lo que más cuesta son los pacientes que no llegan a su cita.", "Las historias en folder se demoran en aparecer justo cuando el paciente está sentado.", "Los tratamientos de varias fases se olvidan a mitad de camino."],
+  inmobiliaria: ["En inmobiliarias el interesado se enfría cuando nadie le hace seguimiento.", "Las propiedades viven en Excel y en la cabeza de cada asesor.", "Las visitas se agendan por chat y a veces se cruzan."],
+  gimnasio: ["En gimnasios el problema es perseguir al socio para que pague.", "Muchas membresías vencen sin que nadie avise.", "Nadie registra quién dejó de venir hasta que ya no vuelve."],
+  bodega: ["En bodegas el cuaderno de fiados nunca cuadra.", "Se pide mercadería por costumbre y lo que más rota se acaba.", "Al cierre no se sabe cuánto se vendió ni cuánto le deben."],
+  ferreteria: ["En ferreterías la cotización a mano se demora y se pierde la venta.", "Con miles de códigos, el stock se busca a ojo.", "Se vende sin saber si el precio cubre el costo del proveedor."],
+  hotel: ["En hospedajes el cuaderno de reservas termina en sobreventa.", "Confirmar reservas una por una se come la mañana.", "Los consumos que nadie carga a la habitación se van sin cobrar."],
+  belleza: ["En salones las horas se cruzan cuando se reservan por chat.", "Cada cliente que no llega es una hora que ya no se cobra.", "No queda registro del corte o color que llevó cada cliente."],
+  veterinaria: ["En veterinarias el dueño se olvida de la siguiente vacuna.", "Un folder por mascota se demora en aparecer en la consulta.", "El medicamento clave se acaba sin aviso."],
+  contable: ["En estudios contables el vencimiento que se pasa cuesta una multa.", "Perseguir documentos por WhatsApp se lleva horas cada mes.", "Facturar tarde es cobrar tarde."],
+  juridico: ["En estudios jurídicos el cliente llama a preguntar cómo va el caso.", "Los plazos viven en la agenda personal de cada abogado.", "Los honorarios se cobran cuando alguien se acuerda."],
+  generic: ["Lo que se anota en cuaderno o en la cabeza se pierde sin que se note.", "Cuadrar caja, contar y buscar anotaciones se lleva horas cada mes.", "Los pedidos por WhatsApp quedan sueltos entre mensajes."],
+};
+
+/** Oferta en una línea, por vertical o por servicio genérico. */
+const OFFERS = {
+  farmacia: { label: "Farmacia / botica", text: "Tengo un sistema para boticas (stock, vencimientos y caja) y lo estoy dando gratis a cambio de su opinión.", short: "el sistema para boticas" },
+  taller_celulares: { label: "Taller de celulares", text: "Tengo un sistema para talleres (órdenes con ticket y aviso por WhatsApp) y lo doy gratis a cambio de su opinión.", short: "el sistema para talleres" },
+  restaurante: { label: "Restaurante / comida", text: "Tengo un sistema para restaurantes (pedidos, carta con QR y caja) y lo doy gratis a cambio de su opinión.", short: "el sistema para restaurantes" },
+  dental: { label: "Clínica / dental", text: "Tengo un sistema de citas con recordatorio por WhatsApp y ficha de pacientes, gratis a cambio de su opinión.", short: "el sistema de citas" },
+  inmobiliaria: { label: "Inmobiliaria", text: "Tengo un panel para inmobiliarias (cartera, visitas y seguimiento) y lo doy gratis a cambio de su opinión.", short: "el panel para inmobiliarias" },
+  gimnasio: { label: "Gimnasio / fitness", text: "Tengo un sistema para gimnasios (membresías y cobros con aviso por WhatsApp), gratis a cambio de su opinión.", short: "el sistema para gimnasios" },
+  bodega: { label: "Bodega / minimarket", text: "Tengo un sistema simple para bodegas (ventas, stock y fiados) y lo doy gratis a cambio de su opinión.", short: "el sistema para bodegas" },
+  ferreteria: { label: "Ferretería", text: "Tengo un sistema para ferreterías (cotizaciones rápidas y stock) y lo doy gratis a cambio de su opinión.", short: "el sistema para ferreterías" },
+  hotel: { label: "Hotel / hospedaje", text: "Tengo un sistema de reservas con confirmación por WhatsApp y control de habitaciones, gratis a cambio de su opinión.", short: "el sistema de reservas" },
+  belleza: { label: "Salón / barbería", text: "Tengo una agenda de reservas con recordatorio por WhatsApp para salones, gratis a cambio de su opinión.", short: "la agenda de reservas" },
+  veterinaria: { label: "Veterinaria", text: "Tengo un sistema para veterinarias (citas, carnet de vacunas y recordatorios), gratis a cambio de su opinión.", short: "el sistema para veterinarias" },
+  contable: { label: "Estudio contable", text: "Tengo un panel para estudios contables (clientes, documentos y vencimientos), gratis a cambio de su opinión.", short: "el panel para estudios contables" },
+  juridico: { label: "Estudio jurídico", text: "Tengo un sistema de expedientes con plazos y estado de cuenta por caso, gratis a cambio de su opinión.", short: "el sistema de expedientes" },
+  sistema: { label: "Sistema a medida (cualquier negocio)", text: "Tengo un sistema para {rubro} (ventas, stock y caja) y lo estoy dando gratis a cambio de su opinión.", short: "el sistema para su negocio" },
+  caja: { label: "Control de caja e inventario", text: "Tengo un control de caja y ventas para {rubro} y lo doy gratis a cambio de su opinión.", short: "el control de caja" },
+  citas: { label: "Sistema de citas / reservas", text: "Tengo un sistema de citas con avisos por WhatsApp y lo doy gratis a cambio de su opinión.", short: "el sistema de citas" },
+  fiados: { label: "Control de fiados y cobros", text: "Tengo un control de fiados y cobranzas y lo doy gratis a cambio de su opinión.", short: "el control de fiados" },
+};
+const SERVICES = ["sistema", "caja", "citas", "fiados"];
+
+const QUESTIONS = ["¿Le paso el acceso para que lo pruebe?", "¿Quiere que se lo envíe hoy?", "¿Le interesa verlo cuando tenga un minuto?"];
+
+const SUBJECTS = { farmacia: "Vencimientos y stock de {biz}", taller_celulares: "Órdenes y avisos para {biz}", restaurante: "Pedidos y caja de {biz}", dental: "Citas sin ausencias para {biz}", inmobiliaria: "Seguimiento de interesados en {biz}", gimnasio: "Cobros al día en {biz}", bodega: "Fiados y stock de {biz}", ferreteria: "Cotizaciones rápidas para {biz}", hotel: "Reservas sin sobreventa en {biz}", belleza: "Agenda sin cruces para {biz}", veterinaria: "Vacunas que vuelven solas en {biz}", contable: "Vencimientos bajo control en {biz}", juridico: "Plazos y expedientes de {biz}", generic: "Una herramienta para {biz}" };
+
+function hash(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; return h; }
+const leadKey = (l) => String((l && (l.place_id || l.link || (l.title + "|" + l.address))) || "");
+/** Variante estable por negocio (el mismo negocio siempre recibe la misma variante; la base se reparte en tres). */
+function variantFor(lead) { return VARIANTS[hash(leadKey(lead)) % VARIANTS.length]; }
+const vIdx = (v) => Math.max(0, VARIANTS.indexOf(v));
+const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+const firstName = (s) => String(s || "").trim().split(/\s+/)[0] || "";
+
+/** Oferta a usar: vertical del rubro, o servicio genérico ("sistema" | "caja" | "citas" | "fiados"). */
+function offerFor(lead, offerKey) {
+  const cat = T.classifyCategory(lead && lead.category);
+  const key = offerKey && OFFERS[offerKey] ? offerKey : (cat.vertical && OFFERS[cat.vertical] ? cat.vertical : (OFFERS[cat.service] ? cat.service : "sistema"));
+  const o = OFFERS[key];
+  const rubro = (cat.label || (lead && lead.category) || "su negocio").toLowerCase();
+  return { key, label: o.label, text: o.text.replace(/\{rubro\}/g, rubro), short: o.short, vertical: cat.vertical, isVertical: !!OFFERS[key] && !SERVICES.includes(key) };
+}
+
+/**
+ * Construye el mensaje de un paso de la secuencia.
+ * @param {object} o { lead, sender, step (1|2|3), variant ("A"|"B"|"C"), anchor (hecho real, opcional), demo (url opcional), offer (clave opcional) }
+ */
+function buildMessage(o) {
+  const lead = o.lead || {}, biz = String(lead.title || "su negocio").trim();
+  const step = Math.min(3, Math.max(1, +o.step || 1));
+  const variant = VARIANTS.includes(o.variant) ? o.variant : variantFor(lead);
+  const i = vIdx(variant);
+  const name = String(o.sender || "").trim() || "[tu nombre]";
+  const off = offerFor(lead, o.offer);
+  const hooks = HOOKS[off.vertical] || HOOKS.generic;
+  const hook = hooks[i % hooks.length], question = QUESTIONS[i % QUESTIONS.length];
+  let text;
+  if (step === 1) {
+    const anchor = o.anchor ? cap(String(o.anchor).trim().replace(/\.$/, "")) + ". " : "";
+    const full = `Hola, ¿hablo con ${biz}? Soy ${name}. ${anchor}${hook} ${off.text} ${question}`;
+    text = full.length <= MAX_CHARS ? full : `Hola, ¿hablo con ${biz}? Soy ${name}. ${hook} ${off.text} ${question}`;
+    if (text.length > MAX_CHARS) text = `Hola, ¿hablo con ${biz}? Soy ${name}. ${off.text} ${question}`;
+  } else if (step === 2) {
+    text = [`Hola de nuevo, soy ${name}. Le escribí por ${off.short}: lo puede probar en ${biz} sin costo. ¿Alcanzó a verlo? Si quiere, le mando el acceso hoy mismo.`,
+      `Hola, ${firstName(name)} otra vez. Hace unos días le comenté ${off.short}; sigue disponible sin costo para ${biz}. ¿Se lo envío?`,
+      `Buenas, soy ${name}. Solo para no dejarlo colgado: ${off.short} sigue disponible para que ${biz} lo pruebe gratis. ¿Le interesa?`][i];
+  } else {
+    text = [`${name} otra vez. Último mensaje, prometido: si ${off.short} no le sirve a ${biz}, no le vuelvo a escribir. Si sí le interesa, respóndame un "sí" y se lo paso hoy.`,
+      `Hola, soy ${name}. Cierro por aquí para no molestar: si en algún momento quiere probar ${off.short}, me escribe y se lo activo. Que le vaya muy bien con ${biz}.`,
+      `Buenas, ${name}. No quiero ser pesado: este es mi último mensaje. Si ${off.short} le sirve a ${biz}, respóndame y se lo mando; si no, quedo a la orden.`][i];
+  }
+  if (o.demo && step < 3) text += `\n\nSi prefiere verlo antes: ${o.demo}`;
+  return { text, step, variant, offer: off.key, chars: text.length, overLimit: text.split("\n")[0].length > MAX_CHARS };
+}
+
+/** Asunto de correo para el paso 1 (los siguientes reutilizan el hilo). */
+function emailSubject(lead, step) {
+  const biz = String((lead && lead.title) || "su negocio").trim();
+  const v = T.classifyCategory(lead && lead.category).vertical;
+  const base = (SUBJECTS[v] || SUBJECTS.generic).replace(/\{biz\}/g, biz);
+  return step > 1 ? "Re: " + base : base;
+}
+
+/**
+ * Siguiente paso según el historial [{ts, step, variant, channel}].
+ * @returns {{step:number, dueTs:number|null, done:boolean, last:object|null}}
+ */
+function nextStep(history, now) {
+  const h = (history || []).filter((x) => x && x.step).sort((a, b) => a.ts - b.ts);
+  const last = h[h.length - 1] || null;
+  if (!last) return { step: 1, dueTs: null, done: false, last: null };
+  if (last.step >= 3) return { step: 3, dueTs: null, done: true, last };
+  const days = STEP_DAYS[last.step] || 3;
+  return { step: last.step + 1, dueTs: last.ts + days * 86400000, done: false, last };
+}
+
+/** Fecha (AAAA-MM-DD, local) del siguiente toque tras enviar `step` ahora. */
+function followDateAfter(step, now) {
+  const days = STEP_DAYS[step];
+  if (!days) return "";
+  const d = new Date((now || Date.now()) + days * 86400000);
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+/** Métrica: enviados y respuestas por variante a partir de los metadatos de todos los leads. */
+function variantStats(metas) {
+  const out = {}; for (const v of VARIANTS) out[v] = { sent: 0, leads: 0, replied: 0 };
+  for (const m of metas || []) {
+    const msgs = (m && m.messages) || [];
+    if (!msgs.length) continue;
+    const v = msgs[0].variant && out[msgs[0].variant] ? msgs[0].variant : null;
+    if (!v) continue;
+    out[v].leads++; out[v].sent += msgs.length;
+    if (["respondio", "propuesta", "cliente"].includes(m.state)) out[v].replied++;
+  }
+  for (const v of VARIANTS) out[v].rate = out[v].leads ? Math.round((100 * out[v].replied) / out[v].leads) : null;
+  return out;
+}
+
+module.exports = { buildMessage, offerFor, variantFor, nextStep, followDateAfter, emailSubject, variantStats, HOOKS, OFFERS, SERVICES, QUESTIONS, VARIANTS, MAX_CHARS, STEP_DAYS };
 
 };
 defs["logo"]=function(module,exports,require){
@@ -1891,29 +2053,23 @@ function daysSince(ts){if(!ts)return null;return Math.floor((Date.now()-ts)/8640
 
 const STATES={nuevo:{l:"Nuevo",c:"var(--muted)"},contactado:{l:"Contactado",c:"var(--mail)"},respondio:{l:"Respondió",c:"var(--star)"},propuesta:{l:"Propuesta",c:"var(--accent)"},cliente:{l:"Cliente ✅",c:"var(--ok)"},descartado:{l:"Descartado",c:"var(--prospect)"}};
 // Mensajes breves y directos: acceso 100% gratis a cambio de feedback para entender sus necesidades
-const PITCHES={verticals:{
-  farmacia:{label:"Farmacia / botica",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Desarrollamos un sistema para boticas (stock, vencimientos y caja) 100% gratis. Solo buscamos su feedback para entender mejor las necesidades del rubro. ¿Le paso el acceso libre?`},
-  taller_celulares:{label:"Taller de celulares",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Creamos un sistema para talleres (órdenes y avisos por WhatsApp) 100% gratis. Solo queremos su feedback para entender qué necesitan en su taller. ¿Le paso el acceso?`},
-  restaurante:{label:"Restaurante / comida",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armamos un sistema para restaurantes (comandas, caja y pedidos) y lo damos 100% gratis. Solo nos interesa su feedback para entender las necesidades reales del día a día. ¿Se lo paso?`},
-  dental:{label:"Clínica / dental",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armamos un sistema de citas y recordatorios para consultorios. Es 100% gratis; solo buscamos su feedback para entender mejor las necesidades de su clínica. ¿Le paso el acceso?`},
-  inmobiliaria:{label:"Inmobiliaria",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Diseñamos un panel para inmobiliarias (propiedades y clientes) 100% gratis. Solo queremos su feedback para conocer mejor las necesidades del sector. ¿Le gustaría probarlo?`},
-  gimnasio:{label:"Gimnasio / fitness",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Creamos un sistema para gimnasios (membresías y cobros por WhatsApp) 100% gratis. Solo buscamos su feedback para entender qué necesita un gimnasio hoy en día. ¿Le paso el acceso?`},
-  bodega:{label:"Bodega / minimarket",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armamos un sistema simple para bodegas (ventas, stock y fiados) 100% gratis. Solo queremos feedback de dueños para entender sus necesidades reales. ¿Le paso el acceso?`},
-  ferreteria:{label:"Ferretería",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Desarrollamos un sistema para ferreterías (inventario y caja) 100% gratis. Solo buscamos su feedback para entender mejor las necesidades de su negocio. ¿Le paso el acceso?`},
-  hotel:{label:"Hotel / hospedaje",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armamos un sistema para hospedajes (habitaciones y reservas) 100% gratis. Solo queremos su opinión y feedback para entender las necesidades del rubro. ¿Se lo paso?`},
-  belleza:{label:"Salón / barbería",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Creamos una agenda de citas para salones y barberías 100% gratis. Solo buscamos su feedback sincero para entender mejor las necesidades del negocio. ¿Le paso el acceso?`},
-  veterinaria:{label:"Veterinaria",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armamos un sistema para veterinarias (historial y citas) 100% gratis. Solo nos interesa su feedback para entender mejor las necesidades del día a día. ¿Le paso el acceso?`},
-  contable:{label:"Estudio contable",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Desarrollamos un panel para estudios contables (clientes y documentos) 100% gratis. Solo queremos su feedback para entender mejor las necesidades de los estudios. ¿Se lo paso?`},
-  juridico:{label:"Estudio jurídico",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Creamos un sistema para gestión de casos legales 100% gratis. Solo buscamos su feedback profesional para entender mejor sus necesidades. ¿Le paso el acceso?`}
-},servicios:{
-  sistema:{label:"Sistema a medida (cualquier negocio)",build:(n,g,l)=>{const cat=(l&&(normCat(l.category)||l.category))||"su negocio";return `Hola 👋 ¿hablo con ${g}? Soy ${n}. Desarrollamos un sistema para ${cat} (ventas, stock y caja) 100% gratis. Solo queremos su feedback para entender mejor las necesidades reales de su rubro. ¿Le paso el acceso libre?`;}},
-  caja:{label:"Control de caja e inventario",build:(n,g,l)=>{const cat=(l&&(normCat(l.category)||l.category))||"su rubro";return `Hola 👋 ¿hablo con ${g}? Soy ${n}. Armamos un control de caja y ventas para ${cat} 100% gratis. Solo nos interesa su feedback para entender mejor las necesidades de su negocio. ¿Se lo paso sin costo?`;}},
-  citas:{label:"Sistema de citas / reservas",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Creamos un sistema de citas con avisos por WhatsApp 100% gratis. Solo queremos su feedback para entender mejor sus necesidades del día a día. ¿Le paso el acceso libre?`},
-  fiados:{label:"Control de fiados y cobros",build:(n,g,l)=>`Hola 👋 ¿hablo con ${g}? Soy ${n}. Armamos un control de fiados y cobranzas 100% gratis. Solo buscamos su feedback para entender mejor las necesidades reales de su negocio. ¿Se lo paso sin costo?`}
-}};
-const FOLLOWUP=(n,g,l)=>`Hola de nuevo 👋, le escribí por la herramienta 100% gratis para ${g}. No tiene costo ni compromiso, solo queremos su feedback para entender mejor sus necesidades. ¿Le gustaría probarla? — ${n}`;
+// ---- Mensajes: motor compartido (src/domain/messages.js): apertura con hecho real, gancho por rubro, oferta, pregunta; 3 variantes; secuencia de 3 pasos ----
+const SkyMsg=SkyLib.require("messages");
 const detectV=c=>SkyTax.verticalOf(c);
-const pitchBy=v=>{const g=v.slice(0,1),k=v.slice(2);return(g==="v"?PITCHES.verticals:PITCHES.servicios)[k];};
+function msgHistory(l){return (getMeta(idOf(l)).messages||[]);}
+function msgPlan(l){return SkyMsg.nextStep(msgHistory(l));}
+function composeMessage(l,step,offerKey){const link=demoLinkFor(l);const st=step||msgPlan(l).step;const tpl=(store.get("bc3k_tpl","")||"").trim();
+  if(st===1&&tpl&&validTpl(tpl))return{text:applyTpl(tpl,l,link),step:1,variant:SkyMsg.variantFor(l),offer:offerKey||SkyMsg.offerFor(l).key,chars:0};
+  return SkyMsg.buildMessage({lead:l,sender:myName(),step:st,variant:SkyMsg.variantFor(l),anchor:anchorFor(l),demo:link,offer:offerKey||null});}
+// Registra el envío en el historial del lead, programa el siguiente toque y pasa el estado a "contactado".
+function recordMessage(l,channel,step,offerKey){const id=idOf(l),m=getMeta(id);const msg=composeMessage(l,step,offerKey);
+  const messages=(m.messages||[]).concat([{ts:Date.now(),step:msg.step,variant:msg.variant,channel,offer:msg.offer}]).slice(-20);
+  const patch={messages,lastContact:Date.now()};const fd=SkyMsg.followDateAfter(msg.step,Date.now());if(fd)patch.follow=fd;else if(msg.step>=3)patch.follow="";
+  if(!m.state||m.state==="nuevo")patch.state="contactado";setMeta(id,patch);
+  if(current===l&&$("#modalBg").classList.contains("open")){if(patch.state&&$("#mState"))$("#mState").value=patch.state;if(patch.follow!==undefined&&$("#mFollowDate"))$("#mFollowDate").value=patch.follow;}
+  return msg;}
+const fmtDay=ts=>ts?new Date(ts).toLocaleDateString("es-PE",{day:"2-digit",month:"2-digit"}):"";
+function msgPlanText(l){const plan=msgPlan(l);if(!plan.last)return"";if(plan.done)return"secuencia cerrada";return"siguiente: "+plan.step+"º toque el "+fmtDay(plan.dueTs);}
 // ---- Clasificación de leads ----
 const SYSTEM_V={farmacia:1,taller_celulares:1,restaurante:1,dental:1,gimnasio:1,bodega:1,ferreteria:1,hotel:1,belleza:1,veterinaria:1};
 function classify(l){const needsWeb=!realWeb(l);const v=detectV(l.category);const needsSystem=!!(v&&SYSTEM_V[v]);const offer="sistema";const s=scoreOf(l);const tier=s>=70?"alta":(s>=40?"media":"baja");return{offer,needsWeb,needsSystem,vertical:v,tier,score:Math.round(s)};}
@@ -2419,7 +2575,7 @@ function card(l){
   h+=`<div style="min-width:0"><h3>${esc(l.title)}</h3>`;
   if(l.category)h+=`<span class="tag" title="${esc(l.category)}">${esc(normCat(l.category))}</span>`;
   if(l.rating)h+=`<div class="rating"><b>★ ${l.rating.toFixed(1)}</b> · ${l.reviews} reseñas</div>`;
-  const v=detectV(l.category);if(v)h+=`<div class="sug">💡 ${esc(PITCHES.verticals[v].label)}</div>`;
+  const v=detectV(l.category);if(v&&SkyMsg.OFFERS[v])h+=`<div class="sug">💡 ${esc(SkyMsg.OFFERS[v].label)}</div>`;
   h+=`</div></div>`;
   if(!realWeb(l))h+=`<span class="flag">🔥 SIN SISTEMA · prospecto ideal</span>`;
   h+=`<div class="badges"><span class="b2 ${realWeb(l)?"yes":"no"}">🌐 ${realWeb(l)?"Web propia":(hasSoc(l)?"Solo redes":"Sin web")}</span>${(()=>{const o=socialOf(l),n=[o.fb?"FB":"",o.ig?"IG":"",o.tt?"TikTok":""].filter(Boolean);return n.length?`<span class="b2 yes">📱 ${n.join(" · ")}</span>`:"";})()}<span class="b2 ${wa?"yes":"no"}">${isMobile(l.phone)?"📱":"☎️"} ${wa?(isMobile(l.phone)?"WhatsApp":"Fijo"):"Sin tel."}</span><span class="b2 ${email?"yes":"no"}">✉️ ${email?"Correo":"Sin correo"}</span></div>`;
@@ -2439,10 +2595,12 @@ function card(l){
   if(so.tt)h+=`<a class="chip tt" target="_blank" href="${esc(so.tt)}">TikTok</a>`;
   h+=`<button class="chip pdf" data-pdf title="Descargar propuesta en PDF">📄 PDF</button><button class="chip msg" data-msg>✍️ Mensaje</button></div>`;
   h+=`<div class="card-foot"><select class="pipe" data-state style="color:${STATES[m.state].c}">`+Object.entries(STATES).map(([k,v])=>`<option value="${k}" ${m.state===k?"selected":""}>${v.l}</option>`).join("")+`</select>`;
-  if(ds!=null)h+=`<span class="stale">hace ${ds}d</span>`;
+  if(ds!=null)h+=`<span class="stale">hace ${ds}d</span>`;const mp=msgPlanText(l);if(mp)h+=`<span class="stale" title="Secuencia de mensajes">✉️ ${esc(mp)}</span>`;
   if(l.link)h+=`<a class="chip" style="margin-left:auto;border:none" target="_blank" href="${esc(l.link)}">Maps ↗</a>`;
   h+=`</div>`;el.innerHTML=h;
   el.querySelector("[data-msg]").onclick=()=>openModal(l);
+  const waA=el.querySelector(".chip.wa");if(waA)waA.addEventListener("click",()=>{recordMessage(l,"wa");setTimeout(render,50);});
+  const mailA=el.querySelector(".chip.mail");if(mailA)mailA.addEventListener("click",()=>{recordMessage(l,"mail");setTimeout(render,50);});
   const pb=el.querySelector("[data-pdf]");if(pb)pb.onclick=()=>proposalPDF(l);
   const sel=el.querySelector("[data-state]");sel.onchange=e=>{setMeta(id,{state:e.target.value});el.className="card st-"+e.target.value;sel.style.color=STATES[e.target.value].c;updateStats();if(!$("#tab-metricas").hidden)renderMetrics();};
   return el;
@@ -2510,6 +2668,8 @@ function renderMetrics(){
   $("#mCats").innerHTML=top.length?top.map(([c,n])=>bar(c,n,cmax)).join(""):'<p class="help">Sin datos aún.</p>';
   $("#mWeb").innerHTML=bar("Sin web (prospectos)",noweb,total,"")+bar("Con web",total-noweb,total,"");
   $("#mClass").innerHTML=bar("🌐 Web + presencia",web,total,"")+bar("🧾 Sistema de gestión",total-web,total,"")+'<div style="height:8px"></div>'+bar("🔥 Prioridad alta",alta,total,"funnel")+bar("⭐ Prioridad media",media,total,"funnel")+bar("Prioridad baja",baja,total,"funnel");
+  const vs=SkyMsg.variantStats(LEADS.map(l=>getMeta(idOf(l)))),vp=$("#varPanel"),vAny=SkyMsg.VARIANTS.some(v=>vs[v].leads>0);
+  if(vp){vp.hidden=!vAny;if(vAny){const vmax=Math.max(1,...SkyMsg.VARIANTS.map(v=>vs[v].leads));$("#mVariants").innerHTML=SkyMsg.VARIANTS.map(v=>bar("Variante "+v+" · "+vs[v].leads+" negocio"+(vs[v].leads===1?"":"s")+" · "+vs[v].sent+" mensaje"+(vs[v].sent===1?"":"s")+(vs[v].rate!=null?" · "+vs[v].rate+"% respondió":""),vs[v].replied,vmax,"funnel")).join("");}}
   const ctys=Object.entries(byC).sort((a,b)=>b[1]-a[1]),cp=$("#ctryPanel");
   if(ctys.length){
     cp.hidden=false;const cmaxC=Math.max(1,...ctys.map(x=>x[1])),CC2=Object.fromEntries(COUNTRIES.map(c=>[c.code,c]));
@@ -2520,19 +2680,21 @@ function renderMetrics(){
 // ---- Modal ----
 const myName=()=>($("#myName").value||"").trim()||"[tu nombre]";
 function demoLinkFor(l){return (store.get("bc3k_demo_sist","")||"").trim();}
-function offerService(l){const c=classify(l);return c.vertical?("v:"+c.vertical):"s:sistema";}
-function applyTpl(tpl,l,demo){let t=(""+tpl).replace(/\{negocio\}/gi,l.title||"tu negocio").replace(/\{nombre\}/gi,myName()).replace(/\{demo\}/gi,demo||"");if(!/\{demo\}/i.test(tpl)&&demo)t+="\n\n👉 Pruébelo 100% gratis aquí y déjenos su feedback: "+demo;return t;}
-function cardWaText(l){const link=demoLinkFor(l);const tpl=(store.get("bc3k_tpl","")||"").trim();if(tpl&&validTpl(tpl))return applyTpl(tpl,l,link);let t=pitchBy(offerService(l)).build(myName(),l.title,l);if(link)t+="\n\n👉 Pruébelo 100% gratis aquí y déjenos su feedback: "+link;return t;}
-function cardMailHref(l){const email=(l.emails&&l.emails[0])||"";if(!email)return"";const subj="Herramienta 100% gratis para "+(l.title||"su negocio");return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(cardWaText(l))}`;}
-function buildMsg(){const link=demoLinkFor(current);let t;if($("#mFollow").checked){t=FOLLOWUP(myName(),current.title,current);if(link)t+="\n\n👉 Pruébelo 100% gratis aquí y déjenos su feedback: "+link;}else{const tpl=(store.get("bc3k_tpl","")||"").trim();if(tpl&&validTpl(tpl))t=applyTpl(tpl,current,link);else{t=pitchBy($("#mService").value).build(myName(),current.title,current);if(link)t+="\n\n👉 Pruébelo 100% gratis aquí y déjenos su feedback: "+link;}}$("#mText").value=t;}
+// (offerService eliminado: la oferta la decide SkyMsg.offerFor)
+function applyTpl(tpl,l,demo){let t=(""+tpl).replace(/\{negocio\}/gi,l.title||"tu negocio").replace(/\{nombre\}/gi,myName()).replace(/\{demo\}/gi,demo||"");if(!/\{demo\}/i.test(tpl)&&demo)t+="\n\nSi prefiere verlo antes: "+demo;return t;}
+function cardWaText(l){return composeMessage(l).text;}
+function cardMailHref(l){const email=(l.emails&&l.emails[0])||"";if(!email)return"";const subj=SkyMsg.emailSubject(l,msgPlan(l).step);return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(cardWaText(l))}`;}
+function buildMsg(){if(!current)return;const step=+$("#mStep").value||1;const msg=composeMessage(current,step,$("#mService").value);$("#mText").value=msg.text;const n=msg.text.split("\n")[0].length;const mc=$("#mChars");if(mc){mc.textContent="· "+n+" / "+SkyMsg.MAX_CHARS+" caracteres";mc.style.color=n>SkyMsg.MAX_CHARS?"var(--danger)":"var(--muted)";}}
 function openModal(l){current=l;const id=idOf(l),m=getMeta(id);
-  $("#mTitle").textContent=l.title;$("#mSub").textContent=((l.phone?("📞 "+l.phone):"")+(l.emails[0]?("   ✉️ "+l.emails[0]):""))||"Sin contacto directo";$("#mFollow").checked=false;
+  $("#mTitle").textContent=l.title;$("#mSub").textContent=((l.phone?("📞 "+l.phone):"")+(l.emails[0]?("   ✉️ "+l.emails[0]):""))||"Sin contacto directo";
+  const plan=msgPlan(l);$("#mStep").value=String(plan.done?3:plan.step);const hist=msgHistory(l);
+  $("#mMsgHist").innerHTML=hist.length?("Enviados: "+hist.map(x=>x.step+"º por "+({wa:"WhatsApp",mail:"correo",copy:"copia"}[x.channel]||x.channel)+" el "+fmtDay(x.ts)+" ("+x.variant+")").join(" · ")+(plan.done?" · secuencia cerrada":" · siguiente: "+plan.step+"º el "+fmtDay(plan.dueTs))):"Sin mensajes enviados todavía · variante "+SkyMsg.variantFor(l);
   const ms=$("#mStats");if(ms){const r=statLine(l),cur=curOf(l),pr=precioDe(l);
     const nota=`<span class="soloTuyo">💵 solo para ti · cobra en ${esc(cur.sym)} (${esc(cur.name)})${pr?" · tu precio aquí: "+esc(pr):""} · no va en el mensaje</span>`;
     ms.hidden=false;ms.innerHTML=(r?r.txt+"<br>":"")+nota;}
-  const G=[["Acceso gratis / feedback (por rubro)","v",PITCHES.verticals],["Servicio general (gratis / feedback)","s",PITCHES.servicios]];
-  $("#mService").innerHTML=G.map(([lb,g,o])=>`<optgroup label="${lb}">`+Object.entries(o).map(([k,v])=>`<option value="${g}:${k}">${v.label}</option>`).join("")+`</optgroup>`).join("");
-  const vk=detectV(l.category);$("#mService").value=vk?("v:"+vk):"s:sistema";
+  const ent=Object.entries(SkyMsg.OFFERS),verts=ent.filter(([k])=>!SkyMsg.SERVICES.includes(k)),servs=ent.filter(([k])=>SkyMsg.SERVICES.includes(k));
+  $("#mService").innerHTML=`<optgroup label="Por rubro">`+verts.map(([k,v])=>`<option value="${k}">${v.label}</option>`).join("")+`</optgroup><optgroup label="Servicio general">`+servs.map(([k,v])=>`<option value="${k}">${v.label}</option>`).join("")+`</optgroup>`;
+  $("#mService").value=SkyMsg.offerFor(l).key;
   $("#mState").innerHTML=Object.entries(STATES).map(([k,v])=>`<option value="${k}" ${m.state===k?"selected":""}>${v.l}</option>`).join("");
   $("#mFollowDate").value=m.follow||"";$("#mNotes").value=m.notes||"";buildMsg();$("#modalBg").classList.add("open");}
 function saveModal(){if(current)setMeta(idOf(current),{notes:$("#mNotes").value,state:$("#mState").value,follow:$("#mFollowDate").value});}
@@ -2862,11 +3024,11 @@ $("#profNorm").onclick=()=>{$("#cfgPmin").value=3;$("#cfgPmax").value=8;$("#cfgW
 $("#profTurbo").onclick=()=>{$("#cfgPmin").value=1;$("#cfgPmax").value=3;$("#cfgWorkers").value=2;saveCfg();toast("Perfil Turbo: 2 celdas a la vez (más rápido, más riesgo)");};
 $("#proxFetch").onclick=()=>{if(!confirm("Traer proxies públicas GRATIS y probar cuáles funcionan.\n\nOjo: son de terceros, poco confiables y pueden ver tu tráfico. Para volumen serio usa residenciales de pago.\n\n¿Continuar?"))return;const b=$("#proxFetch");b.disabled=true;b.textContent="Buscando…";toast("Buscando proxies vivas… puede tardar ~30s");fetch("/api/proxies/fetch",{method:"POST"}).then(r=>r.json()).then(j=>{$("#cfgProxies").value=j.proxies||"";toast(j.working?(j.working+" proxies vivas de "+j.total+" · guardadas y listas para el escaneo"):("0 vivas de "+j.total+" — reintenta o usa proxies de pago"));}).catch(()=>toast("No se pudo (¿sin internet o servidor?)")).finally(()=>{b.disabled=false;b.textContent="🌐 Proxies gratis";});};
 $("#viewBtn").onclick=()=>setView(!kanbanOn);
-$("#mService").onchange=buildMsg;$("#mFollow").onchange=buildMsg;$("#mClose").onclick=closeModal;$("#mPdf1").onclick=()=>{if(current)proposalPDF(current,"one");};
+$("#mService").onchange=buildMsg;$("#mStep").onchange=buildMsg;$("#mClose").onclick=closeModal;$("#mPdf1").onclick=()=>{if(current)proposalPDF(current,"one");};
 $("#mPdf").onclick=()=>{if(current)proposalPDF(current);};$("#modalBg").onclick=e=>{if(e.target===$("#modalBg"))closeModal();};
-$("#mCopy").onclick=()=>{if(current)setMeta(idOf(current),{lastContact:Date.now(),state:getMeta(idOf(current)).state==="nuevo"?"contactado":getMeta(idOf(current)).state});saveModal();copyTxt($("#mText").value,"Mensaje copiado ✓");};
-$("#mWa").onclick=()=>{const n=waN(current.phone,current.country);if(!n){toast("Sin teléfono");return;}setMeta(idOf(current),{lastContact:Date.now(),state:"contactado"});saveModal();window.open(`https://wa.me/${n}?text=${encodeURIComponent($("#mText").value)}`,"_blank");};
-$("#mMail").onclick=()=>{const e=current.emails[0];if(!e){toast("Sin correo");return;}setMeta(idOf(current),{lastContact:Date.now()});saveModal();window.open(`mailto:${e}?subject=${encodeURIComponent("Propuesta para "+current.title)}&body=${encodeURIComponent($("#mText").value)}`);};
+$("#mCopy").onclick=()=>{if(current)recordMessage(current,"copy",+$("#mStep").value,$("#mService").value);saveModal();copyTxt($("#mText").value,"Mensaje copiado ✓");};
+$("#mWa").onclick=()=>{const n=waN(current.phone,current.country);if(!n){toast("Sin teléfono");return;}recordMessage(current,"wa",+$("#mStep").value,$("#mService").value);saveModal();window.open(`https://wa.me/${n}?text=${encodeURIComponent($("#mText").value)}`,"_blank");};
+$("#mMail").onclick=()=>{const e=current.emails[0];if(!e){toast("Sin correo");return;}const st=+$("#mStep").value;recordMessage(current,"mail",st,$("#mService").value);saveModal();window.open(`mailto:${e}?subject=${encodeURIComponent(SkyMsg.emailSubject(current,st))}&body=${encodeURIComponent($("#mText").value)}`);};
 $("#guideBtn").onclick=()=>$("#guideBg").classList.add("open");$("#guideClose").onclick=()=>$("#guideBg").classList.remove("open");$("#guideBg").onclick=e=>{if(e.target===$("#guideBg"))$("#guideBg").classList.remove("open");};
 $("#myName").value=store.get("bc3k_name","")||"Bryan Salirrosas";if(!store.get("bc3k_name",""))store.set("bc3k_name",$("#myName").value);$("#myName").oninput=e=>store.set("bc3k_name",e.target.value);
 if($("#cfgContact")){if(!store.get("bc3k_contact",""))store.set("bc3k_contact","salirrosasbryan18@gmail.com");$("#cfgContact").value=store.get("bc3k_contact","");$("#cfgContact").oninput=e=>store.set("bc3k_contact",e.target.value);}
