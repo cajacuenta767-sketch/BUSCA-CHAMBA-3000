@@ -318,6 +318,7 @@
           <div class="fld"><label>Modo seguro</label><label class="chk" style="padding:8px 0"><input type="checkbox" id="cfgSafe" checked> Pausas + auto-pausa al detectar bloqueo</label></div>
           <div class="fld"><label>Pausa entre celdas (seg, mín–máx)</label><div style="display:flex;gap:6px"><input class="field num" id="cfgPmin" type="number" min="0" value="3"><input class="field num" id="cfgPmax" type="number" min="0" value="8"></div></div>
           <div class="fld"><label>Velocidad (búsquedas a la vez)</label><input class="field num" id="cfgConc" type="number" min="1" max="8" value="1" title="1 = lo más seguro. 2-3 va bien si tienes proxies."></div>
+          <div class="fld"><label>Celdas a la vez (trabajadores)</label><input class="field num" id="cfgWorkers" type="number" min="1" max="4" value="1" title="1 = secuencial, lo más seguro. 2 duplica la velocidad; 3-4 solo con proxies residenciales."></div>
           <div class="fld"><label>Cortar celda tras (seg sin resultados)</label><input class="field num" id="cfgInact" type="number" min="45" max="180" value="75"></div>
           <div class="fld"><label>Reintentos</label><label class="chk" style="padding:8px 0"><input type="checkbox" id="cfgRetry" checked> Reintentar celdas con error</label></div>
         </div>
@@ -1621,7 +1622,7 @@ function setProg(done,total,found,run,pau){
 }
 function detectServer(){fetch("/api/status").then(r=>r.ok?r.json():Promise.reject()).then(()=>{SERVER=true;setMode(true);
   fetch("/api/leads").then(r=>r.json()).then(d=>{(d.leads||[]).forEach(l=>{if(l._meta)meta[idOf(l)]=l._meta;});loadAll(d.leads||[]);if(d.cells&&d.cells.length)drawServerCells(d.cells);if(d.history)renderHistory(d.history);onStatus(d.status||{});});
-  fetch("/api/config").then(r=>r.json()).then(c=>{$("#cfgChat").value=c.telegramChat||"";$("#cfgProxies").value=c.proxies||"";$("#cfgWebhook").value=c.webhookUrl||"";$("#cfgNotify").checked=!!c.notify;$("#cfgSafe").checked=c.safeMode!==false;if(c.conc!=null)$("#cfgConc").value=c.conc;if(c.inactivity!=null)$("#cfgInact").value=c.inactivity;if(c.pauseMin!=null)$("#cfgPmin").value=c.pauseMin;if(c.pauseMax!=null)$("#cfgPmax").value=c.pauseMax;$("#cfgExclude").value=c.exclude||"";if(c.maxLeads!=null)$("#cfgMaxLeads").value=c.maxLeads;$("#cfgRetry").checked=c.retryFailed!==false;if(c.hasToken)$("#cfgToken").placeholder="(token guardado)";}).catch(()=>{});
+  fetch("/api/config").then(r=>r.json()).then(c=>{$("#cfgChat").value=c.telegramChat||"";$("#cfgProxies").value=c.proxies||"";$("#cfgWebhook").value=c.webhookUrl||"";$("#cfgNotify").checked=!!c.notify;$("#cfgSafe").checked=c.safeMode!==false;if(c.conc!=null)$("#cfgConc").value=c.conc;if(c.workers!=null)$("#cfgWorkers").value=c.workers;if(c.inactivity!=null)$("#cfgInact").value=c.inactivity;if(c.pauseMin!=null)$("#cfgPmin").value=c.pauseMin;if(c.pauseMax!=null)$("#cfgPmax").value=c.pauseMax;$("#cfgExclude").value=c.exclude||"";if(c.maxLeads!=null)$("#cfgMaxLeads").value=c.maxLeads;$("#cfgRetry").checked=c.retryFailed!==false;if(c.hasToken)$("#cfgToken").placeholder="(token guardado)";}).catch(()=>{});
   connectSSE();}).catch(()=>{SERVER=false;setMode(false);meta=store.get("bc3k_meta",{});render();});}
 
 // ---- Escaneo ----
@@ -1639,7 +1640,7 @@ function estimate(){if(!map){$("#estTxt").textContent="";return;}
   $("#estTxt").textContent=`≈ ${n} celdas`+(adj?` · celda auto-ajustada a ${km} km`:"")+` · tiempo aprox. ${min<60?min+" min":(Math.round(min/6)/10)+" h"} (depende de proxies/conexión)`;}
 
 // ---- Config ----
-function saveCfg(){const b={telegramChat:$("#cfgChat").value.trim(),proxies:$("#cfgProxies").value.trim(),webhookUrl:$("#cfgWebhook").value.trim(),notify:$("#cfgNotify").checked,safeMode:$("#cfgSafe").checked,conc:+$("#cfgConc").value||1,inactivity:+$("#cfgInact").value||20,pauseMin:+$("#cfgPmin").value||0,pauseMax:+$("#cfgPmax").value||0,exclude:$("#cfgExclude").value,maxLeads:+$("#cfgMaxLeads").value||0,retryFailed:$("#cfgRetry").checked};const tok=$("#cfgToken").value.trim();if(tok)b.telegramToken=tok;fetch("/api/config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}).then(()=>toast("Ajustes guardados ✓")).catch(()=>toast("No se pudo guardar"));}
+function saveCfg(){const b={telegramChat:$("#cfgChat").value.trim(),proxies:$("#cfgProxies").value.trim(),webhookUrl:$("#cfgWebhook").value.trim(),notify:$("#cfgNotify").checked,safeMode:$("#cfgSafe").checked,conc:+$("#cfgConc").value||1,workers:Math.max(1,Math.min(4,+$("#cfgWorkers").value||1)),inactivity:+$("#cfgInact").value||20,pauseMin:+$("#cfgPmin").value||0,pauseMax:+$("#cfgPmax").value||0,exclude:$("#cfgExclude").value,maxLeads:+$("#cfgMaxLeads").value||0,retryFailed:$("#cfgRetry").checked};const tok=$("#cfgToken").value.trim();if(tok)b.telegramToken=tok;fetch("/api/config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}).then(()=>toast("Ajustes guardados ✓")).catch(()=>toast("No se pudo guardar"));}
 function testTg(){fetch("/api/test-telegram",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({telegramToken:$("#cfgToken").value.trim(),telegramChat:$("#cfgChat").value.trim()})}).then(r=>r.json()).then(j=>{toast(j.status===200?"✅ Mensaje enviado a Telegram":"❌ "+((j.body||j.error||"").slice(0,60)));}).catch(()=>toast("Error de conexión"));}
 
 // ---- Herramientas ----
@@ -1712,9 +1713,9 @@ $("#pauseBtn").onclick=()=>post("/api/scan/pause");$("#resumeBtn").onclick=()=>p
 $("#countrySel").onchange=()=>{store.set("bc3k_cc",$("#countrySel").value||"PE");fillZones();goZone();};$("#zoneSel").onchange=goZone;$("#saveZone").onclick=saveMyZone;$("#myZones").onchange=goMyZone;
 $("#fitPins").onclick=fitPins;$("#heatBtn").onclick=toggleHeat;
 $("#cfgSave").onclick=saveCfg;$("#cfgTest").onclick=testTg;
-$("#profSafe").onclick=()=>{$("#cfgPmin").value=6;$("#cfgPmax").value=12;$("#cfgSafe").checked=true;saveCfg();toast("Perfil Sigiloso");};
-$("#profNorm").onclick=()=>{$("#cfgPmin").value=3;$("#cfgPmax").value=8;$("#cfgSafe").checked=true;saveCfg();toast("Perfil Normal");};
-$("#profTurbo").onclick=()=>{$("#cfgPmin").value=1;$("#cfgPmax").value=3;saveCfg();toast("Perfil Turbo (más rápido, más riesgo)");};
+$("#profSafe").onclick=()=>{$("#cfgPmin").value=6;$("#cfgPmax").value=12;$("#cfgWorkers").value=1;$("#cfgSafe").checked=true;saveCfg();toast("Perfil Sigiloso");};
+$("#profNorm").onclick=()=>{$("#cfgPmin").value=3;$("#cfgPmax").value=8;$("#cfgWorkers").value=1;$("#cfgSafe").checked=true;saveCfg();toast("Perfil Normal");};
+$("#profTurbo").onclick=()=>{$("#cfgPmin").value=1;$("#cfgPmax").value=3;$("#cfgWorkers").value=2;saveCfg();toast("Perfil Turbo: 2 celdas a la vez (más rápido, más riesgo)");};
 $("#proxFetch").onclick=()=>{if(!confirm("Traer proxies públicas GRATIS y probar cuáles funcionan.\n\nOjo: son de terceros, poco confiables y pueden ver tu tráfico. Para volumen serio usa residenciales de pago.\n\n¿Continuar?"))return;const b=$("#proxFetch");b.disabled=true;b.textContent="Buscando…";toast("Buscando proxies vivas… puede tardar ~30s");fetch("/api/proxies/fetch",{method:"POST"}).then(r=>r.json()).then(j=>{$("#cfgProxies").value=j.proxies||"";toast(j.working?(j.working+" proxies vivas de "+j.total+" · guardadas y listas para el escaneo"):("0 vivas de "+j.total+" — reintenta o usa proxies de pago"));}).catch(()=>toast("No se pudo (¿sin internet o servidor?)")).finally(()=>{b.disabled=false;b.textContent="🌐 Proxies gratis";});};
 $("#viewBtn").onclick=()=>setView(!kanbanOn);
 $("#mService").onchange=buildMsg;$("#mFollow").onchange=buildMsg;$("#mClose").onclick=closeModal;$("#mPdf").onclick=()=>{if(current)proposalPDF(current);};$("#modalBg").onclick=e=>{if(e.target===$("#modalBg"))closeModal();};

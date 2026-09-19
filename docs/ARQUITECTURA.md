@@ -96,6 +96,7 @@ BUSCA-CHAMBA-3000/
 └── docs/
     ├── ARQUITECTURA.md          # este archivo
     ├── API.md                   # endpoints y eventos SSE
+    ├── PROPUESTA-MEJORAS.md     # velocidad y funciones: hecho y por hacer, priorizado
     └── REVISION.md              # auditoría: problemas encontrados y qué se hizo
 ```
 
@@ -116,18 +117,19 @@ POST /api/scan/start {area, cellKm, mode, rubros, proxies, exclude, maxLeads, de
    ├─ store.setActiveScan()  → sobrevive a reinicios (autoResume)
    └─ bus: cells, status     → el mapa se pinta
    │
-   ▼  _processNext()  ──────────────────────────────────────────┐
-   ├─ runner.start(job)  → proceso hijo escribe data/cell.csv    │
-   ├─ cada 300 ms: _ingestCell() → csv.parseCSV → lead.rowToLead │
-   │       └─ ingestLead(): exclude → leadId → store.insertLead  │
-   │             └─ bus "lead" · notifier.notifyLead · maxLeads  │
-   ├─ stderr: BLOCK_RE → cell._blocked · QUOTA_RE → sin proxies  │
-   ├─ exit / ventana (cellMax) / watchdog 100 s → _finishCell()  │
-   │       ├─ reintentos si bloqueada (3 con proxies, 2 directo) │
-   │       ├─ store.addScanned(key)  (persistencia inmediata)    │
-   │       ├─ consecBlocks ≥ maxBlocks → enfriar 15/25 s         │
-   │       ├─ found ≥ subdivideAt → splitCell ×4 (bus cellsadd)  │
-   │       └─ _advance() → pausa aleatoria (pauseMin..pauseMax) ─┘
+   ▼  _fill(): ocupa hasta `workers` slots (1–4) con celdas pendientes ─────┐
+   │   (lanzamientos escalonados 1.5 s; respeta el enfriamiento global)      │
+   ├─ slot N: runner.start(job) → proceso hijo escribe data/cell-N.csv        │
+   ├─ cada 300 ms: _ingestCell(job) → readCellChunk(offset) (solo lo nuevo)   │
+   │       → splitCompleteRows → parseCSV → rowToLead → store.batch(insert)   │
+   │       └─ ingestLead(): exclude → leadId → bus "lead" · Telegram · tope   │
+   ├─ stderr: BLOCK_RE → cell._blocked · QUOTA_RE → sin proxies               │
+   ├─ exit / ventana (cellMax) / watchdog 100 s → _finishCell(job)            │
+   │       ├─ reintentos si bloqueada (3 con proxies, 2 directo)              │
+   │       ├─ store.addScanned(key)  (persistencia inmediata)                 │
+   │       ├─ consecBlocks ≥ maxBlocks → cooldownUntil (todos los slots)      │
+   │       ├─ found ≥ subdivideAt → splitCell ×4 (bus cellsadd)               │
+   │       └─ _release(job) → pausa aleatoria (pauseMin..pauseMax) → _fill() ─┘
    │
    ▼  _finish(): reintenta celdas "error" una vez → history · done · Telegram
 ```
@@ -239,7 +241,9 @@ del servidor no tocó el panel. Camino de evolución recomendado (no incluido en
 | Qué | Dónde | Por qué |
 |---|---|---|
 | Lista de proxies del backend | `ProxyService` (5 s) | antes se leían archivos en cada `status` (varias veces por segundo durante el escaneo) |
-| Sentencias SQL | `SqliteStore._prepare()` | preparadas una vez; escrituras por fila en vez de reescribir todo el JSON |
+| Sentencias SQL | `SqliteStore._prepare()` | preparadas una vez; escrituras por fila y por lote (`batch`) en vez de reescribir todo el JSON |
+| CSV de cada celda | `ScraperRunner.readCellChunk(slot, offset)` | se leen solo los bytes nuevos; el resto incompleto se guarda en `job.buf` |
+| Consultas del scraper | `ScraperRunner._lastQueries` | `q.txt` solo se reescribe si cambia |
 | Celdas barridas | `scanned_cells` + `markScanned()` | evita repetir zonas entre sesiones ("continuar donde se quedó") |
 | Panel | `Cache-Control: no-store` | el HTML cambia con cada versión; los CDN (Leaflet, jsPDF) sí se cachean en el navegador |
 | Estado del escaneo | memoria (`Scanner.scan`) + `kv.activeScan` | lo caliente en RAM; lo necesario para reanudar en disco |
@@ -251,7 +255,7 @@ estado SSE (siempre fresco).
 
 ## 8. Escalabilidad: qué cambiaría y qué no
 
-- **Hoy (1 usuario, 1 máquina):** un proceso Node, SQLite, un scraper a la vez. Suficiente para
+- **Hoy (1 usuario, 1 máquina):** un proceso Node, SQLite, de 1 a 4 scrapers a la vez (`workers`). Suficiente para
   decenas de miles de leads (medido: escritura por fila, lecturas indexadas).
 - **Siguiente escalón (varios usuarios / VPS):** el `Scanner` ya es una clase con dependencias
   inyectadas: instanciar uno por "cuenta" y añadir `account_id` a las tablas. `EventBus` puede

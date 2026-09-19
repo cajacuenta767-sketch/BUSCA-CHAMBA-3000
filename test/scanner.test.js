@@ -127,6 +127,46 @@ test("sin binario del scraper: error visible y sin auto-reanudación en bucle", 
   scanner.close();
 });
 
+test("workers=2: dos celdas a la vez, slots distintos y mismo resultado final", async () => {
+  const runner = new FakeRunner({ exitAfterMs: 120, csvByCell: (job) => CSV_HEADER + csvRow(Math.round(job.bbox[0] * 1000) + Math.round(job.bbox[1] * 1000) * 7) });
+  const settings = fastSettings({ workers: 2 });
+  const { scanner, store } = makeScanner({ runner, settings, timers: fastTimers(10) });
+  await scanner.start({ area: AREA_4_CELLS, cellKm: 1 });
+  await waitFor(() => runner.active === 2, { timeout: 2000 });
+  assert.equal(scanner.status().activeCells, 2);
+  assert.equal(scanner.status().workers, 2);
+  await waitFor(() => !scanner.running, { timeout: 8000 });
+  assert.equal(runner.maxActive, 2, "nunca más de 2 scrapers a la vez");
+  assert.equal(runner.jobs.length, 4);
+  assert.deepEqual([...new Set(runner.jobs.map((j) => j.slot))].sort(), [0, 1]);
+  assert.equal(store.countScanned(), 4);
+  assert.equal(store.history().length, 1);
+  scanner.close();
+});
+
+test("workers=1 (defecto): nunca hay dos scrapers a la vez", async () => {
+  const runner = new FakeRunner({ exitAfterMs: 40 });
+  const { scanner } = makeScanner({ runner, timers: fastTimers(10) });
+  await scanner.start({ area: AREA_4_CELLS, cellKm: 1 });
+  await waitFor(() => !scanner.running, { timeout: 8000 });
+  assert.equal(runner.maxActive, 1);
+  assert.equal(runner.jobs.length, 4);
+  scanner.close();
+});
+
+test("ingesta incremental: un CSV que crece se lee por trozos, sin duplicar ni perder filas partidas", async () => {
+  let calls = 0;
+  const full = CSV_HEADER + csvRow(1) + csvRow(2, { address: "Av. Multi\nlínea 2" }) + csvRow(3) + "Negocio 4,Farm";
+  const runner = new FakeRunner({ exitAfterMs: 10000, csvByCell: () => { calls++; return full.slice(0, Math.min(full.length, calls * 90)); } });
+  const { scanner, store } = makeScanner({ runner });
+  await scanner.start({ area: AREA_1_CELL, cellKm: 1 });
+  await waitFor(() => store.countLeads() === 3, { timeout: 4000 });
+  assert.equal(store.getLead("pid2").address, "Av. Multi\nlínea 2", "fila con salto de línea entrecomillado");
+  scanner.stop();
+  assert.equal(store.countLeads(), 3, "la fila incompleta del final no se guarda");
+  scanner.close();
+});
+
 test("autoResume retoma un escaneo que quedó activo", async () => {
   const store = new SqliteStore({ file: ":memory:" });
   store.setActiveScan({ running: true, area: AREA_1_CELL, mode: "all", cellKm: 1, email: false, demo: true });

@@ -105,6 +105,8 @@ class JsonStore {
   getActiveScan() { return this.db.activeScan || null; }
   setActiveScan(obj) { this.db.activeScan = obj || null; this._save(true); }
 
+  /** Agrupa varias escrituras (en JSON basta con el guardado diferido). */
+  batch(fn) { return fn(); }
   flush() { this._save(true); }
   close() { this.flush(); }
 }

@@ -175,6 +175,8 @@ class SqliteStore {
   kvGet(key) { const r = this.q.kvGet.get(key); return r ? r.value : null; }
   kvSet(key, value) { this.q.kvSet.run(key, String(value)); }
 
+  /** Agrupa varias escrituras en una transacción (una sincronización de disco en vez de N). */
+  batch(fn) { return this.transaction(fn); }
   flush() { /* SQLite escribe en cada operación */ }
   close() { try { this.db.close(); } catch (e) { /* ya cerrada */ } }
 }

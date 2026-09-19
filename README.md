@@ -162,6 +162,10 @@ src/app.js     raíz de composición   ·   src/server.js  arranque
   ambos almacenes, el orquestador con un scraper simulado, la API completa y SSE.
 - **Docker del panel:** `docker compose up -d panel` construye la imagen y lanza el scraper por
   Docker (necesita el socket montado, ya configurado en `docker-compose.yml`).
+- **Velocidad:** en ⚙️ Ajustes, **"Celdas a la vez"** (1–4) escanea varias celdas en paralelo, cada
+  una con su propio proceso; el perfil **Turbo** pone 2. Con 1 (defecto) el comportamiento es el
+  secuencial de siempre. La lectura del CSV es incremental y los leads se guardan por lotes. Qué
+  más se puede acelerar y qué funciones siguen: [`docs/PROPUESTA-MEJORAS.md`](docs/PROPUESTA-MEJORAS.md).
 - **Salud:** `GET /api/health` → `{ok, driver, leads, scanning, uptime}`.
 
 ## Uso responsable

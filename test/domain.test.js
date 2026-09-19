@@ -1,7 +1,7 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { parseCSV } = require("../src/domain/csv");
+const { parseCSV, splitCompleteRows } = require("../src/domain/csv");
 const lead = require("../src/domain/lead");
 const grid = require("../src/domain/grid");
 const proxy = require("../src/domain/proxy");
@@ -13,6 +13,13 @@ test("parseCSV: comillas, comillas escapadas y CRLF", () => {
 
 test("parseCSV: última fila sin salto de línea se conserva", () => {
   assert.deepEqual(parseCSV("a,b\n1,2"), [["a", "b"], ["1", "2"]]);
+});
+
+test("splitCompleteRows: corta solo en saltos de línea fuera de comillas", () => {
+  assert.deepEqual(splitCompleteRows("a,b\n1,2\n3,"), ["a,b\n1,2\n", "3,"]);
+  assert.deepEqual(splitCompleteRows('a,"x\ny"\n1,"par'), ['a,"x\ny"\n', '1,"par']);
+  assert.deepEqual(splitCompleteRows('1,"sin cerrar\n'), ["", '1,"sin cerrar\n']);
+  assert.deepEqual(splitCompleteRows(""), ["", ""]);
 });
 
 test("rowToLead: normaliza fila del scraper y detecta redes en cualquier columna", () => {

@@ -29,19 +29,29 @@ function fastSettings(extra = {}) {
 class FakeRunner {
   constructor({ csvByCell = () => "", exitAfterMs = 20, stderr = "" } = {}) {
     this.csvByCell = csvByCell; this.exitAfterMs = exitAfterMs; this.stderrText = stderr;
-    this.jobs = []; this.killed = 0; this.current = null;
+    this.jobs = []; this.killed = 0; this.bySlot = new Map(); this.active = 0; this.maxActive = 0; this.reads = 0;
   }
   start(job) {
     this.jobs.push(job);
     const child = new EventEmitter();
     child.stderr = new EventEmitter();
     child.pid = 1000 + this.jobs.length;
-    this.current = job;
-    child._t = setTimeout(() => { if (this.stderrText) child.stderr.emit("data", Buffer.from(this.stderrText)); child.emit("exit", 0); }, this.exitAfterMs);
+    this.bySlot.set(job.slot || 0, job);
+    this.active++; this.maxActive = Math.max(this.maxActive, this.active);
+    const done = () => { if (child._done) return; child._done = true; this.active--; };
+    child._t = setTimeout(() => { if (this.stderrText) child.stderr.emit("data", Buffer.from(this.stderrText)); done(); child.emit("exit", 0); }, this.exitAfterMs);
+    child._done = false; child._finish = done;
     return { child };
   }
-  readCellCsv() { return this.current ? this.csvByCell(this.current) : ""; }
-  kill(child) { this.killed++; clearTimeout(child._t); }
+  /** Misma semántica que el runner real: solo los bytes nuevos desde `offset`. */
+  readCellChunk(slot, offset) {
+    this.reads++;
+    const job = this.bySlot.get(slot || 0);
+    const full = Buffer.from(job ? this.csvByCell(job) : "", "utf8");
+    if (full.length <= offset) return { buf: null, next: offset };
+    return { buf: full.subarray(offset), next: full.length };
+  }
+  kill(child) { this.killed++; clearTimeout(child._t); if (child._finish) child._finish(); }
 }
 
 const CSV_HEADER = "title,category,address,phone,website,emails,review_rating,review_count,latitude,longitude,link,place_id\n";

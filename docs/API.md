@@ -20,7 +20,7 @@ En marcha:
 { "running": true, "paused": false, "mode": "all", "cellsTotal": 96, "cellsDone": 12,
   "overallTotal": 96, "overallDone": 12, "skipped": 4, "found": 87, "sessionSeen": 130,
   "totalDbLeads": 1327, "cellIdx": 13, "cellFound": 6, "cellSecs": 41, "scanSecs": 930,
-  "lastLeadSecs": 3, "queries": 15, "backendProxies": 0 }
+  "lastLeadSecs": 3, "queries": 15, "backendProxies": 0, "workers": 2, "activeCells": 2 }
 ```
 
 ### `GET /api/leads?limit=0&offset=0`
@@ -69,7 +69,7 @@ Envía `retry: 3000`, un `status` inicial y luego:
   "proxies": "ip:puerto\n…", "exclude": "casino, banco", "maxLeads": 0, "skipScanned": true,
   "email": false, "demo": false }
 ```
-Respuesta: `{ok, cells, mode, cellKm, adjusted, askedKm, skipped, pending, proxies}` o `{error}`.
+Respuesta: `{ok, cells, mode, cellKm, adjusted, askedKm, skipped, pending, proxies, workers}` o `{error}`.
 
 Reglas: máximo 550 celdas (sube `cellKm` solo hasta que quepa); celdas ya barridas se saltan si
 `skipScanned` ≠ false; sin binario del scraper → evento `error` y el escaneo no queda "activo".
@@ -92,11 +92,11 @@ Detiene el escaneo, borra todos los leads; conserva historial y celdas barridas.
 ```json
 { "telegramChat": "", "hasToken": false, "webhookUrl": "", "proxies": "", "notify": false, "leadsdb": false,
   "safeMode": true, "pauseMin": 3, "pauseMax": 8, "exclude": "", "maxLeads": 0, "retryFailed": true,
-  "conc": 1, "inactivity": 20, "cellMax": 6 }
+  "conc": 1, "inactivity": 20, "cellMax": 6, "workers": 1 }
 ```
 ### `POST /api/config`
 Acepta: strings `telegramToken telegramChat webhookUrl proxies leadsdbKey exclude`; números ≥ 0
-`pauseMin pauseMax depth maxBlocks subdivideAt maxLeads cellMax conc inactivity`; booleanos
+`pauseMin pauseMax depth maxBlocks subdivideAt maxLeads cellMax conc inactivity workers` (workers se acota a 1–4); booleanos
 `notify safeMode subdivide retryFailed`. Lo demás se ignora.
 
 ### `POST /api/test-telegram` `{telegramToken?, telegramChat?}` → respuesta de la API de Telegram.

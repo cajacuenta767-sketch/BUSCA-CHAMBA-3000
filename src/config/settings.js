@@ -9,11 +9,11 @@ const DEFAULTS = Object.freeze({
   telegramToken: "", telegramChat: "", webhookUrl: "", proxies: "", leadsdbKey: "",
   notify: false, safeMode: true, pauseMin: 3, pauseMax: 8, depth: 0, maxBlocks: 4,
   subdivide: true, subdivideAt: 90, exclude: "", maxLeads: 0, retryFailed: true,
-  cellMax: 6, conc: 1, inactivity: 20,
+  cellMax: 6, conc: 1, inactivity: 20, workers: 1,
 });
 
 const STRING_KEYS = ["telegramToken", "telegramChat", "webhookUrl", "proxies", "leadsdbKey", "exclude"];
-const NUMBER_KEYS = ["pauseMin", "pauseMax", "depth", "maxBlocks", "subdivideAt", "maxLeads", "cellMax", "conc", "inactivity"];
+const NUMBER_KEYS = ["pauseMin", "pauseMax", "depth", "maxBlocks", "subdivideAt", "maxLeads", "cellMax", "conc", "inactivity", "workers"];
 const BOOL_KEYS = ["notify", "safeMode", "subdivide", "retryFailed"];
 
 class Settings {
@@ -47,7 +47,7 @@ class Settings {
       telegramChat: c.telegramChat, hasToken: !!c.telegramToken, webhookUrl: c.webhookUrl, proxies: c.proxies,
       notify: !!c.notify, leadsdb: !!c.leadsdbKey, safeMode: c.safeMode !== false, pauseMin: c.pauseMin, pauseMax: c.pauseMax,
       exclude: c.exclude || "", maxLeads: c.maxLeads || 0, retryFailed: c.retryFailed !== false, conc: c.conc || 1,
-      inactivity: c.inactivity || 20, cellMax: c.cellMax || 6,
+      inactivity: c.inactivity || 20, cellMax: c.cellMax || 6, workers: c.workers || 1,
     };
   }
 

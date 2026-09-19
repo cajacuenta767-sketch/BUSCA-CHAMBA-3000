@@ -34,6 +34,8 @@ por qué importa y qué se hizo.
 | P2 | `statusObj()` llamaba a `getBackendProxies()` que leía dos archivos del disco (sync) en cada `broadcast("status")` — varias veces por segundo durante el escaneo. | Caché de 5 s en `ProxyService`. |
 | P3 | `/api/leads` devuelve todo siempre. | Se mantiene por compatibilidad; se añade `?limit&offset` para que el panel pueda paginar. |
 | P4 | `db.scanned.includes(key)` en un array de hasta 5000 elementos por cada celda. | `scanned_cells` con clave primaria (O(log n)); en JSON se mantiene igual. |
+| P5 | `ingestCell` releía y reparseaba **todo** el CSV de la celda cada 300 ms (O(filas²) por celda). | Lectura incremental por offset + `splitCompleteRows`; inserciones por lote. |
+| P6 | Una sola celda a la vez: pausas antibaneo y timeouts de celdas vacías se sumaban en serie. | Trabajadores en paralelo (`workers` 1–4, defecto 1). Detalle y medidas en `PROPUESTA-MEJORAS.md`. |
 
 ## 4. Riesgos de mantenibilidad
 
@@ -56,6 +58,8 @@ por qué importa y qué se hizo.
 | B5 | Un reintento programado (`setTimeout(runCell)`) podía ejecutarse después de `stop()`. | El timer de reintento se guardaba en `nextT` pero `runCell` no comprobaba si el escaneo seguía vivo. | Guarda `if (!scan || !scan.running) return` en `_runCell` y en el callback del reintento. |
 | B6 | Un cuerpo JSON de cualquier tamaño se acumulaba en memoria. | `body()` sin límite. | Límite de 1 MB → `413`, drenando el cuerpo para responder limpio. |
 | B7 | Comparación de credenciales con `===`. | Vulnerable a timing (menor, pero gratis de arreglar). | `crypto.timingSafeEqual` con longitudes comprobadas. |
+| B9 | Un reintento de celda que vencía mientras el escaneo estaba en pausa dejaba la celda en amarillo para siempre (y al reanudar se saltaba). | El callback del reintento no hacía nada si estaba en pausa. | El trabajo queda `waiting` y `resume()` lo relanza. |
+| B10 | Las celdas con error reintentadas al final nunca se cerraban por `exit`, solo por timeout. | `finish()` copiaba la celda entera, incluido `_timedout: true`, y el handler de `exit` lo respetaba. | Los reintentos crean una celda limpia; el timeout vive en el trabajo, no en la celda. |
 | B8 | (Introducido y cazado en la refactorización) `bus.emit("error")` sin oyente tumba el proceso. | Semántica especial de `error` en `EventEmitter`. | `broadcast` solo emite `error` si hay oyentes; test lo cubre. |
 
 ### Casos límite ahora cubiertos por tests
