@@ -40,6 +40,9 @@ function replaceBetween(html, start, end, content) {
 function build() {
   let html = fs.readFileSync(HTML, "utf8");
   html = replaceBetween(html, "<!-- @bundle:start -->", "<!-- @bundle:end -->", bundle());
+  const L = require(path.join(ROOT, "src/ui/logo.js"));
+  html = replaceBetween(html, "<!-- @logo:start -->", "<!-- @logo:end -->", '<div class="logo">' + L.isotypeSvg({ size: 34, variant: "color" }) + "</div>");
+  html = replaceBetween(html, "<!-- @favicon:start -->", "<!-- @favicon:end -->", '<link rel="icon" type="image/svg+xml" href="' + L.faviconDataUri().replace(/"/g, "&quot;") + '">');
   const cssFile = path.join(ROOT, CSS);
   if (fs.existsSync(cssFile)) html = replaceBetween(html, "<!-- @css:start -->", "<!-- @css:end -->", "<style>\n" + fs.readFileSync(cssFile, "utf8").trim() + "\n</style>");
   return html;

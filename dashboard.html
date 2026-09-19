@@ -7,6 +7,9 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>BUSCA-CHAMBA-3000</title>
+<!-- @favicon:start -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2048%2048%22%20width%3D%2264%22%20height%3D%2264%22%20role%3D%22img%22%20aria-label%3D%22Sky%20Tech%22%3E%3Ctitle%3ESky%20Tech%3C%2Ftitle%3E%3Crect%20x%3D%220%22%20y%3D%220%22%20width%3D%2248%22%20height%3D%2248%22%20rx%3D%2212%22%20fill%3D%22%230B3C68%22%2F%3E%3Ccircle%20cx%3D%2216.5%22%20cy%3D%2224.5%22%20r%3D%226.6%22%20fill%3D%22%23FFFFFF%22%2F%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%2219%22%20r%3D%229.2%22%20fill%3D%22%23FFFFFF%22%2F%3E%3Ccircle%20cx%3D%2233.6%22%20cy%3D%2224.8%22%20r%3D%226.2%22%20fill%3D%22%23FFFFFF%22%2F%3E%3Crect%20x%3D%229.9%22%20y%3D%2224.5%22%20width%3D%2230%22%20height%3D%228.6%22%20rx%3D%224.3%22%20fill%3D%22%23FFFFFF%22%2F%3E%3Cpath%20d%3D%22M28.8%2021.2%20L18.4%2033.9%20L24.6%2033.9%20L22%2043.6%20L33%2029.9%20L26.9%2029.9%20Z%22%20fill%3D%22%231FA2FF%22%2F%3E%3C%2Fsvg%3E">
+<!-- @favicon:end -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -15,15 +18,15 @@
 <style>
 :root{
     --bg:#f3f4fb;--surface:#ffffff;--surface-2:#eef0f8;--text:#141726;--muted:#616b84;--border:#e4e7f2;
-    --accent:#5b54e6;--accent-weak:#ecebfd;--accent-ink:#fff;
+    --brand-navy:#0B3C68;--brand-sky:#1FA2FF;--accent:#0F6FC6;--accent-weak:#E3F1FD;--accent-ink:#fff;
     --ok:#12a150;--ok-weak:#e4f6ea;--amber:#c77700;--amber-weak:#fbf0da;--danger:#e0484d;--danger-weak:#fbe9ea;
     --prospect:#e2670f;--prospect-weak:#fcecdf;--wa:#25d366;--mail:#0b93c9;--star:#dd9500;
     --shadow:0 1px 2px rgba(20,23,38,.05),0 6px 20px rgba(20,23,38,.06);--shadow-sm:0 1px 2px rgba(20,23,38,.06);
     --radius:16px;--radius-sm:11px;
     --font-d:'Sora',system-ui,sans-serif;--font-b:'IBM Plex Sans',system-ui,sans-serif;
   }
-  :root[data-theme="dark"]{--bg:#0b0f1e;--surface:#141a2c;--surface-2:#1b2238;--text:#e9ecf7;--muted:#94a0bd;--border:#27314c;--accent:#8f90fb;--accent-weak:#20233f;--ok:#39d98a;--ok-weak:#123023;--amber:#f0ad3c;--amber-weak:#3a2a12;--danger:#f2686c;--danger-weak:#3a1e20;--prospect:#f2894a;--prospect-weak:#3a2413;--mail:#41bdea;--star:#f2bb2e;--shadow:0 1px 2px rgba(0,0,0,.35),0 10px 30px rgba(0,0,0,.4);--shadow-sm:0 1px 2px rgba(0,0,0,.4)}
-  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b0f1e;--surface:#141a2c;--surface-2:#1b2238;--text:#e9ecf7;--muted:#94a0bd;--border:#27314c;--accent:#8f90fb;--accent-weak:#20233f;--ok:#39d98a;--ok-weak:#123023;--amber:#f0ad3c;--amber-weak:#3a2a12;--danger:#f2686c;--danger-weak:#3a1e20;--prospect:#f2894a;--prospect-weak:#3a2413;--mail:#41bdea;--star:#f2bb2e;--shadow:0 1px 2px rgba(0,0,0,.35),0 10px 30px rgba(0,0,0,.4);--shadow-sm:0 1px 2px rgba(0,0,0,.4)}}
+  :root[data-theme="dark"]{--bg:#0b0f1e;--surface:#141a2c;--surface-2:#1b2238;--text:#e9ecf7;--muted:#94a0bd;--border:#27314c;--accent:#5CB9FF;--accent-weak:#12304A;--ok:#39d98a;--ok-weak:#123023;--amber:#f0ad3c;--amber-weak:#3a2a12;--danger:#f2686c;--danger-weak:#3a1e20;--prospect:#f2894a;--prospect-weak:#3a2413;--mail:#41bdea;--star:#f2bb2e;--shadow:0 1px 2px rgba(0,0,0,.35),0 10px 30px rgba(0,0,0,.4);--shadow-sm:0 1px 2px rgba(0,0,0,.4)}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b0f1e;--surface:#141a2c;--surface-2:#1b2238;--text:#e9ecf7;--muted:#94a0bd;--border:#27314c;--accent:#5CB9FF;--accent-weak:#12304A;--ok:#39d98a;--ok-weak:#123023;--amber:#f0ad3c;--amber-weak:#3a2a12;--danger:#f2686c;--danger-weak:#3a1e20;--prospect:#f2894a;--prospect-weak:#3a2413;--mail:#41bdea;--star:#f2bb2e;--shadow:0 1px 2px rgba(0,0,0,.35),0 10px 30px rgba(0,0,0,.4);--shadow-sm:0 1px 2px rgba(0,0,0,.4)}}
   *{box-sizing:border-box}html,body{margin:0}
   [hidden]{display:none!important}
   body{background:radial-gradient(1100px 560px at 100% -12%,color-mix(in srgb,var(--accent) 11%,transparent),transparent 60%),radial-gradient(900px 480px at -12% 112%,color-mix(in srgb,var(--mail) 10%,transparent),transparent 60%),var(--bg);color:var(--text);font:14.5px/1.55 var(--font-b);-webkit-font-smoothing:antialiased;min-height:100vh}
@@ -34,7 +37,8 @@
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
   header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:16px}
   .brand{display:flex;align-items:center;gap:12px;margin-right:auto}
-  .logo{width:42px;height:42px;border-radius:12px;background:#0B3C68;display:grid;place-items:center;box-shadow:var(--shadow-sm)}
+  .logo{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;box-shadow:var(--shadow-sm)}
+  .logo svg{width:42px;height:42px;border-radius:12px}
   .logo svg{display:block}
   .brand .firma{margin:0;font-size:11px;color:var(--muted);letter-spacing:.6px}
   .brand .firma b{color:#1FA2FF}
@@ -209,7 +213,9 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="brand"><div class="logo"><svg viewBox="0 0 48 48" width="34" height="34" aria-label="Sky Tech"><rect width="48" height="48" rx="11" fill="#0B3C68"/><g fill="#FFFFFF"><circle cx="15.4" cy="21.1" r="6"/><circle cx="24" cy="17.8" r="7.9"/><circle cx="32.6" cy="21.6" r="5.5"/><rect x="15.4" y="21.1" width="17.2" height="5.5"/></g><path d="M24.5 25 L19.1 34.7 L23.5 34.7 L22.4 42.2 L28.9 32.5 L24.5 32.5 Z" fill="#1FA2FF"/></svg></div><div><h1>BUSCA-CHAMBA-3000</h1><p>Radar de negocios → clientes</p><p class="firma">por SKY <b>TECH</b></p></div></div>
+    <div class="brand"><!-- @logo:start -->
+<div class="logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="34" height="34" role="img" aria-label="Sky Tech"><title>Sky Tech</title><rect x="0" y="0" width="48" height="48" rx="12" fill="#0B3C68"/><circle cx="16.5" cy="24.5" r="6.6" fill="#FFFFFF"/><circle cx="25" cy="19" r="9.2" fill="#FFFFFF"/><circle cx="33.6" cy="24.8" r="6.2" fill="#FFFFFF"/><rect x="9.9" y="24.5" width="30" height="8.6" rx="4.3" fill="#FFFFFF"/><path d="M28.8 21.2 L18.4 33.9 L24.6 33.9 L22 43.6 L33 29.9 L26.9 29.9 Z" fill="#1FA2FF"/></svg></div>
+<!-- @logo:end --><div><h1>BUSCA-CHAMBA-3000</h1><p>Radar de negocios → clientes</p><p class="firma">por SKY <b>TECH</b></p></div></div>
     <span class="mode" id="modeTag"><span class="dot" id="modeDot"></span><span id="modeTxt">…</span></span>
     <input class="field name-input" id="myName" placeholder="Tu nombre" title="Sale en los mensajes y en el PDF">
     <button class="btn ghost" id="themeBtn" title="Tema">🌙</button>
@@ -941,6 +947,122 @@ function analyze(lead, leadsOrIndex) {
 module.exports = { analyze, createIndex, findPeers, computeStats, buildInsights, anchorFact, haversineKm, cityOf, vocabOf, MIN_PEERS, RADII_KM, RULES };
 
 };
+defs["logo"]=function(module,exports,require){
+"use strict";
+/**
+ * Logo Sky Tech: una sola fuente de verdad, dibujada como lista de primitivas.
+ * De aquí salen el SVG (panel, marca/, favicon) y el dibujo vectorial en el PDF (jsPDF),
+ * así los tres son exactamente el mismo dibujo.
+ *
+ * Concepto: una nube (el sistema vive en la nube, se abre desde cualquier celular) atravesada por
+ * un rayo (la energía que le pone al negocio). Caja de 48 × 48; legible desde 16 px.
+ */
+const COLORS = Object.freeze({ navy: "#0B3C68", sky: "#1FA2FF", ink: "#11253A", muted: "#5C7183", white: "#FFFFFF" });
+
+/**
+ * Primitivas en la caja 0..48. `role` decide el color según la variante.
+ *  - bg: cuadrado redondeado de fondo
+ *  - cloud: silueta de nube (unión de círculos y un rectángulo con extremos redondeados)
+ *  - bolt: rayo (polígono cerrado, en el borde inferior de la nube)
+ */
+const SHAPES = Object.freeze([
+  { role: "bg", type: "rrect", x: 0, y: 0, w: 48, h: 48, r: 12 },
+  { role: "cloud", type: "circle", cx: 16.5, cy: 24.5, r: 6.6 },
+  { role: "cloud", type: "circle", cx: 25, cy: 19, r: 9.2 },
+  { role: "cloud", type: "circle", cx: 33.6, cy: 24.8, r: 6.2 },
+  { role: "cloud", type: "rrect", x: 9.9, y: 24.5, w: 30, h: 8.6, r: 4.3 },
+  { role: "bolt", type: "poly", points: [[28.8, 21.2], [18.4, 33.9], [24.6, 33.9], [22.0, 43.6], [33.0, 29.9], [26.9, 29.9]] },
+]);
+
+/** Colores por variante: color (fondo marino), onDark (fondo blanco), mono (un solo color, rayo en negativo). */
+function palette(variant, mono) {
+  if (variant === "onDark") return { bg: COLORS.white, cloud: COLORS.navy, bolt: COLORS.sky };
+  if (variant === "mono") { const c = mono || COLORS.navy; return { bg: c, cloud: COLORS.white, bolt: c, boltStroke: COLORS.white }; }
+  return { bg: COLORS.navy, cloud: COLORS.white, bolt: COLORS.sky };
+}
+
+function shapesSvg(variant, mono) {
+  const p = palette(variant, mono);
+  return SHAPES.map((s) => {
+    const fill = p[s.role];
+    if (s.type === "rrect") return `<rect x="${s.x}" y="${s.y}" width="${s.w}" height="${s.h}" rx="${s.r}" fill="${fill}"/>`;
+    if (s.type === "circle") return `<circle cx="${s.cx}" cy="${s.cy}" r="${s.r}" fill="${fill}"/>`;
+    const d = s.points.map((pt, i) => (i ? "L" : "M") + pt[0] + " " + pt[1]).join(" ") + " Z";
+    const stroke = p.boltStroke ? ` stroke="${p.boltStroke}" stroke-width="1.2" stroke-linejoin="round"` : "";
+    return `<path d="${d}" fill="${fill}"${stroke}/>`;
+  }).join("");
+}
+
+/** Isotipo SVG (solo el distintivo). */
+function isotypeSvg({ size = 48, variant = "color", mono, title = "Sky Tech", attrs = "" } = {}) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="${size}" height="${size}" role="img" aria-label="${title}"${attrs ? " " + attrs : ""}><title>${title}</title>${shapesSvg(variant, mono)}</svg>`;
+}
+
+/** Logo horizontal: isotipo + SKY TECH + lema. Tipografía Sora (con respaldo del sistema). */
+function logoSvg({ height = 56, variant = "color", mono, tagline = "SISTEMAS DE GESTIÓN PARA NEGOCIOS" } = {}) {
+  const onDark = variant === "onDark";
+  const sky = onDark ? COLORS.sky : COLORS.sky, navy = onDark ? COLORS.white : COLORS.navy, mut = onDark ? "#B8D0E6" : COLORS.muted;
+  const c1 = mono ? mono : navy, c2 = mono ? mono : sky;
+  const font = "Sora,'IBM Plex Sans',Helvetica,Arial,sans-serif";
+  const W = 300, H = 56, s = H / 56;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${Math.round(W * (height / H))}" height="${height}" role="img" aria-label="Sky Tech"><title>Sky Tech</title>` +
+    `<g transform="translate(4,4)">${shapesSvg(variant, mono)}</g>` +
+    `<text x="62" y="31" font-family="${font}" font-size="21" font-weight="700" fill="${c1}" letter-spacing="1.5">SKY</text>` +
+    `<text x="111" y="31" font-family="${font}" font-size="21" font-weight="700" fill="${c2}" letter-spacing="1.5">TECH</text>` +
+    (tagline ? `<text x="62" y="45" font-family="${font}" font-size="7.6" font-weight="600" fill="${mut}" letter-spacing="1.6">${tagline}</text>` : "") +
+    `</svg>`;
+}
+
+/** Logo apilado (isotipo arriba, nombre debajo) para avatares cuadrados y sellos. */
+function stackedSvg({ size = 160, variant = "color", mono } = {}) {
+  const onDark = variant === "onDark";
+  const c1 = mono || (onDark ? COLORS.white : COLORS.navy), c2 = mono || COLORS.sky;
+  const font = "Sora,'IBM Plex Sans',Helvetica,Arial,sans-serif";
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="${size}" height="${size}" role="img" aria-label="Sky Tech"><title>Sky Tech</title>` +
+    `<g transform="translate(36,10)">${shapesSvg(variant, mono)}</g>` +
+    `<text x="60" y="86" text-anchor="middle" font-family="${font}" font-size="17" font-weight="700" letter-spacing="1.5"><tspan fill="${c1}">SKY </tspan><tspan fill="${c2}">TECH</tspan></text>` +
+    `<text x="60" y="102" text-anchor="middle" font-family="${font}" font-size="6.2" font-weight="600" fill="${onDark ? "#B8D0E6" : COLORS.muted}" letter-spacing="1.4">SISTEMAS DE GESTIÓN</text></svg>`;
+}
+
+function hexToRgb(hex) { const h = hex.replace("#", ""); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; }
+
+/**
+ * Dibuja el isotipo en jsPDF con las MISMAS primitivas (mm). `variant` como en el SVG.
+ * @param {object} doc jsPDF
+ */
+function drawIsotypePdf(doc, x, y, size, { variant = "color", mono } = {}) {
+  const p = palette(variant, mono), k = size / 48;
+  for (const s of SHAPES) {
+    const fill = hexToRgb(p[s.role]);
+    doc.setFillColor(fill[0], fill[1], fill[2]);
+    if (s.type === "rrect") doc.roundedRect(x + s.x * k, y + s.y * k, s.w * k, s.h * k, s.r * k, s.r * k, "F");
+    else if (s.type === "circle") doc.circle(x + s.cx * k, y + s.cy * k, s.r * k, "F");
+    else {
+      const pts = s.points.map((pt) => [x + pt[0] * k, y + pt[1] * k]);
+      const segs = pts.slice(1).map((pt, i) => [pt[0] - pts[i][0], pt[1] - pts[i][1]]);
+      if (p.boltStroke) { const st = hexToRgb(p.boltStroke); doc.setDrawColor(st[0], st[1], st[2]); doc.setLineWidth(1.2 * k); doc.setLineJoin("round"); }
+      doc.lines(segs, pts[0][0], pts[0][1], [1, 1], p.boltStroke ? "FD" : "F", true);
+    }
+  }
+}
+
+/** Wordmark en jsPDF. Usa la fuente `font` (p. ej. "Sora") si está cargada; si no, Helvetica bold. */
+function drawWordmarkPdf(doc, x, baseline, size, { variant = "color", font = "helvetica" } = {}) {
+  const onDark = variant === "onDark";
+  const c1 = onDark ? [255, 255, 255] : hexToRgb(COLORS.navy), c2 = hexToRgb(COLORS.sky);
+  const setFont = () => { try { doc.setFont(font, "bold"); } catch (e) { doc.setFont("helvetica", "bold"); } };
+  setFont(); doc.setFontSize(size);
+  doc.setTextColor(c1[0], c1[1], c1[2]); doc.text("SKY", x, baseline, { charSpace: size * 0.06 });
+  const w = doc.getTextWidth("SKY") + size * 0.22;
+  doc.setTextColor(c2[0], c2[1], c2[2]); doc.text("TECH", x + w, baseline, { charSpace: size * 0.06 });
+  return w + doc.getTextWidth("TECH") + size * 0.18;
+}
+
+const faviconDataUri = () => "data:image/svg+xml," + encodeURIComponent(isotypeSvg({ size: 64 }));
+
+module.exports = { COLORS, SHAPES, palette, isotypeSvg, logoSvg, stackedSvg, drawIsotypePdf, drawWordmarkPdf, faviconDataUri, hexToRgb };
+
+};
 return {require:req,has:function(n){return !!defs[n];}};})();
 </script>
 <!-- @bundle:end -->
@@ -1114,29 +1236,9 @@ const SKY={
   azul:[29,78,216], rojo:[217,45,32], ambar:[183,121,31], verde:[14,159,110],
   azulW:[229,236,252], rojoW:[253,232,230], ambarW:[250,241,225], verdeW:[224,246,238], navyW:[232,240,249]
 };
-// Logo: distintivo con tres barras que suben y una flecha de crecimiento.
-function skyBadge(doc,x,y,s,onDark){
-  const fondo=onDark?[255,255,255]:SKY.navy, nube=onDark?SKY.navy:[255,255,255];
-  doc.setFillColor(...fondo);doc.roundedRect(x,y,s,s,s*0.23,s*0.23,"F");
-  // la nube (sky)
-  doc.setFillColor(...nube);
-  doc.circle(x+s*0.32,y+s*0.44,s*0.125,"F");
-  doc.circle(x+s*0.50,y+s*0.37,s*0.165,"F");
-  doc.circle(x+s*0.68,y+s*0.45,s*0.115,"F");
-  doc.rect(x+s*0.32,y+s*0.44,s*0.36,s*0.115,"F");
-  // el rayo (tech)
-  const k=s*0.36/16,bx=x+s*0.50-4.5*k,by=y+s*0.52;
-  doc.setFillColor(...SKY.sky);
-  doc.lines([[-5*k,9*k],[4*k,0],[-1*k,7*k],[6*k,-9*k],[-4*k,0],[0,-7*k]],bx+5*k,by,[1,1],"F",true);
-}
-function skyWordmark(doc,x,baseline,size,onDark){
-  doc.setFont("helvetica","normal");doc.setFontSize(size);
-  doc.setTextColor(...(onDark?[255,255,255]:SKY.navy));doc.text("SKY",x,baseline);
-  const w=doc.getTextWidth("SKY")+size*0.09;
-  doc.setFont("helvetica","bold");doc.setTextColor(...(onDark?SKY.sky:SKY.navy));
-  doc.text("TECH",x+w,baseline);
-  return w+doc.getTextWidth("TECH");
-}
+// Logo: mismas primitivas que el SVG (src/ui/logo.js)
+function skyBadge(doc,x,y,s,onDark){SkyLogo.drawIsotypePdf(doc,x,y,s,{variant:onDark?"onDark":"color"});}
+function skyWordmark(doc,x,baseline,size,onDark){return SkyLogo.drawWordmarkPdf(doc,x,baseline,size,{variant:onDark?"onDark":"color",font:window.__pdfFont||"helvetica"});}
 // El QR lleva al cliente DIRECTO a escribirle (WhatsApp o correo), nunca a la demo.
 function qrContacto(biz){
   const c=(($("#cfgContact")&&$("#cfgContact").value)||store.get("bc3k_contact","")||"").trim();
@@ -1394,7 +1496,7 @@ function drawProposal(doc,l){
 function pdfName(l){return "Propuesta - "+((l.title||"negocio").trim()).replace(/[\\/:*?"<>|]+/g,"").slice(0,60)+".pdf";}
 function proposalPDF(l){const lib=window.jspdf&&window.jspdf.jsPDF;if(!lib){openProposalPrint([l]);return;}const doc=new lib({unit:"mm",format:"a4"});drawProposal(doc,l);doc.save(pdfName(l));toast("PDF descargado ✓");}
 function bulkProposalsPDF(list){if(!list||!list.length){toast("No hay leads para exportar");return;}const lib=window.jspdf&&window.jspdf.jsPDF;if(!lib){openProposalPrint(list);return;}const doc=new lib({unit:"mm",format:"a4"});list.forEach((l,i)=>{if(i>0)doc.addPage();drawProposal(doc,l);});doc.save("Propuestas ("+list.length+").pdf");toast(list.length+" propuestas en un PDF ✓");}
-const LOGO_SVG='<svg viewBox="0 0 48 48" width="30" height="30" aria-label="Sky Tech"><rect width="48" height="48" rx="11" fill="#FFFFFF"/><g fill="#0B3C68"><circle cx="15.4" cy="21.1" r="6"/><circle cx="24" cy="17.8" r="7.9"/><circle cx="32.6" cy="21.6" r="5.5"/><rect x="15.4" y="21.1" width="17.2" height="5.5"/></g><path d="M24.5 25 L19.1 34.7 L23.5 34.7 L22.4 42.2 L28.9 32.5 L24.5 32.5 Z" fill="#1FA2FF"/></svg>';
+const SkyLogo=SkyLib.require("logo");const LOGO_SVG=SkyLogo.isotypeSvg({size:30,variant:"onDark"});
 function qrSVG(url,cell){
   if(typeof qrcode!=="function")return "";
   try{const q=qrcode(0,"M");q.addData(url);q.make();return q.createSvgTag({cellSize:cell||4,margin:0,scalable:true});}catch(e){return "";}
