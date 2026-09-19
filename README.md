@@ -137,6 +137,71 @@ Activado por defecto en **⚙️ Ajustes**. Para que Google no bloquee tu IP al 
 - **Detección de bloqueos** (ERR_TUNNEL, 429, 403, captcha) con **backoff exponencial** y **auto-pausa**: si varias celdas seguidas salen bloqueadas, el escaneo se **pausa solo** y te avisa. Configura proxies o espera un rato y pulsa **Reanudar**.
 - **Empieza suave**: celdas de 2–3 km y modo "Por rubro" generan menos búsquedas y menos bloqueos que "Todo el área".
 
+## Propuesta, mensajes y marca (v2.1)
+
+- **Comparación honesta.** Cada negocio se compara **solo con su rubro real y su zona real**
+  (2 km → 5 km → misma ciudad, gracias a la taxonomía de rubros compartida). Con menos de 5
+  competidores no se inventa ningún ranking. Hay dos rankings, **visibilidad** (reseñas) y
+  **calidad** (calificación con promedio bayesiano), y la propuesta usa el que favorece o motiva al
+  negocio. Los insights salen de reglas con prioridad (máximo 3, nunca contradictorios) y dejan un
+  **hecho ancla** que abre el mensaje ("vi que tienen 120 reseñas, más que el promedio de su zona").
+  API: `GET /api/insights?id=…` y `GET /api/taxonomy`.
+- **Propuesta PDF v2.** Portada con foto del negocio, promesa del rubro y tres números grandes;
+  gráfica de barras, **radar de competidores** a 2/5 km, tabla "hoy / con el sistema", plan de tres
+  pasos y cierre con QR a tu WhatsApp. Tipografía de marca (Sora + IBM Plex Sans) cuando el panel
+  corre con servidor; folio (`SKT-2026-0142`), validez de 15 días y paginación. Siempre **2 páginas**
+  (y una versión **"PDF 1 página"** para mandar por WhatsApp). Sin jsPDF se abre la misma propuesta
+  para imprimir. El diseño clásico sigue disponible en ⚙️ Ajustes → "Usar el diseño clásico (v1)".
+  Muestras: `JSPDF_NODE=/ruta/jspdf.node.min.js node scripts/render-proposals.js salida/`.
+- **Mensajes que consiguen respuesta.** Apertura con un hecho real del negocio, gancho del rubro,
+  oferta en una línea y pregunta cerrada; ≤ 350 caracteres; **tres variantes** (A/B/C) repartidas de
+  forma estable entre los negocios; **secuencia** día 0 → día 3 (recordatorio) → día 7 (cierre con
+  salida, como pide la Ley 29733). Cada envío (copiar, WhatsApp o correo) queda en el **historial del
+  lead**, programa el siguiente toque en "Recontactar el" y aparece en el chip **Para hoy**. En
+  📊 Métricas: **respuestas por variante**.
+- **Marca.** Logo Sky Tech refinado con una sola fuente de verdad (`src/ui/logo.js` → SVG, favicon,
+  panel y PDF). Guía en [`marca/MARCA.md`](marca/MARCA.md). El panel usa el azul de marca como acento.
+- **Panel.** Tarjeta con jerarquía nueva (nombre → puesto real → WhatsApp / Mensaje / PDF siempre a
+  la vista), ficha con paso de la secuencia e historial, estados vacíos con acción, y versión móvil
+  (ficha como hoja inferior con acciones fijas). El HTML del panel se **genera** con `npm run build`
+  a partir de `src/` (módulos compartidos con el backend) y `src/ui/dashboard.css`; el archivo
+  generado se versiona para que siga funcionando con doble clic.
+
+## Arquitectura, base de datos y desarrollo (v2)
+
+El servidor se reorganizó en módulos (`src/`) sin cambiar la API ni el panel. Detalle en
+[`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md), endpoints en [`docs/API.md`](docs/API.md) y la
+auditoría con los errores corregidos en [`docs/REVISION.md`](docs/REVISION.md).
+
+```
+src/config     env · settings · categories
+src/domain     grid · lead · csv · proxy        (funciones puras)
+src/infra      storage (SQLite | JSON) · scraper-runner · http-client · logger
+src/services   scanner · enricher · notifier · proxies · event-bus · demo
+src/http       router · middleware · routes
+src/app.js     raíz de composición   ·   src/server.js  arranque
+```
+
+- **Base de datos:** SQLite (`data/busca-chamba.sqlite`, con `node:sqlite`, sin instalar nada) en
+  Node ≥ 22.13; si no está disponible se usa el `data/db.json` de siempre. La primera vez que
+  arranca con SQLite **migra solo** tu `db.json` (y lo conserva como respaldo). Fuerza un driver
+  con `DB_DRIVER=sqlite|json`; migra a mano con `npm run migrate`.
+- **Variables de entorno:** `PORT`, `HOST`, `BASIC_AUTH=usuario:clave`, `SCRAPER_BIN`,
+  `SCRAPER_MODE=docker`, `DB_DRIVER`, `DATA_DIR`, `PROXIES`, `MAX_BODY_BYTES`.
+- **Tests:** `npm test` (58 pruebas con `node:test`, ~20 s, sin dependencias). Cubren dominio
+  (taxonomía, insights, mensajes), ambos almacenes, el orquestador con un scraper simulado, la API
+  completa, SSE, el modelo y los renderizadores de la propuesta, y que `dashboard.html` está al día.
+- **Build del panel:** `npm run build` regenera `dashboard.html` (módulos de `src/` + CSS);
+  `npm run build:check` falla en CI si el archivo no está al día; `npm run build:brand` regenera
+  `marca/`.
+- **Docker del panel:** `docker compose up -d panel` construye la imagen y lanza el scraper por
+  Docker (necesita el socket montado, ya configurado en `docker-compose.yml`).
+- **Velocidad:** en ⚙️ Ajustes, **"Celdas a la vez"** (1–4) escanea varias celdas en paralelo, cada
+  una con su propio proceso; el perfil **Turbo** pone 2. Con 1 (defecto) el comportamiento es el
+  secuencial de siempre. La lectura del CSV es incremental y los leads se guardan por lotes. Qué
+  más se puede acelerar y qué funciones siguen: [`docs/PROPUESTA-MEJORAS.md`](docs/PROPUESTA-MEJORAS.md).
+- **Salud:** `GET /api/health` → `{ok, driver, leads, scanning, uptime}`.
+
 ## Uso responsable
 
 - Extraer datos de Google Maps va **contra los Términos de Servicio de Google**. El riesgo aquí no es tu cuenta (no usas login), sino bloqueos de IP: úsalo con mesura y con proxies si haces volumen.
