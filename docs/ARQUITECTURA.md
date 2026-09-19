@@ -56,8 +56,12 @@ BUSCA-CHAMBA-3000/
 ├── dashboard.html               # panel (sin cambios funcionales)
 ├── package.json                 # scripts: start · dev · test · stats · migrate
 ├── Dockerfile · docker-compose.yml
+├── public/fonts/                # Sora Bold, IBM Plex Sans (OFL) para el PDF
 ├── scripts/
-│   └── migrate-json-to-sqlite.js
+│   ├── migrate-json-to-sqlite.js
+│   ├── build-dashboard.js       # mini-bundler: src/ → dashboard.html (marcadores @bundle/@css/@logo)
+│   ├── build-brand.js           # src/ui/logo.js → marca/*.svg
+│   └── render-proposals.js      # muestras de propuesta (PDF con JSPDF_NODE, HTML)
 ├── src/
 │   ├── server.js                # arranque: env → createApp → listen → autoResume
 │   ├── app.js                   # raíz de composición (inyección de dependencias)
@@ -65,11 +69,21 @@ BUSCA-CHAMBA-3000/
 │   │   ├── env.js               # process.env → objeto inmutable con rutas
 │   │   ├── settings.js          # ajustes del usuario (config.json) validados
 │   │   └── categories.js        # rubros y consultas paraguas
-│   ├── domain/                  # puro, sin I/O, 100 % testeable
+│   ├── domain/                  # puro, sin I/O, 100 % testeable (se comparte con el panel)
 │   │   ├── grid.js              # celdas, auto-ajuste, subdivisión, "ya barrida"
 │   │   ├── lead.js              # fila CSV → lead, identidad, correos, redes
-│   │   ├── csv.js               # parser RFC-4180
-│   │   └── proxy.js             # normalización de proxies
+│   │   ├── csv.js               # parser RFC-4180 + filas completas (lectura incremental)
+│   │   ├── proxy.js             # normalización de proxies
+│   │   ├── taxonomy.js          # categoría de Google → rubro → vertical → grupo
+│   │   ├── insights.js          # competidores por radio, dos rankings, insights, hecho ancla
+│   │   └── messages.js          # mensajes: variantes, secuencia de 3 pasos, métrica
+│   ├── ui/                      # módulos del panel (se inyectan en dashboard.html con el build)
+│   │   ├── dashboard.css        # estilos del panel (tokens de marca)
+│   │   ├── logo.js              # el logo como primitivas → SVG, favicon, jsPDF
+│   │   ├── proposal-model.js    # la propuesta como datos + textos por rubro
+│   │   ├── proposal-pdf.js      # renderizador jsPDF (sistema de diseño del documento)
+│   │   ├── proposal-html.js     # renderizador HTML (impresión) del mismo modelo
+│   │   └── pdf-fonts.js         # carga de Sora / IBM Plex Sans en jsPDF
 │   ├── infra/
 │   │   ├── storage/
 │   │   │   ├── index.js         # createStore(): elige driver
@@ -216,7 +230,12 @@ JSON limitado a 1 MB (`MAX_BODY_BYTES`); CORS abierto como antes (uso local/VPS 
 
 ## 6. Arquitectura de la interfaz (dashboard.html)
 
-El panel es una SPA de un solo archivo, sin framework, organizada así:
+El panel es una SPA de un solo archivo **generado**: `scripts/build-dashboard.js` inyecta entre
+marcadores los módulos CommonJS de `src/domain` y `src/ui` (con un `require` mínimo, `SkyLib`) y el
+CSS de `src/ui/dashboard.css`. El resultado se versiona para que siga funcionando con doble clic y
+sin servidor; en CI `npm run build:check` garantiza que está al día. Así el backend y el panel usan
+exactamente el mismo código para clasificar rubros, comparar negocios, redactar mensajes y dibujar
+el logo. Organización:
 
 | Capa | Dónde | Responsabilidad |
 |---|---|---|
@@ -227,12 +246,12 @@ El panel es una SPA de un solo archivo, sin framework, organizada así:
 | Documentos | `proposalPDF()` (jsPDF) · `openProposalPrint()` (impresión) · `exportExcel()` (xlsx) · `qrSVG()` (QR incrustado) | generación local, sin backend |
 | Modo archivo | `importCSV()` | funciona sin servidor (doble clic) |
 
-Contrato con el backend: solo `/api/*` y los eventos SSE listados; por eso la refactorización
-del servidor no tocó el panel. Camino de evolución recomendado (no incluido en esta entrega):
+| Propuesta | `proposalModel()` → `SkyPdf.renderProposal()` / `SkyHtml.renderProposalHtml()` | un modelo, dos salidas; foto vía `/api/img`; fuentes vía `/public/fonts` |
+| Mensajes | `composeMessage()`, `recordMessage()` (historial en `meta.messages`) | motor compartido `messages.js`; siguiente paso y fecha automáticos |
 
-1. Extraer CSS y JS a `public/` servidos estáticos (cacheables) manteniendo el modo archivo.
-2. Dividir el JS en módulos ES: `api.js` (fetch/SSE), `state.js`, `views/*.js`, `pdf.js`.
-3. Paginación real en Resultados usando `?limit&offset` (ya soportado por el backend).
+Contrato con el backend: `/api/*` y los eventos SSE listados. Siguiente paso recomendado: mover
+el resto del script principal a módulos en `src/ui/` (el bundler ya lo soporta) y paginar
+Resultados con `?limit&offset`.
 
 ---
 

@@ -60,6 +60,8 @@ por qué importa y qué se hizo.
 | B7 | Comparación de credenciales con `===`. | Vulnerable a timing (menor, pero gratis de arreglar). | `crypto.timingSafeEqual` con longitudes comprobadas. |
 | B9 | Un reintento de celda que vencía mientras el escaneo estaba en pausa dejaba la celda en amarillo para siempre (y al reanudar se saltaba). | El callback del reintento no hacía nada si estaba en pausa. | El trabajo queda `waiting` y `resume()` lo relanza. |
 | B10 | Las celdas con error reintentadas al final nunca se cerraban por `exit`, solo por timeout. | `finish()` copiaba la celda entera, incluido `_timedout: true`, y el handler de `exit` lo respetaba. | Los reintentos crean una celda limpia; el timeout vive en el trabajo, no en la celda. |
+| B11 | En la ficha, después de copiar o enviar un mensaje, al cerrar se perdía el estado "Contactado" y la fecha de seguimiento. | `saveModal()` guardaba los campos del formulario, que aún mostraban los valores viejos. | `recordMessage` actualiza también los campos de la ficha. |
+| B12 | La propuesta comparaba una farmacia contra restaurantes o contra "toda la base". | Cascada de respaldo sin control de rubro en `statsFor`. | Comparación solo dentro del rubro normalizado, por distancia real; con < 5 competidores no hay ranking (fase 1 del rediseño). |
 | B8 | (Introducido y cazado en la refactorización) `bus.emit("error")` sin oyente tumba el proceso. | Semántica especial de `error` en `EventEmitter`. | `broadcast` solo emite `error` si hay oyentes; test lo cubre. |
 
 ### Casos límite ahora cubiertos por tests

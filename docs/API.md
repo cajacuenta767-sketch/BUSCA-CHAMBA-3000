@@ -61,6 +61,27 @@ Envía `retry: 3000`, un `status` inicial y luego:
 
 ### `GET /api/logs` → texto plano, últimas 400 líneas.
 
+## Inteligencia de la propuesta
+
+### `GET /api/taxonomy`
+`{ verticals, groups, rules:[{label, vertical, group}], counts:[{key, n}] }` — la taxonomía de rubros y cuántos leads hay por rubro normalizado.
+
+### `GET /api/insights?id=<id del lead>`
+```json
+{ "id": "…", "ok": true, "reason": null, "cat": { "label": "Farmacia / Botica", "key": "farmacia-botica", "vertical": "farmacia" },
+  "stats": { "n": 12, "level": "radius", "radiusKm": 2, "scope": "12 negocios de farmacia / botica a menos de 2 km",
+             "mine": 120, "myR": 4.7, "avgRev": 61, "avgR": 4.3, "top": 300, "rankVis": 2, "rankQual": 1, "focus": "calidad",
+             "pctNoWeb": 67, "pctTel": 92, "pctSoc": 40, "peers": [{ "lat": …, "lon": …, "reviews": 88, "me": false }] },
+  "insights": [{ "id": "calidad-alta", "group": "calidad", "text": "…" }], "anchor": "vi que los califican con 4.7 estrellas, por encima de su zona" }
+```
+Con menos de 5 competidores del mismo rubro: `ok:false` y `reason` (`"pocos competidores"`, `"sin rubro"`, `"sin ubicación"`). Nunca se compara entre rubros distintos.
+
+### `GET /api/img?u=<url https>`
+Proxy de la foto del negocio para el PDF (evita CORS). Solo hosts de Google (`googleusercontent.com`, `ggpht.com`, `gstatic.com`, `googleapis.com`), máximo 2 MB, caché en `data/cache/img`. `403` si el host no está permitido, `502` si no se pudo descargar.
+
+### `GET /public/<archivo>`
+Estáticos de `public/` (fuentes de marca). Cache de 7 días. Rutas fuera de `public/` → `404`.
+
 ## Escaneo
 
 ### `POST /api/scan/start`

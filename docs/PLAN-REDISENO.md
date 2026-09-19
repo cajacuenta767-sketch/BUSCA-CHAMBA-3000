@@ -1,5 +1,11 @@
 # Plan de rediseño — propuesta PDF, lógica de comparación, logo, mensajes y panel
 
+> **Estado: las cinco fases están implementadas** (ver `README.md` → "Propuesta, mensajes y marca").
+> Decisiones tomadas al ejecutar: logo refinado sobre el concepto actual (C3); PDF con jsPDF y sistema
+> de diseño propio (opción 1); fuentes de marca incrustadas cuando hay servidor; oferta "acceso gratis a
+> cambio de feedback"; foto del negocio con proxy y caché; en vez de mini-mapa con tiles (sin dependencias
+> externas ni internet) un **radar vectorial** de competidores dibujado con los propios datos.
+
 Objetivo: que cada propuesta que sale del sistema **se vea profesional, diga algo verdadero sobre
 ese negocio y consiga respuesta**. El plan parte de lo que hay hoy en `dashboard.html`
 (`statsFor`, `insightsFor`, `drawProposal`, `PITCHES`, `skyBadge`) y se organiza en 6 frentes y

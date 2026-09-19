@@ -140,21 +140,24 @@
   .card.new{animation:cardIn .55s ease}
   @keyframes cardIn{0%{opacity:0;transform:translateY(10px) scale(.98)}55%{box-shadow:0 0 0 3px var(--accent-weak),var(--shadow-sm)}100%{opacity:1;transform:none}}
   .card.st-cliente{border-color:var(--ok);box-shadow:0 0 0 1px var(--ok) inset,var(--shadow-sm)}.card.st-descartado{opacity:.5}
-  .card-top{display:flex;gap:11px}.thumb{width:46px;height:46px;border-radius:12px;object-fit:cover;background:var(--surface-2);flex:none}
-  .card h3{margin:0;font-size:15.5px;line-height:1.3;font-weight:700}
-  .tag{display:inline-block;font:600 11px var(--font-b);color:var(--accent);background:var(--accent-weak);padding:2px 9px;border-radius:7px;margin-top:5px}
-  .rating{font-size:12.5px;color:var(--muted);margin-top:4px;font-variant-numeric:tabular-nums}.rating b{color:var(--star)}
+  .card-top{display:flex;gap:11px;align-items:flex-start}.thumb{width:46px;height:46px;border-radius:12px;object-fit:cover;background:var(--surface-2);flex:none}
+  .thumb.ph{display:grid;place-items:center;font:800 18px var(--font-d);color:var(--accent);background:var(--accent-weak)}
+  .card h3{margin:0;font-size:15.5px;line-height:1.3;font-weight:700;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .card .meta{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;margin-top:4px}
+  .card-top > .clst{margin-left:auto;flex:none;white-space:nowrap}
+  .tag{display:inline-block;font:600 11px var(--font-b);color:var(--accent);background:var(--accent-weak);padding:2px 9px;border-radius:7px}
+  .rating{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}.rating b{color:var(--star)}
   .sug{font-size:12px;color:var(--accent);font-weight:600;margin-top:4px}
   .flag{display:inline-flex;align-items:center;gap:5px;font:800 11px var(--font-b);color:#fff;background:var(--prospect);padding:4px 10px;border-radius:8px;align-self:flex-start}
   .badges{display:flex;gap:6px;flex-wrap:wrap}
   .b2{font:600 11.5px var(--font-b);padding:4px 9px;border-radius:8px;border:1px solid var(--border);display:inline-flex;gap:5px;align-items:center;color:var(--muted)}
   .b2.yes{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,transparent);background:var(--ok-weak)}.b2.no{opacity:.65}
-  .addr{font-size:12.5px;color:var(--muted)}
+  .addr{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .statrow{font-size:12px;color:var(--muted);background:var(--surface-2);border:1px solid var(--border);border-radius:7px;padding:5px 8px;line-height:1.45}
   .statrow b{color:var(--accent)}
   .statrow .soloTuyo{color:var(--amber);font-weight:600}
   .statrow .lider{color:var(--ok);font-weight:700}
-  .desc{font-size:12.5px;color:var(--muted);line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .desc{font-size:12.5px;color:var(--muted);line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .chip.fb{background:#1877f2;border-color:#1877f2;color:#fff}
   .chip.ig{background:linear-gradient(45deg,#f09433,#dc2743,#bc1888);border-color:transparent;color:#fff}
   .chip.tt{background:#111;border-color:#111;color:#fff}
@@ -171,14 +174,17 @@
   .clst.t-alta{color:var(--prospect);border-color:color-mix(in srgb,var(--prospect) 40%,transparent);background:var(--prospect-weak)}
   .chip.pdf{background:var(--danger);border-color:var(--danger);color:#fff}
   .actions{display:flex;flex-wrap:wrap;gap:7px}
+  .actions.primary{margin-top:2px}.actions.primary .chip{flex:1;justify-content:center;min-width:96px;padding:9px 10px;font-size:13px}
+  .actions.secondary .chip.sm{padding:5px 9px;font-size:11.5px;border-radius:8px;color:var(--muted)}.actions.secondary .chip.sm:hover{color:var(--accent)}
   .chip{display:inline-flex;align-items:center;gap:6px;font:600 12.5px var(--font-b);padding:7px 11px;border-radius:9px;text-decoration:none;border:1px solid var(--border);cursor:pointer;background:var(--surface)}
   .chip:hover{border-color:var(--accent)}
   .chip.wa{background:var(--wa);border-color:var(--wa);color:#043d1c}.chip.mail{color:var(--mail);border-color:color-mix(in srgb,var(--mail) 45%,transparent)}
-  .chip.msg{background:var(--accent);border-color:var(--accent);color:#fff;margin-left:auto}
+  .chip.msg{background:var(--accent);border-color:var(--accent);color:#fff}
+  .chip.pdf{background:var(--brand-navy);border-color:var(--brand-navy);color:#fff}
   .card-foot{display:flex;align-items:center;gap:8px;border-top:1px solid var(--border);padding-top:10px;margin-top:auto}
   .pipe{padding:6px 9px;border-radius:9px;font:600 12px var(--font-b);border:1px solid var(--border);background:var(--surface)}
-  .stale{font-size:11px;color:var(--prospect);font-weight:600}
-  .empty{text-align:center;padding:56px 20px;color:var(--muted)}.empty .big{font-size:46px;margin-bottom:10px}.empty h2{color:var(--text);font-size:18px;margin:0 0 6px}.empty code{background:var(--surface-2);padding:2px 7px;border-radius:6px;font-size:12.5px}
+  .stale{font-size:11px;color:var(--prospect);font-weight:600}.stale.next{color:var(--accent);margin-left:auto;text-align:right}
+  .empty{text-align:center;padding:56px 20px;color:var(--muted)}.empty p{max-width:460px;margin:0 auto 18px}.empty-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}.empty .big{font-size:46px;margin-bottom:10px}.empty h2{color:var(--text);font-size:18px;margin:0 0 6px}.empty code{background:var(--surface-2);padding:2px 7px;border-radius:6px;font-size:12.5px}
   .count-note{font-size:12.5px;color:var(--muted);margin:0 0 12px}
   /* Kanban */
   .kanban{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(230px,1fr);gap:12px;overflow-x:auto;padding-bottom:8px}
@@ -206,7 +212,15 @@
   .modal-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:12px 18px;border-radius:12px;font:600 13.5px var(--font-b);opacity:0;transition:.25s;z-index:2000;pointer-events:none;box-shadow:var(--shadow)}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .leaflet-popup-content{font:13px var(--font-b);margin:12px}.leaflet-tooltip{font:12px var(--font-b);padding:9px;border-radius:9px}
-  @media (max-width:720px){.stats{grid-template-columns:repeat(2,1fr)}.brand{width:100%}}
+  @media (max-width:720px){
+    .stats{grid-template-columns:repeat(2,1fr)}.brand{width:100%}.name-input{flex:1;width:auto}
+    .wrap{padding-block:12px 90px}.tabs{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch}.tabs::-webkit-scrollbar{display:none}.tab{white-space:nowrap;padding:11px 12px}
+    .controls .field{min-width:calc(50% - 5px);flex:1}.search{min-width:100%}
+    .grid{grid-template-columns:1fr}.card{padding:14px}.actions.primary .chip{min-width:0}
+    .modal-bg{align-items:end;padding:0}.modal{max-width:none;border-radius:18px 18px 0 0;max-height:94vh;padding:16px 16px 12px}
+    .modal-actions{position:sticky;bottom:-12px;background:var(--surface);padding:12px 0;margin-top:10px;border-top:1px solid var(--border)}
+    .modal-actions .btn{flex:1;justify-content:center}.modal-actions .btn.ghost{flex:0 0 100%;margin-left:0!important}
+  }
 </style>
 <!-- @css:end -->
 </head>
@@ -413,11 +427,12 @@
     <div class="grid" id="grid"></div>
     <div id="moreWrap" hidden style="display:flex;justify-content:center;margin-top:16px"><button class="btn" id="moreBtn">Ver más</button></div>
     <div class="kanban" id="kanban" hidden></div>
-    <div class="empty" id="empty"><div class="big">🧲</div><h2>Sin negocios todavía</h2><p>Ve a <b>▶️ Inicio</b> y pulsa <b>Iniciar escaneo</b>, o carga un <code>CSV</code> ya escaneado.</p></div>
+    <div class="empty" id="empty"><div class="big">🧲</div><h2>Sin negocios todavía</h2><p>Elige una ciudad en <b>Inicio</b> y pulsa <b>Iniciar</b>: los negocios van apareciendo aquí en vivo. También puedes cargar un <code>CSV</code> ya escaneado.</p><div class="empty-actions"><button class="btn primary" data-go="inicio">▶️ Ir a Inicio</button><label class="btn" for="fileInput">📂 Cargar CSV</label></div></div>
   </section>
 
   <!-- MÉTRICAS -->
   <section id="tab-metricas" hidden>
+    <div class="empty" id="mEmpty" hidden><div class="big">📊</div><h2>Todavía no hay nada que medir</h2><p>Las métricas se llenan solas cuando escaneas negocios y empiezas a escribirles.</p><div class="empty-actions"><button class="btn primary" data-go="inicio">▶️ Ir a Inicio</button></div></div>
     <div class="mrow">
       <div class="card-panel"><h3 style="margin:0 0 12px;font-size:15px">Embudo (pipeline)</h3><div id="mFunnel" class="funnel"></div></div>
       <div class="card-panel"><h3 style="margin:0 0 12px;font-size:15px">Top rubros</h3><div id="mCats"></div></div>
@@ -2563,40 +2578,38 @@ function render(){
   $("#empty").hidden=LEADS.length>0;
 }
 function statLine(l){const S=statsFor(l);if(!S)return null;
-  const pos=S.rank===1?'<span class="lider">1.º de '+S.n+'</span>':('<b>'+S.rank+'</b> de '+S.n);
+  const pos=S.rank===1?'<span class="lider">1.º</span>':('<b>'+S.rank+'.º</b>');
   return{S,txt:'📊 Puesto '+pos+' entre '+esc(S.scope)+' · '+S.mine+' reseñas (prom. '+Math.round(S.avgRev)+')'+(S.myR?' · ★ '+S.myR.toFixed(1)+' vs '+S.avgR.toFixed(1):'')+' · '+S.pctNoWeb+'% de su rubro sin sistema'};}
 function statRowHTML(l){const r=statLine(l);if(!r)return"";
   return `<div class="statrow" title="Calculado con los ${r.S.n} negocios de ${esc(r.S.scope)} que ya escaneaste">${r.txt}</div>`;}
 function card(l){
   const id=idOf(l),m=getMeta(id),wa=waN(l.phone,l.country),email=l.emails[0]||"",ds=daysSince(m.lastContact);
   const el=document.createElement("div");el.className="card st-"+m.state;
+  const cat=normCat(l.category),cls=classify(l),so=socialOf(l),plan=msgPlanText(l);
   let h=`<div class="card-top">`;
   if(l.thumb)h+=`<img class="thumb" src="${esc(l.thumb)}" loading="lazy" onerror="this.remove()">`;
-  h+=`<div style="min-width:0"><h3>${esc(l.title)}</h3>`;
-  if(l.category)h+=`<span class="tag" title="${esc(l.category)}">${esc(normCat(l.category))}</span>`;
-  if(l.rating)h+=`<div class="rating"><b>★ ${l.rating.toFixed(1)}</b> · ${l.reviews} reseñas</div>`;
-  const v=detectV(l.category);if(v&&SkyMsg.OFFERS[v])h+=`<div class="sug">💡 ${esc(SkyMsg.OFFERS[v].label)}</div>`;
-  h+=`</div></div>`;
-  if(!realWeb(l))h+=`<span class="flag">🔥 SIN SISTEMA · prospecto ideal</span>`;
-  h+=`<div class="badges"><span class="b2 ${realWeb(l)?"yes":"no"}">🌐 ${realWeb(l)?"Web propia":(hasSoc(l)?"Solo redes":"Sin web")}</span>${(()=>{const o=socialOf(l),n=[o.fb?"FB":"",o.ig?"IG":"",o.tt?"TikTok":""].filter(Boolean);return n.length?`<span class="b2 yes">📱 ${n.join(" · ")}</span>`:"";})()}<span class="b2 ${wa?"yes":"no"}">${isMobile(l.phone)?"📱":"☎️"} ${wa?(isMobile(l.phone)?"WhatsApp":"Fijo"):"Sin tel."}</span><span class="b2 ${email?"yes":"no"}">✉️ ${email?"Correo":"Sin correo"}</span></div>`;
-  const cls=classify(l);
-  h+=`<div class="clsrow"><span class="clsb ${cls.offer}">💼 ${OFFER_LABEL[cls.offer]}</span><span class="clst t-${cls.tier}">${TIER_LABEL[cls.tier]}</span></div>`;
-  h+=statRowHTML(l);
-  if(l.address)h+=`<div class="addr">📍 ${esc(l.address)}</div>`;
-  if(l.about)h+=`<div class="desc" title="${esc(l.about)}">📝 ${esc(l.about)}</div>`;
-  h+=`<div class="actions">`;
-  if(l.phone)h+=`<a class="chip" href="tel:${esc(l.phone.replace(/\s/g,''))}">📞 ${esc(l.phone)}</a>`;
-  if(wa)h+=`<a class="chip wa" target="_blank" href="https://wa.me/${wa}?text=${encodeURIComponent(cardWaText(l))}">WhatsApp</a>`;
-  if(email)h+=`<a class="chip mail" href="${cardMailHref(l)}" title="Correo con la propuesta y el link de demo">✉️ Correo</a>`;
-  if(realWeb(l))h+=`<a class="chip" target="_blank" href="${esc(l.website)}" title="Página web propia">🌐 Web</a>`;
-  const so=socialOf(l);
-  if(so.fb)h+=`<a class="chip fb" target="_blank" href="${esc(so.fb)}">Facebook</a>`;
-  if(so.ig)h+=`<a class="chip ig" target="_blank" href="${esc(so.ig)}">Instagram</a>`;
-  if(so.tt)h+=`<a class="chip tt" target="_blank" href="${esc(so.tt)}">TikTok</a>`;
-  h+=`<button class="chip pdf" data-pdf title="Descargar propuesta en PDF">📄 PDF</button><button class="chip msg" data-msg>✍️ Mensaje</button></div>`;
+  else h+=`<div class="thumb ph" aria-hidden="true">${esc((l.title||"?").trim().charAt(0).toUpperCase())}</div>`;
+  h+=`<div style="min-width:0"><h3 title="${esc(l.title)}">${esc(l.title)}</h3><div class="meta">${cat?`<span class="tag" title="${esc(l.category)}">${esc(cat)}</span>`:""}${l.rating?`<span class="rating"><b>★ ${l.rating.toFixed(1)}</b> · ${l.reviews} reseñas</span>`:""}</div></div>`;
+  h+=`<span class="clst t-${cls.tier}" title="Prioridad según web, reseñas, calificación y WhatsApp">${TIER_LABEL[cls.tier]}</span></div>`;
+  const sr=statRowHTML(l);
+  if(sr)h+=sr;else if(!realWeb(l))h+=`<div class="statrow">🔥 <b>Sin sistema ni web propia</b> · prospecto ideal${detectV(l.category)&&SkyMsg.OFFERS[detectV(l.category)]?" · "+esc(SkyMsg.OFFERS[detectV(l.category)].label):""}</div>`;
+  h+=`<div class="badges"><span class="b2 ${realWeb(l)?"yes":"no"}">🌐 ${realWeb(l)?"Web propia":(hasSoc(l)?"Solo redes":"Sin web")}</span><span class="b2 ${wa?"yes":"no"}">${isMobile(l.phone)?"📱":"☎️"} ${wa?(isMobile(l.phone)?"WhatsApp":"Fijo"):"Sin tel."}</span><span class="b2 ${email?"yes":"no"}">✉️ ${email?"Correo":"Sin correo"}</span>${(()=>{const n=[so.fb?"FB":"",so.ig?"IG":"",so.tt?"TikTok":""].filter(Boolean);return n.length?`<span class="b2 yes">📲 ${n.join(" · ")}</span>`:"";})()}</div>`;
+  if(l.address)h+=`<div class="addr" title="${esc(l.address)}">📍 ${esc(l.address)}</div>`;
+  if(l.about)h+=`<div class="desc" title="${esc(l.about)}">${esc(l.about)}</div>`;
+  h+=`<div class="actions primary">`;
+  if(wa)h+=`<a class="chip wa" target="_blank" href="https://wa.me/${wa}?text=${encodeURIComponent(cardWaText(l))}" title="Abrir WhatsApp con el mensaje listo">💬 WhatsApp</a>`;
+  h+=`<button class="chip msg" data-msg title="Escribir, elegir el paso de la secuencia y guardar notas">✍️ Mensaje</button><button class="chip pdf" data-pdf title="Descargar propuesta en PDF">📄 PDF</button></div>`;
+  const sec=[];
+  if(l.phone)sec.push(`<a class="chip sm" href="tel:${esc(l.phone.replace(/\s/g,''))}" title="Llamar">📞 ${esc(l.phone)}</a>`);
+  if(email)sec.push(`<a class="chip sm mail" href="${cardMailHref(l)}" title="Correo con el mensaje listo">✉️ Correo</a>`);
+  if(realWeb(l))sec.push(`<a class="chip sm" target="_blank" href="${esc(l.website)}" title="Página web propia">🌐 Web</a>`);
+  if(so.fb)sec.push(`<a class="chip sm fb" target="_blank" href="${esc(so.fb)}">Facebook</a>`);
+  if(so.ig)sec.push(`<a class="chip sm ig" target="_blank" href="${esc(so.ig)}">Instagram</a>`);
+  if(so.tt)sec.push(`<a class="chip sm tt" target="_blank" href="${esc(so.tt)}">TikTok</a>`);
+  if(l.link)sec.push(`<a class="chip sm" target="_blank" href="${esc(l.link)}" title="Ver en Google Maps">🗺️ Maps</a>`);
+  if(sec.length)h+=`<div class="actions secondary">${sec.join("")}</div>`;
   h+=`<div class="card-foot"><select class="pipe" data-state style="color:${STATES[m.state].c}">`+Object.entries(STATES).map(([k,v])=>`<option value="${k}" ${m.state===k?"selected":""}>${v.l}</option>`).join("")+`</select>`;
-  if(ds!=null)h+=`<span class="stale">hace ${ds}d</span>`;const mp=msgPlanText(l);if(mp)h+=`<span class="stale" title="Secuencia de mensajes">✉️ ${esc(mp)}</span>`;
-  if(l.link)h+=`<a class="chip" style="margin-left:auto;border:none" target="_blank" href="${esc(l.link)}">Maps ↗</a>`;
+  if(ds!=null)h+=`<span class="stale" title="Último contacto">hace ${ds}d</span>`;if(plan)h+=`<span class="stale next" title="Secuencia de mensajes">✉️ ${esc(plan)}</span>`;
   h+=`</div>`;el.innerHTML=h;
   el.querySelector("[data-msg]").onclick=()=>openModal(l);
   const waA=el.querySelector(".chip.wa");if(waA)waA.addEventListener("click",()=>{recordMessage(l,"wa");setTimeout(render,50);});
@@ -2644,6 +2657,7 @@ function setView(kb){kanbanOn=kb;$("#grid").hidden=kb;$("#kanban").hidden=!kb;$(
 function bar(lbl,val,max,cls){const pct=max?Math.round(val/max*100):0;return `<div class="bar ${cls||''}"><span class="lbl">${esc(lbl)}</span><span class="t"><i style="width:${pct}%"></i></span><span class="v">${val}</span></div>`;}
 function renderMetrics(){
   if($("#tab-metricas").hidden)return;
+  const me=$("#mEmpty");if(me){me.hidden=LEADS.length>0;document.querySelectorAll("#tab-metricas > .mrow, #tab-metricas > .card-panel").forEach(x=>{x.style.display=LEADS.length?"":"none";});}
   const total=LEADS.length||1;
   const order=["nuevo","contactado","respondio","propuesta","cliente"];
   const fcCount={nuevo:0,contactado:0,respondio:0,propuesta:0,cliente:0};
@@ -3029,6 +3043,7 @@ $("#mPdf").onclick=()=>{if(current)proposalPDF(current);};$("#modalBg").onclick=
 $("#mCopy").onclick=()=>{if(current)recordMessage(current,"copy",+$("#mStep").value,$("#mService").value);saveModal();copyTxt($("#mText").value,"Mensaje copiado ✓");};
 $("#mWa").onclick=()=>{const n=waN(current.phone,current.country);if(!n){toast("Sin teléfono");return;}recordMessage(current,"wa",+$("#mStep").value,$("#mService").value);saveModal();window.open(`https://wa.me/${n}?text=${encodeURIComponent($("#mText").value)}`,"_blank");};
 $("#mMail").onclick=()=>{const e=current.emails[0];if(!e){toast("Sin correo");return;}const st=+$("#mStep").value;recordMessage(current,"mail",st,$("#mService").value);saveModal();window.open(`mailto:${e}?subject=${encodeURIComponent(SkyMsg.emailSubject(current,st))}&body=${encodeURIComponent($("#mText").value)}`);};
+document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{const t=document.querySelector('.tab[data-tab="'+b.dataset.go+'"]');if(t)t.click();window.scrollTo({top:0,behavior:"smooth"});});
 $("#guideBtn").onclick=()=>$("#guideBg").classList.add("open");$("#guideClose").onclick=()=>$("#guideBg").classList.remove("open");$("#guideBg").onclick=e=>{if(e.target===$("#guideBg"))$("#guideBg").classList.remove("open");};
 $("#myName").value=store.get("bc3k_name","")||"Bryan Salirrosas";if(!store.get("bc3k_name",""))store.set("bc3k_name",$("#myName").value);$("#myName").oninput=e=>store.set("bc3k_name",e.target.value);
 if($("#cfgContact")){if(!store.get("bc3k_contact",""))store.set("bc3k_contact","salirrosasbryan18@gmail.com");$("#cfgContact").value=store.get("bc3k_contact","");$("#cfgContact").oninput=e=>store.set("bc3k_contact",e.target.value);}
