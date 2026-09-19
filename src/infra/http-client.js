@@ -61,4 +61,23 @@ function testProxy(proxy, { timeout = 3000 } = {}) {
   });
 }
 
-module.exports = { httpGet, httpsPost, fetchPage, testProxy };
+/** Descarga binaria (imágenes) con tope de bytes y redirecciones. Devuelve {buf, type} o null. */
+function fetchBinary(url, { timeout = 10000, maxBytes = 2 * 1024 * 1024, redirects = 0 } = {}) {
+  return new Promise((res) => {
+    if (redirects > 3) return res(null);
+    let u; try { u = new URL(url); } catch (e) { return res(null); }
+    try {
+      const req = libFor(u).request({ hostname: u.hostname, port: u.port || (u.protocol === "https:" ? 443 : 80), path: (u.pathname || "/") + (u.search || ""), method: "GET", timeout, headers: { "User-Agent": "Mozilla/5.0 (compatible; BuscaChamba/2.0)", Accept: "image/*,*/*" } }, (r) => {
+        if ([301, 302, 303, 307, 308].includes(r.statusCode) && r.headers.location) { r.destroy(); return res(fetchBinary(new URL(r.headers.location, url).href, { timeout, maxBytes, redirects: redirects + 1 })); }
+        if (r.statusCode !== 200) { r.destroy(); return res(null); }
+        const chunks = []; let n = 0;
+        r.on("data", (d) => { n += d.length; if (n > maxBytes) { r.destroy(); return res(null); } chunks.push(d); });
+        r.on("end", () => res({ buf: Buffer.concat(chunks), type: String(r.headers["content-type"] || "image/jpeg").split(";")[0] }));
+        r.on("error", () => res(null));
+      });
+      req.on("error", () => res(null)); req.on("timeout", () => { req.destroy(); res(null); }); req.end();
+    } catch (e) { res(null); }
+  });
+}
+
+module.exports = { httpGet, httpsPost, fetchPage, testProxy, fetchBinary };

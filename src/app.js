@@ -33,7 +33,7 @@ function createApp({ env, overrides = {} } = {}) {
   const enricher = new Enricher({ store, bus, log, fetchPage: httpc.fetchPage });
   const scanner = new Scanner({ store, bus, settings, runner, proxies, notifier, log, demo: new DemoGenerator() });
 
-  const app = { env, logger, settings, store, bus, notifier, proxies, runner, enricher, scanner };
+  const app = { env, logger, settings, store, bus, notifier, proxies, runner, enricher, scanner, httpc };
   const router = buildRoutes(app);
   const auth = makeAuth(env.BASIC_AUTH);
 

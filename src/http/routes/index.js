@@ -4,6 +4,8 @@
  * un objeto (→ JSON 200) o escribe la respuesta él mismo y devuelve undefined.
  */
 const fs = require("fs");
+const path = require("path");
+const crypto = require("crypto");
 const { Router } = require("../router");
 const { sendText, sendJson } = require("../middleware");
 const { CATEGORIES } = require("../../config/categories");
@@ -11,7 +13,7 @@ const taxonomy = require("../../domain/taxonomy");
 const insights = require("../../domain/insights");
 
 function buildRoutes(app) {
-  const { env, store, settings, bus, scanner, enricher, proxies, notifier, logger } = app;
+  const { env, store, settings, bus, scanner, enricher, proxies, notifier, logger, httpc } = app;
   const r = new Router();
 
   // ---- Panel ----
@@ -23,6 +25,38 @@ function buildRoutes(app) {
     ctx.res.end(html);
   };
   r.get("/", dashboard).get("/dashboard.html", dashboard);
+
+  // ---- Estáticos: /public/* (fuentes de marca, etc.). Solo archivos dentro de public/. ----
+  const MIME = { ".ttf": "font/ttf", ".woff2": "font/woff2", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".txt": "text/plain; charset=utf-8" };
+  const PUBLIC = path.join(env.ROOT, "public");
+  r.prefix("GET", "/public/", (ctx) => {
+    const rel = decodeURIComponent(ctx.url.pathname.slice("/public/".length));
+    const file = path.normalize(path.join(PUBLIC, rel));
+    if (!file.startsWith(PUBLIC + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) return sendJson(ctx.res, { error: "not found" }, 404);
+    ctx.res.writeHead(200, { "Content-Type": MIME[path.extname(file).toLowerCase()] || "application/octet-stream", "Cache-Control": "public, max-age=604800", "Access-Control-Allow-Origin": "*" });
+    fs.createReadStream(file).pipe(ctx.res);
+  });
+
+  // ---- Foto del negocio para el PDF: proxy con lista blanca y caché en disco (evita CORS) ----
+  const IMG_HOSTS = /(^|\.)(googleusercontent\.com|ggpht\.com|gstatic\.com|googleapis\.com)$/i;
+  const IMG_CACHE = path.join(env.DATA_DIR, "cache", "img");
+  r.get("/api/img", async (ctx) => {
+    const u = ctx.url.searchParams.get("u") || "";
+    let url; try { url = new URL(u); } catch (e) { return sendJson(ctx.res, { error: "url inválida" }, 400); }
+    if (url.protocol !== "https:" || !IMG_HOSTS.test(url.hostname)) return sendJson(ctx.res, { error: "host no permitido" }, 403);
+    fs.mkdirSync(IMG_CACHE, { recursive: true });
+    const key = crypto.createHash("sha1").update(u).digest("hex"), file = path.join(IMG_CACHE, key);
+    let buf = null, type = "image/jpeg";
+    if (fs.existsSync(file)) { buf = fs.readFileSync(file); try { type = fs.readFileSync(file + ".type", "utf8"); } catch (e) { /* jpeg */ } }
+    else {
+      const got = await httpc.fetchBinary(u, { timeout: 10000, maxBytes: 2 * 1024 * 1024 });
+      if (!got || !got.buf) return sendJson(ctx.res, { error: "no disponible" }, 502);
+      buf = got.buf; type = got.type || type;
+      try { fs.writeFileSync(file, buf); fs.writeFileSync(file + ".type", type); } catch (e) { /* sin caché */ }
+    }
+    ctx.res.writeHead(200, { "Content-Type": type, "Cache-Control": "public, max-age=86400", "Access-Control-Allow-Origin": "*" });
+    ctx.res.end(buf);
+  });
 
   // ---- Estado y datos ----
   r.get("/api/health", () => ({ ok: true, driver: store.driver, leads: store.countLeads(), scanning: scanner.running, uptime: Math.round(process.uptime()) }));

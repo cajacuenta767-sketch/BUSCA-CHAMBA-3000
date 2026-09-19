@@ -119,6 +119,7 @@ function computeStats(lead, f) {
     rank: rankVis, rankVis, rankQual, focus, tier: tierOf(rankVis), tierQual: tierOf(rankQual),
     pctNoWeb: pct((x) => !isOwnWebsite(x.website)), pctTel: pct(hasPhone), pctSoc: pct(hasSocial),
     pctBetter: Math.round((100 * revs.filter((v) => v < mine).length) / n),
+    peers: peers.map((x) => ({ title: x.title, lat: +x.lat || 0, lon: +x.lon || 0, reviews: +x.reviews || 0, rating: +x.rating || 0, me: x === lead || leadKey(x) === leadKey(lead) })),
   };
 }
 

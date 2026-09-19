@@ -13,7 +13,7 @@ const path = require("path");
 const ROOT = path.resolve(__dirname, "..");
 const HTML = path.join(ROOT, "dashboard.html");
 /** Módulos que el panel comparte con el backend. El nombre es el basename sin .js. */
-const MODULES = ["src/domain/lead.js", "src/domain/taxonomy.js", "src/domain/insights.js", "src/domain/messages.js", "src/ui/proposal-model.js", "src/ui/proposal-pdf.js", "src/ui/logo.js"];
+const MODULES = ["src/domain/lead.js", "src/domain/taxonomy.js", "src/domain/insights.js", "src/domain/messages.js", "src/ui/logo.js", "src/ui/proposal-model.js", "src/ui/proposal-pdf.js", "src/ui/proposal-html.js", "src/ui/pdf-fonts.js"];
 const CSS = "src/ui/dashboard.css";
 
 function bundle() {

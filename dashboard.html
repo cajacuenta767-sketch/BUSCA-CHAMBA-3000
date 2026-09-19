@@ -329,6 +329,7 @@
           <div class="fld"><label>Celdas a la vez (trabajadores)</label><input class="field num" id="cfgWorkers" type="number" min="1" max="4" value="1" title="1 = secuencial, lo más seguro. 2 duplica la velocidad; 3-4 solo con proxies residenciales."></div>
           <div class="fld"><label>Cortar celda tras (seg sin resultados)</label><input class="field num" id="cfgInact" type="number" min="45" max="180" value="75"></div>
           <div class="fld"><label>Reintentos</label><label class="chk" style="padding:8px 0"><input type="checkbox" id="cfgRetry" checked> Reintentar celdas con error</label></div>
+          <div class="fld"><label>Propuesta PDF</label><label class="chk" style="padding:8px 0"><input type="checkbox" id="cfgPdfV1"> Usar el diseño clásico (v1)</label></div>
         </div>
         <div class="play-row" style="justify-content:flex-start;margin-top:10px">
           <button class="btn" id="proxFetch">🌐 Traer proxies gratis</button>
@@ -467,6 +468,7 @@
     <button class="btn" id="mWa" style="border-color:var(--wa);color:var(--wa)">WhatsApp</button>
     <button class="btn" id="mMail" style="border-color:var(--mail);color:var(--mail)">Email</button>
     <button class="btn" id="mPdf">📄 Propuesta PDF</button>
+    <button class="btn" id="mPdf1" title="Versión de una sola página, pensada para mandar por WhatsApp">📱 PDF 1 página</button>
     <button class="btn ghost" id="mClose" style="margin-left:auto">Cerrar</button>
   </div>
 </div></div>
@@ -865,6 +867,7 @@ function computeStats(lead, f) {
     rank: rankVis, rankVis, rankQual, focus, tier: tierOf(rankVis), tierQual: tierOf(rankQual),
     pctNoWeb: pct((x) => !isOwnWebsite(x.website)), pctTel: pct(hasPhone), pctSoc: pct(hasSocial),
     pctBetter: Math.round((100 * revs.filter((v) => v < mine).length) / n),
+    peers: peers.map((x) => ({ title: x.title, lat: +x.lat || 0, lon: +x.lon || 0, reviews: +x.reviews || 0, rating: +x.rating || 0, me: x === lead || leadKey(x) === leadKey(lead) })),
   };
 }
 
@@ -1030,9 +1033,10 @@ function hexToRgb(hex) { const h = hex.replace("#", ""); return [parseInt(h.slic
  * Dibuja el isotipo en jsPDF con las MISMAS primitivas (mm). `variant` como en el SVG.
  * @param {object} doc jsPDF
  */
-function drawIsotypePdf(doc, x, y, size, { variant = "color", mono } = {}) {
+function drawIsotypePdf(doc, x, y, size, { variant = "color", mono, noBg = false } = {}) {
   const p = palette(variant, mono), k = size / 48;
   for (const s of SHAPES) {
+    if (noBg && s.role === "bg") continue;
     const fill = hexToRgb(p[s.role]);
     doc.setFillColor(fill[0], fill[1], fill[2]);
     if (s.type === "rrect") doc.roundedRect(x + s.x * k, y + s.y * k, s.w * k, s.h * k, s.r * k, s.r * k, "F");
@@ -1063,11 +1067,804 @@ const faviconDataUri = () => "data:image/svg+xml," + encodeURIComponent(isotypeS
 module.exports = { COLORS, SHAPES, palette, isotypeSvg, logoSvg, stackedSvg, drawIsotypePdf, drawWordmarkPdf, faviconDataUri, hexToRgb };
 
 };
+defs["proposal-model"]=function(module,exports,require){
+"use strict";
+/**
+ * Modelo de la propuesta: convierte un negocio + su análisis en DATOS listos para pintar.
+ * Los dos renderizadores (PDF con jsPDF y HTML para imprimir) consumen este mismo modelo,
+ * así nunca dicen cosas distintas. Aquí vive también todo el texto por rubro.
+ * Puro: sin I/O. Se incluye en dashboard.html mediante el build.
+ */
+const T = require("../domain/taxonomy");
+const { isOwnWebsite } = require("../domain/lead");
+
+// ---------------------------------------------------------------- textos por rubro
+const BENCH_GEN = [
+  ["Ventas", "Cuaderno o Excel; el cierre de caja sale al tanteo", "Cada venta registrada; cierre de caja exacto en 1 clic"],
+  ["Inventario", "Se cuenta a mano y se entera cuando ya faltó", "Stock al día, con aviso antes de quedarse sin producto"],
+  ["Fiados y cobros", "Se apuntan en papel y algunos se olvidan", "Quién debe, cuánto y desde cuándo, con recordatorio por WhatsApp"],
+  ["Clientes", "No sabe quién volvió ni qué compró", "Historial por cliente y mensaje de recompra automático"],
+  ["Números del mes", "Los saca a fin de mes, si le alcanza el tiempo", "Reporte listo: lo que más deja, por día y por hora"],
+];
+const BENCH = {
+  farmacia: [["Vencimientos", "Se descubren en el estante, ya vencidos", "Alerta 60 días antes: alcanza a rotarlo o devolverlo"], ["Stock", "Se pide lo que se ve que falta", "Aviso de stock bajo por producto y laboratorio"], ["Ventas", "Boleta a mano, caja al tanteo", "Venta rápida por código y cierre de caja exacto"], ["Clientes crónicos", "Se acuerdan (o no) de volver", "Recordatorio de recompra por WhatsApp en su fecha"]],
+  taller_celulares: [["Órdenes", "Papelito con el equipo; se pierden", "Ticket con número, equipo, falla y fecha prometida"], ["Avisos", "El cliente llama a preguntar si ya está", "Aviso automático por WhatsApp cuando queda listo"], ["Repuestos", "No sabe cuántas pantallas le quedan", "Inventario de repuestos con costo y aviso de stock"], ["Garantías", "Depende de la memoria", "Historial por equipo e IMEI, con garantía y fecha"]],
+  restaurante: [["Pedidos", "Se anotan en papel y se cruzan", "Pedido por mesa o por WhatsApp, con su estado"], ["Carta", "Se reimprime cada vez que cambia un precio", "Carta digital con QR: cambia el precio y listo"], ["Insumos", "Se compra por costumbre", "Consumo real por plato y aviso de insumo bajo"], ["Caja", "Se cuadra de noche y a veces no cuadra", "Cierre por turno, con propinas y delivery aparte"]],
+  dental: [["Citas", "Agenda de papel; faltan pacientes", "Agenda con recordatorio por WhatsApp el día antes"], ["Fichas", "Historias en folder, difíciles de ubicar", "Ficha digital con tratamientos y radiografías"], ["Tratamientos", "Se olvida la siguiente fase", "Aviso de control y de tratamiento pendiente"], ["Pagos", "Se apuntan aparte", "Plan de pagos por paciente y saldo al día"]],
+  gimnasio: [["Membresías", "Se anota en cuaderno quién pagó", "Vencimiento por socio y aviso antes de que caiga"], ["Asistencia", "Nadie la registra", "Control de ingreso y quién dejó de venir"], ["Cobros", "Hay que perseguir al socio", "Recordatorio de pago automático por WhatsApp"], ["Planes", "Todos pagan casi lo mismo", "Planes y promos por tipo de socio, con su reporte"]],
+  bodega: [["Ventas", "Todo de memoria y calculadora", "POS por código o por nombre, con vuelto exacto"], ["Fiados", "Cuaderno de fiados que nadie cuadra", "Lista de deudores con saldo y recordatorio"], ["Stock", "Se pide lo que se ve vacío", "Aviso de stock bajo de lo que más rota"], ["Ganancia", "No sabe qué producto deja más", "Margen por producto: qué conviene tener"]],
+  ferreteria: [["Cotizaciones", "A mano, y se demoran", "Cotización en minutos con precios al día"], ["Stock", "Miles de códigos, se busca a ojo", "Búsqueda por código o nombre, con stock real"], ["Proveedores", "Se pide por costumbre", "Historial de compras y costo por proveedor"], ["Obras", "Se pierde el hilo del cliente", "Cuenta por cliente u obra, con su saldo"]],
+  hotel: [["Reservas", "Cuaderno o WhatsApp suelto", "Calendario de habitaciones, sin sobreventa"], ["Confirmaciones", "Se llama uno por uno", "Confirmación y recordatorio automático por WhatsApp"], ["Ocupación", "No conoce su ocupación real", "Ocupación por día, mes y temporada"], ["Consumos", "Se apuntan aparte", "Consumo cargado a la habitación, en una sola cuenta"]],
+  belleza: [["Reservas", "Por chat; se cruzan las horas", "Reserva online por profesional, sin cruces"], ["Ausencias", "Se pierde la hora y el ingreso", "Recordatorio automático: bajan las faltas"], ["Fichas", "No sabe qué color o corte llevó", "Historial por cliente, con foto y producto usado"], ["Promos", "Se avisa a quien uno se acuerda", "Campaña por WhatsApp a quien no vuelve hace X días"]],
+  veterinaria: [["Citas", "Agenda de papel", "Agenda con recordatorio por WhatsApp"], ["Vacunas", "El dueño se olvida de la siguiente", "Carnet digital y aviso de la próxima dosis"], ["Historial", "Un folder por mascota", "Ficha con peso, tratamientos y alergias"], ["Farmacia", "Se acaba el medicamento clave", "Stock con alerta y control de vencimientos"]],
+  inmobiliaria: [["Cartera", "Propiedades en Excel y en la cabeza", "Cartera con fotos, estado y precio actualizado"], ["Visitas", "Se agendan por chat", "Agenda de visitas con recordatorio a ambas partes"], ["Seguimiento", "Se enfría el interesado", "Embudo por cliente: quién vio qué y cuándo"], ["Comisiones", "Se calculan a mano", "Comisión por operación y por asesor"]],
+  contable: [["Clientes", "Carpetas y correos sueltos", "Panel por cliente, con documentos y estado"], ["Vencimientos", "Se revisan a mano en el cronograma", "Alerta de vencimiento por cliente y por tributo"], ["Cobros", "Se factura tarde", "Facturación recurrente con recordatorio"], ["Documentos", "El cliente los manda por WhatsApp", "El propio cliente los carga en su acceso"]],
+  juridico: [["Expedientes", "Carpetas físicas y notas sueltas", "Expediente digital con toda su actuación"], ["Plazos", "Se llevan en la agenda personal", "Alerta de plazo por expediente"], ["Clientes", "Llaman a preguntar cómo va", "Acceso para que vean el avance ellos mismos"], ["Honorarios", "Se cobran cuando uno se acuerda", "Estado de cuenta por caso, con recordatorio"]],
+};
+const BEN_GEN = { t: "4 a 6 horas al mes que hoy se van en cuadrar caja, contar y buscar anotaciones.", d: "Lo que se escapa sin que se note: fiados olvidados, errores de conteo y productos que se acabaron.", e: "Cerrar el día sabiendo que cuadró, sin revisar cuadernos ni confiar en la memoria." };
+const BEN = {
+  farmacia: { t: "5 a 8 horas al mes contando stock y revisando fechas una por una.", d: "Lo que hoy se tira en vencidos y lo que se pierde cuando el cliente no encuentra su medicamento.", e: "Nunca más descubrir un vencido en la mano del cliente: el sistema avisa 60 días antes." },
+  taller_celulares: { t: "4 a 6 horas al mes buscando equipos, papelitos y contestando si ya está listo.", d: "Ninguna reparación queda sin cobrar y ningún repuesto se pierde entre cajones.", e: "El cliente recibe el aviso solo cuando su equipo está listo; usted deja de dar explicaciones." },
+  restaurante: { t: "6 a 10 horas al mes anotando pedidos, reimprimiendo cartas y cuadrando la caja de noche.", d: "Deja de comprar insumo que no rota y cobra lo que hoy se pierde en pedidos mal anotados.", e: "Servicio sin pedidos cruzados y cierre de caja en un clic, no a medianoche." },
+  dental: { t: "4 a 6 horas al mes llamando para confirmar citas y buscando historias en el folder.", d: "Los tratamientos pendientes dejan de olvidarse: cada fase queda agendada y cobrada.", e: "Agenda llena y sin ausencias, con el recordatorio saliendo solo el día antes." },
+  gimnasio: { t: "4 a 6 horas al mes revisando quién pagó y persiguiendo al socio.", d: "Ninguna membresía vence sin aviso: se cobra a tiempo y no se pierde el mes.", e: "Se acaba el papel de cobrador: el recordatorio lo manda el sistema, no usted." },
+  bodega: { t: "5 a 8 horas al mes cuadrando caja de memoria y revisando el cuaderno de fiados.", d: "Recupera los fiados que hoy se olvidan y sabe qué producto le deja de verdad.", e: "Saber cuánto vendió y cuánto le deben, sin depender de la memoria." },
+  ferreteria: { t: "5 a 8 horas al mes buscando precios y armando cotizaciones a mano.", d: "Cotiza en minutos y no pierde la venta por demorar ni por vender bajo costo.", e: "Miles de códigos bajo control, con el stock real a la vista." },
+  hotel: { t: "4 a 7 horas al mes confirmando reservas una por una.", d: "Se acaba la sobreventa y los consumos que nadie cargó a la habitación.", e: "Ver la ocupación de un vistazo, sin cuaderno ni chats sueltos." },
+  belleza: { t: "4 a 6 horas al mes coordinando horas por chat.", d: "Bajan las faltas: cada hora perdida es una hora que ya no se cobra.", e: "Agenda ordenada por profesional, sin cruces ni horas dobles." },
+  veterinaria: { t: "3 a 5 horas al mes llamando para recordar vacunas y buscando fichas.", d: "Las dosis siguientes vuelven solas: el recordatorio trae al cliente de nuevo.", e: "Historial completo de cada mascota a la mano, sin folders." },
+  inmobiliaria: { t: "5 a 8 horas al mes actualizando listas y persiguiendo interesados.", d: "Ningún interesado se enfría sin seguimiento, y la comisión queda clara por operación.", e: "Toda la cartera y cada visita en un solo lugar." },
+  contable: { t: "6 a 10 horas al mes persiguiendo documentos y revisando vencimientos.", d: "Se factura a tiempo y no se pagan multas por un vencimiento que se pasó.", e: "Cada cliente con su estado a la vista, sin correos sueltos." },
+  juridico: { t: "5 a 8 horas al mes revisando plazos y respondiendo cómo va el caso.", d: "Los honorarios quedan con estado de cuenta por caso, y se cobran cuando toca.", e: "Ningún plazo se pasa: el sistema avisa antes." },
+};
+/** Promesa de portada por vertical (una frase que el dueño entiende en 3 segundos). */
+const PROMISE = {
+  farmacia: "Que ningún producto venza en el estante y ningún cliente se vaya sin lo suyo.",
+  taller_celulares: "Cada equipo con su ticket, y el cliente avisado solo cuando está listo.",
+  restaurante: "Pedidos sin cruces, carta al día y caja que cuadra en un clic.",
+  dental: "Agenda llena, pacientes recordados el día antes y fichas al alcance.",
+  inmobiliaria: "Ningún interesado se enfría y cada comisión queda clara.",
+  gimnasio: "Cobrar a tiempo sin perseguir a nadie: el aviso sale solo.",
+  bodega: "Saber cuánto vendió y cuánto le deben, sin depender de la memoria.",
+  ferreteria: "Cotizar en minutos y no vender nunca por debajo del costo.",
+  hotel: "Reservas sin sobreventa y cada consumo cargado a su habitación.",
+  belleza: "Horas sin cruces y menos faltas: cada hora perdida es dinero.",
+  veterinaria: "Vacunas que vuelven solas y el historial de cada mascota a la mano.",
+  contable: "Ningún vencimiento se pasa y cada cliente ve su estado.",
+  juridico: "Plazos avisados antes y el cliente viendo el avance sin llamar.",
+};
+const PROMISE_GEN = "Todo lo que hoy lleva en la cabeza y en el cuaderno, lo lleva el sistema por usted.";
+
+const benchOf = (v) => BENCH[v] || BENCH_GEN;
+const benefOf = (v) => BEN[v] || BEN_GEN;
+
+// ---------------------------------------------------------------- utilidades
+function fmtDate(d, locale = "es-PE") {
+  try { return d.toLocaleDateString(locale, { day: "2-digit", month: "long", year: "numeric" }); }
+  catch (e) { return d.toISOString().slice(0, 10); }
+}
+function hash4(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; return String(h % 10000).padStart(4, "0"); }
+/** Folio estable por negocio y año: SKT-2026-0142. */
+function folioFor(lead, date) { return "SKT-" + date.getFullYear() + "-" + hash4(String(lead.place_id || lead.link || lead.title || "")); }
+const num = (n) => new Intl.NumberFormat("es-PE").format(Math.round(n));
+const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+/** QR de contacto: WhatsApp del asesor con el mensaje puesto; si no, correo. Nunca a la demo. */
+function contactQr(contact, biz) {
+  const c = String(contact || "").trim();
+  const tel = (c.match(/\+?\d[\d\s().-]{7,}/) || [""])[0].replace(/\D/g, "");
+  const txt = "Hola, vi la propuesta para " + (biz || "mi negocio") + " y quiero probar el sistema.";
+  if (tel.length >= 8) return { url: "https://wa.me/" + tel + "?text=" + encodeURIComponent(txt), label: "Escanee y escríbame por WhatsApp" };
+  const mail = (c.match(/[\w.+-]+@[\w-]+\.[\w.-]+/) || [""])[0];
+  if (mail) return { url: "mailto:" + mail + "?subject=" + encodeURIComponent("Quiero probar el sistema — " + (biz || "")) + "&body=" + encodeURIComponent(txt), label: "Escanee y escríbame" };
+  return null;
+}
+
+/** Proyección local en km (norte arriba) de los competidores alrededor del negocio, para el radar. */
+function radarFor(lead, S) {
+  if (!S || S.level !== "radius" || !S.peers || !lead.lat || !lead.lon) return null;
+  const cos = Math.cos((lead.lat * Math.PI) / 180);
+  const pts = S.peers.filter((p) => p.lat && p.lon).map((p) => ({ x: (p.lon - lead.lon) * 111 * cos, y: -(p.lat - lead.lat) * 111, reviews: p.reviews, me: p.me, title: p.title }));
+  const top = Math.max(1, ...pts.map((p) => p.reviews));
+  return { radiusKm: S.radiusKm, points: pts, top };
+}
+
+// ---------------------------------------------------------------- modelo
+/**
+ * @param {object} lead negocio
+ * @param {object} ctx { analysis, sender, contact, demo, now, locale }
+ */
+function buildProposal(lead, ctx = {}) {
+  const now = ctx.now || new Date();
+  const A = ctx.analysis || { ok: false, stats: null, insights: [], anchor: null };
+  const S = A.ok ? A.stats : null;
+  const cat = T.classifyCategory(lead.category);
+  const vertical = cat.vertical;
+  const biz = String(lead.title || "su negocio").trim();
+  const rubro = cat.label || lead.category || "su rubro";
+  const city = (lead.city || (S && S.city) || "").trim();
+  const reviews = +lead.reviews || 0, rating = +lead.rating || 0;
+  const hasWeb = isOwnWebsite(lead.website);
+  const valid = new Date(now.getTime() + 15 * 86400000);
+
+  // KPIs de portada: siempre 3, con lo mejor que haya.
+  const kpis = [];
+  if (S) {
+    if (S.rankVis === 1 && S.mine > 0) kpis.push({ value: "1.º", label: "en reseñas entre " + S.n + " de su zona", tone: "azul" });
+    else if (S.focus === "calidad" && S.rankQual) kpis.push({ value: S.rankQual + ".º", label: "en calificación entre " + S.n + " de su zona", tone: "azul" });
+    else kpis.push({ value: S.rankVis + ".º", label: "de " + S.n + " en reseñas en su zona", tone: "azul" });
+    kpis.push({ value: S.pctNoWeb + "%", label: "de su competencia sigue sin sistema", tone: "ambar" });
+    kpis.push(rating ? { value: "★ " + rating.toFixed(1), label: "su calificación · zona " + S.avgR.toFixed(1), tone: "verde" } : { value: num(S.mine), label: "reseñas en Google", tone: "verde" });
+  } else {
+    kpis.push({ value: reviews ? num(reviews) : "—", label: "reseñas en Google", tone: "azul" });
+    kpis.push({ value: rating ? "★ " + rating.toFixed(1) : "—", label: "calificación en Google", tone: "verde" });
+    kpis.push({ value: hasWeb ? "Sí" : "No", label: hasWeb ? "tiene web propia" : "tiene web propia todavía", tone: "ambar" });
+  }
+
+  let comparison = null;
+  if (S) {
+    const third = Math.ceil(S.n / 3);
+    const useQual = S.focus === "calidad" && S.rankQual;
+    const pos = useQual ? S.rankQual : S.rankVis;
+    const grade = pos <= third ? "verde" : pos <= 2 * third ? "ambar" : "rojo";
+    comparison = {
+      scope: S.scope, n: S.n, level: S.level, radiusKm: S.radiusKm, city: S.city,
+      title: useQual ? "Qué tan bien lo califican, comparado con su competencia" : "Cuántos clientes lo recomiendan, comparado con su competencia",
+      note: useQual
+        ? "Calificación en Google de " + S.scope + ". " + (S.myR > S.avgR + 0.05 ? "Cuando un negocio ya sale mejor calificado que su zona, lo que le falta es volumen." : "Está a la par de su zona: quien se despegue será el que deje de fallar en lo pequeño.")
+        : "Reseñas en Google de " + S.scope + ". Más reseñas = más gente entrando = más que controlar.",
+      bars: useQual
+        ? [{ label: "USTED", value: S.myR, text: S.myR.toFixed(1), tone: "azul", strong: true }, { label: "Promedio de su zona", value: S.avgR, text: S.avgR.toFixed(1), tone: "gris" }, { label: "Tope (5 estrellas)", value: 5, text: "5.0", tone: "rojo" }]
+        : [{ label: "USTED", value: S.mine, text: num(S.mine), tone: "azul", strong: true }, { label: "Promedio de su zona", value: S.avgRev, text: num(S.avgRev), tone: "gris" }, { label: S.rankVis === 1 ? "(usted es el primero)" : "El primero de su zona", value: S.top, text: num(S.top), tone: "rojo" }],
+      max: useQual ? 5 : Math.max(S.top, S.mine, S.avgRev, 1),
+      rank: { pos, n: S.n, label: "Puesto " + pos + " de " + S.n + (useQual ? " en calificación" : " en reseñas"), grade, focus: S.focus },
+      chips: [
+        { text: S.pctNoWeb + "% de su competencia todavía sin sistema", tone: "azul" },
+        rating ? { text: "Lo califican " + rating.toFixed(1) + " y a su zona " + S.avgR.toFixed(1), tone: "ambar" } : { text: "Todavía sin calificación en Google", tone: "ambar" },
+        { text: S.pctTel + "% ya recibe pedidos por WhatsApp", tone: "verde" },
+      ],
+      radar: radarFor(lead, S),
+    };
+  }
+
+  const gains = benefOf(vertical);
+  const sysLine = vertical && T.VERTICALS[vertical] ? T.VERTICALS[vertical].sistema : "";
+  const includes = (sysLine ? ["Hecho para su rubro: " + sysLine + "."] : []).concat([
+    "Registro de ventas y cierre de caja diario.",
+    "Inventario con alertas de stock bajo y vencimiento.",
+    "Control de cuentas y fiados, con los cobros al día.",
+    "Avisos y recordatorios por WhatsApp a sus clientes.",
+    "Se abre desde el celular o la computadora, sin instalar nada.",
+  ]);
+  const qr = ctx.qr !== undefined ? ctx.qr : contactQr(ctx.contact, biz);
+
+  return {
+    meta: { folio: folioFor(lead, now), date: fmtDate(now, ctx.locale), validUntil: fmtDate(valid, ctx.locale), sender: String(ctx.sender || "").trim(), contact: String(ctx.contact || "").trim(), demo: String(ctx.demo || "").trim(), qr },
+    business: { name: biz, category: rubro, vertical, verticalLabel: vertical ? T.verticalLabel(vertical) : "", address: String(lead.address || "").trim(), city, phone: String(lead.phone || "").trim(), website: hasWeb ? lead.website : "", rating, reviews, thumb: lead.thumb || "", lat: +lead.lat || 0, lon: +lead.lon || 0 },
+    cover: {
+      kicker: "PROPUESTA PARA", title: biz,
+      subtitle: [rubro, city || lead.address || "", fmtDate(now, ctx.locale)].filter(Boolean).join("  ·  "),
+      promise: { headline: "Menos estrés y más dinero", body: PROMISE[vertical] || PROMISE_GEN },
+      kpis,
+    },
+    comparison,
+    insights: (A.insights || []).map((x) => (typeof x === "string" ? x : x.text)).slice(0, 3),
+    anchor: A.anchor || null,
+    gains: { time: gains.t, money: gains.d, calm: gains.e, note: "Las horas son una estimación conservadora para un negocio de su tamaño; las ajustamos con sus números en la reunión." },
+    includes,
+    beforeAfter: benchOf(vertical).map((r) => ({ topic: r[0], today: r[1], withSystem: r[2] })),
+    plan: [
+      { n: 1, title: "Le envío el acceso hoy", body: "Sin instalar nada: entra desde su celular o computadora." },
+      { n: 2, title: "Lo prueba con sus datos reales", body: "Unos días de uso normal en su negocio, sin compromiso." },
+      { n: 3, title: "Me dice qué le sirvió", body: "Si le gusta, seguimos. Si no le sirve, no paga nada." },
+    ],
+    cta: {
+      headline: "Pruébelo sin compromiso",
+      body: "Le doy acceso gratis. Lo usa unos días con sus ventas reales y, si le sirve, seguimos. Si no le sirve, no pasa nada.",
+      steps: "1) acceso hoy · 2) lo prueba con sus datos · 3) me dice qué le sirvió",
+      contactLine: [String(ctx.sender || "").trim(), String(ctx.contact || "").trim()].filter(Boolean).join("  ·  "),
+      demo: String(ctx.demo || "").trim(), demoLabel: "Abrir la demo ahora", qr,
+    },
+  };
+}
+
+module.exports = { buildProposal, folioFor, contactQr, radarFor, benchOf, benefOf, BENCH, BEN, PROMISE, fmtDate, cap };
+
+};
+defs["proposal-pdf"]=function(module,exports,require){
+"use strict";
+/**
+ * Renderizador de la propuesta en PDF (jsPDF) a partir del modelo de proposal-model.js.
+ * Sistema de diseño propio: retícula de 4 mm, escala tipográfica, tarjetas, barras, radar,
+ * tabla hoy/con sistema, plan y cierre con QR. Fuentes de marca si están cargadas (Sora + IBM
+ * Plex Sans), Helvetica si no. Sin dependencias: recibe el `doc` de jsPDF ya creado.
+ * Funciona en el navegador y en Node (build node de jsPDF) para pruebas.
+ */
+const Logo = require("./logo");
+
+const C = {
+  navy: [11, 60, 104], sky: [31, 162, 255], ink: [17, 37, 58], mut: [92, 113, 131], line: [215, 226, 238], bg: [244, 247, 251], white: [255, 255, 255],
+  azul: [29, 78, 216], rojo: [217, 45, 32], ambar: [183, 121, 31], verde: [14, 159, 110],
+  azulW: [229, 236, 252], rojoW: [253, 232, 230], ambarW: [250, 241, 225], verdeW: [224, 246, 238], navyW: [232, 240, 249], grisW: [236, 240, 245],
+};
+const TONE = { azul: [C.azul, C.azulW], ambar: [C.ambar, C.ambarW], verde: [C.verde, C.verdeW], rojo: [C.rojo, C.rojoW], gris: [C.mut, C.grisW], navy: [C.navy, C.navyW] };
+const PAGE = { w: 210, h: 297, m: 16, footerH: 12 };
+const PT = 25.4 / 72; // mm por punto
+const GRID = 4;
+
+/** Envoltorio fino sobre jsPDF: fuentes, texto envuelto, formas. */
+class Pen {
+  constructor(doc, fonts) {
+    this.doc = doc;
+    this.fonts = fonts || { display: "helvetica", body: "helvetica" };
+    this.y = PAGE.m;
+    this.page = 1;
+    this.lhScale = 1; // < 1 en modo denso (cuando la segunda página no cabe)
+  }
+  get W() { return PAGE.w; }
+  get cw() { return PAGE.w - 2 * PAGE.m; }
+  get bottom() { return PAGE.h - PAGE.m - PAGE.footerH; }
+
+  font(kind, weight) {
+    const name = kind === "display" ? this.fonts.display : this.fonts.body;
+    // Sora solo viene en bold; Helvetica y Plex tienen normal/bold.
+    const style = kind === "display" ? "bold" : (weight === "bold" ? "bold" : "normal");
+    try { this.doc.setFont(name, style); } catch (e) { this.doc.setFont("helvetica", style); }
+    return this;
+  }
+  size(pt) { this.doc.setFontSize(pt); return this; }
+  color(rgb) { this.doc.setTextColor(rgb[0], rgb[1], rgb[2]); return this; }
+  fill(rgb) { this.doc.setFillColor(rgb[0], rgb[1], rgb[2]); return this; }
+  stroke(rgb, w) { this.doc.setDrawColor(rgb[0], rgb[1], rgb[2]); if (w != null) this.doc.setLineWidth(w); return this; }
+  lh(pt, factor) { return pt * PT * (factor || 1.32) * this.lhScale; }
+  wrap(text, w) { return this.doc.splitTextToSize(String(text == null ? "" : text), w); }
+  width(text) { return this.doc.getTextWidth(String(text)); }
+  clean(text) { return this.fonts.body === "helvetica" ? String(text).replace(/★/g, "*") : String(text); }
+
+  /** Dibuja un párrafo envuelto y devuelve su altura. `o`: {size, color, kind, weight, lh, align} */
+  para(text, x, y, w, o = {}) {
+    const size = o.size || 10;
+    this.font(o.kind || "body", o.weight || "normal").size(size).color(o.color || C.ink);
+    const lines = this.wrap(this.clean(text), w), h = this.lh(size, o.lh);
+    lines.forEach((ln, i) => this.doc.text(ln, o.align === "center" ? x + w / 2 : (o.align === "right" ? x + w : x), y + h * (i + 0.78), o.align ? { align: o.align } : undefined));
+    return lines.length * h;
+  }
+  measure(text, w, size, kind, weight, lhf) {
+    this.font(kind || "body", weight || "normal").size(size);
+    return this.wrap(this.clean(text), w).length * this.lh(size, lhf);
+  }
+  /** Una línea de texto (sin envolver). */
+  line(text, x, y, o = {}) {
+    this.font(o.kind || "body", o.weight || "normal").size(o.size || 10).color(o.color || C.ink);
+    this.doc.text(this.clean(text), x, y, Object.assign({}, o.align ? { align: o.align } : {}, o.charSpace ? { charSpace: o.charSpace } : {}));
+    return this;
+  }
+  rrect(x, y, w, h, r, fillRgb, strokeRgb, lw) {
+    if (fillRgb) this.fill(fillRgb);
+    if (strokeRgb) this.stroke(strokeRgb, lw || 0.3);
+    this.doc.roundedRect(x, y, w, h, r, r, fillRgb && strokeRgb ? "FD" : (fillRgb ? "F" : "S"));
+  }
+  rect(x, y, w, h, fillRgb) { this.fill(fillRgb); this.doc.rect(x, y, w, h, "F"); }
+  circle(x, y, r, fillRgb, strokeRgb, lw) {
+    if (fillRgb) this.fill(fillRgb);
+    if (strokeRgb) this.stroke(strokeRgb, lw || 0.3);
+    this.doc.circle(x, y, r, fillRgb && strokeRgb ? "FD" : (fillRgb ? "F" : "S"));
+  }
+  hline(x1, x2, y, rgb, w) { this.stroke(rgb, w || 0.3); this.doc.line(x1, y, x2, y); }
+  star(x, y, r, rgb) {
+    const pts = [];
+    for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = i % 2 ? r * 0.45 : r; pts.push([x + rr * Math.cos(a), y + rr * Math.sin(a)]); }
+    this.fill(rgb);
+    this.doc.lines(pts.slice(1).map((p, i) => [p[0] - pts[i][0], p[1] - pts[i][1]]), pts[0][0], pts[0][1], [1, 1], "F", true);
+  }
+  check(x, y, z, rgb) { this.stroke(rgb, 0.7); this.doc.line(x, y, x + z * 0.36, y + z * 0.38); this.doc.line(x + z * 0.36, y + z * 0.38, x + z, y - z * 0.52); }
+  cross(x, y, z, rgb) { this.stroke(rgb, 0.7); this.doc.line(x, y - z * 0.4, x + z * 0.8, y + z * 0.4); this.doc.line(x + z * 0.8, y - z * 0.4, x, y + z * 0.4); }
+  withOpacity(alpha, fn) {
+    const d = this.doc;
+    let ok = false;
+    try { if (d.GState && d.setGState && d.saveGraphicsState) { d.saveGraphicsState(); d.setGState(new d.GState({ opacity: alpha })); ok = true; } } catch (e) { ok = false; }
+    fn();
+    if (ok) { try { d.restoreGraphicsState(); } catch (e) { /* nada */ } }
+  }
+}
+
+/** Flujo vertical con salto de página automático. */
+class Flow {
+  constructor(pen, model, opts) { this.p = pen; this.m = model; this.o = opts; this.y = PAGE.m; }
+  ensure(h) {
+    if (this.y + h <= this.p.bottom) return;
+    this.p.doc.addPage(); this.p.page++; this.y = PAGE.m + 4;
+  }
+  gap(n = 1) { this.y += GRID * n; }
+  h2(title, keep) {
+    const p = this.p; this.ensure(14 + (keep || 12));
+    p.rrect(PAGE.m, this.y, 1.8, 6.4, 0.9, C.sky);
+    p.line(title, PAGE.m + 5, this.y + 5.2, { kind: "display", size: 12.5, color: C.navy });
+    this.y += 7;
+    p.hline(PAGE.m, PAGE.m + p.cw, this.y, C.line, 0.3);
+    this.y += 3.5;
+  }
+  bullets(items, tone) {
+    const p = this.p, col = TONE[tone || "azul"][0];
+    for (const t of items) {
+      const h = p.measure(t, p.cw - 7, 9.6, "body", "normal");
+      this.ensure(h + 2);
+      p.circle(PAGE.m + 1.6, this.y + 2.2, 1, col);
+      p.para(t, PAGE.m + 6, this.y, p.cw - 7, { size: 9.6 });
+      this.y += h + 2;
+    }
+  }
+}
+
+// ---------------------------------------------------------------- bloques
+function header(pen, model, opts, h, one) {
+  const d = pen.doc, M = PAGE.m, W = PAGE.w;
+  pen.rect(0, 0, W, h, C.navy);
+  pen.rect(0, h, W, 1.6, C.sky);
+  // marca de agua: la nube grande y tenue a la derecha
+  const wm = h * 0.98;
+  pen.withOpacity(0.09, () => Logo.drawIsotypePdf(d, W - wm * 0.86, -8, wm, { variant: "onDark", noBg: true }));
+  Logo.drawIsotypePdf(d, M, 11, 11, { variant: "onDark" });
+  Logo.drawWordmarkPdf(d, M + 14.5, 19, 12.5, { variant: "onDark", font: pen.fonts.display });
+  pen.line("SISTEMAS DE GESTIÓN PARA NEGOCIOS", M + 14.5, 24.2, { size: 6.8, color: [170, 200, 230], weight: "bold", charSpace: 0.5 });
+
+  const photo = opts.images && opts.images.photo;
+  const photoW = photo ? 44 : 0;
+  const textW = pen.cw - photoW - (photo ? 8 : 0);
+  let y = h - (one ? 33 : 42);
+  pen.line(model.cover.kicker, M, y, { size: 7.8, color: [150, 190, 230], weight: "bold", charSpace: 0.6 });
+  y += one ? 8.5 : 10;
+  let size = one ? 21 : 24;
+  pen.font("display").size(size);
+  let lines = pen.wrap(model.cover.title, textW);
+  if (lines.length > 2) { size = 17; pen.size(size); lines = pen.wrap(model.cover.title, textW).slice(0, 2); }
+  else if (lines.length === 2) { size = 19; pen.size(size); lines = pen.wrap(model.cover.title, textW); }
+  pen.color(C.white);
+  lines.forEach((ln, i) => d.text(ln, M, y + i * pen.lh(size, 1.15)));
+  y += lines.length * pen.lh(size, 1.15) + 3;
+  pen.para(model.cover.subtitle, M, y - 3, textW, { size: 9, color: [190, 212, 236] });
+  if (photo) {
+    const px = W - M - photoW, py = h - 12 - photoW;
+    pen.rrect(px - 1.5, py - 1.5, photoW + 3, photoW + 3, 3.5, C.white);
+    try { d.addImage(photo.data, photo.format || "JPEG", px, py, photoW, photoW, undefined, "FAST"); } catch (e) { pen.rrect(px, py, photoW, photoW, 2.5, C.navyW); }
+  }
+}
+
+function footers(pen, model) {
+  const d = pen.doc, n = d.getNumberOfPages ? d.getNumberOfPages() : pen.page;
+  for (let i = 1; i <= n; i++) {
+    d.setPage(i);
+    const y = PAGE.h - PAGE.m - 2;
+    pen.hline(PAGE.m, PAGE.m + pen.cw, y - 5.5, C.line, 0.3);
+    Logo.drawIsotypePdf(d, PAGE.m, y - 3.6, 4.4, { variant: "color" });
+    pen.line("Sky Tech  ·  Propuesta " + model.meta.folio + "  ·  válida hasta " + model.meta.validUntil, PAGE.m + 6.5, y - 0.4, { size: 7.2, color: C.mut });
+    pen.line("pág. " + i + " / " + n, PAGE.m + pen.cw, y - 0.4, { size: 7.2, color: C.mut, align: "right" });
+  }
+}
+
+function promise(f, compact) {
+  const p = f.p, m = f.m, M = PAGE.m;
+  const bodyH = p.measure(m.cover.promise.body, p.cw - 16, compact ? 9.8 : 10.5, "body", "normal", 1.3);
+  const h = (compact ? 8 : 10) + 7 + bodyH + (compact ? 4 : 5);
+  f.ensure(h);
+  p.rrect(M, f.y, p.cw, h, 3, C.navyW);
+  p.rrect(M, f.y, 2.2, h, 1.1, C.navy);
+  p.line(m.cover.promise.headline, M + 8, f.y + (compact ? 8.2 : 9.5), { kind: "display", size: compact ? 13.5 : 15, color: C.navy });
+  p.para(m.cover.promise.body, M + 8, f.y + (compact ? 11.2 : 13), p.cw - 16, { size: compact ? 9.8 : 10.5, color: C.ink, lh: 1.3 });
+  f.y += h;
+  f.gap(1.25);
+}
+
+function kpis(f) {
+  const p = f.p, m = f.m, M = PAGE.m, gapW = 4, n = m.cover.kpis.length, bw = (p.cw - gapW * (n - 1)) / n, h = 22;
+  f.ensure(h);
+  m.cover.kpis.forEach((k, i) => {
+    const x = M + i * (bw + gapW), [col, weak] = TONE[k.tone] || TONE.azul;
+    p.rrect(x, f.y, bw, h, 3, weak);
+    p.rrect(x, f.y, bw, 2, 1, col);
+    let vx = x + 5, val = String(k.value);
+    if (/^★\s*/.test(val)) { p.star(x + 7.2, f.y + 11.2, 2.4, col); vx = x + 11.5; val = val.replace(/^★\s*/, ""); }
+    p.line(val, vx, f.y + 12.5, { kind: "display", size: 16, color: col });
+    p.para(k.label, x + 5, f.y + 14, bw - 8, { size: 7.4, color: C.mut, lh: 1.15 });
+  });
+  f.y += h;
+  f.gap(1.5);
+}
+
+function bars(p, x, y, w, comp, rowH) {
+  const labW = 44, barW = w - labW - 14;
+  comp.bars.forEach((b, i) => {
+    const yy = y + i * rowH, [col] = TONE[b.tone] || TONE.gris;
+    p.line(b.label, x, yy + 4.6, { size: 8.4, weight: b.strong ? "bold" : "normal", color: b.strong ? C.ink : C.mut });
+    p.rrect(x + labW, yy, barW, 6.6, 1.8, C.line);
+    const bwid = Math.max(2.2, barW * Math.min(1, b.value / comp.max));
+    p.rrect(x + labW, yy, bwid, 6.6, 1.8, col);
+    p.line(b.text, x + labW + barW + 2.5, yy + 4.9, { size: 9.2, weight: "bold", color: col });
+  });
+  return comp.bars.length * 10.5;
+}
+
+function radar(p, cx, cy, R, rad) {
+  const scale = R / rad.radiusKm;
+  p.circle(cx, cy, R, C.bg, C.line, 0.3);
+  p.stroke(C.line, 0.25); p.doc.circle(cx, cy, R / 2, "S");
+  p.doc.line(cx - R, cy, cx + R, cy); p.doc.line(cx, cy - R, cx, cy + R);
+  p.line((rad.radiusKm / 2) + " km", cx + 1.2, cy - R / 2 + 2.6, { size: 5.8, color: C.mut });
+  p.line(rad.radiusKm + " km", cx + 1.2, cy - R + 2.6, { size: 5.8, color: C.mut });
+  for (const pt of rad.points) {
+    if (pt.me) continue;
+    const dist = Math.hypot(pt.x, pt.y);
+    if (dist > rad.radiusKm) continue;
+    const r = 0.9 + 1.7 * Math.sqrt(pt.reviews / rad.top);
+    p.circle(cx + pt.x * scale, cy + pt.y * scale, r, C.mut);
+  }
+  p.circle(cx, cy, 3.1, C.white); p.circle(cx, cy, 2.4, C.azul);
+  p.line("USTED", cx, cy + R + 5, { size: 6.6, weight: "bold", color: C.azul, align: "center" });
+  p.line("cada punto: un competidor (más grande = más reseñas)", cx, cy + R + 8.6, { size: 5.8, color: C.mut, align: "center" });
+}
+
+function chips(p, x, y, w, items) {
+  let cx = x, cy = y; const h = 7.4;
+  p.font("body", "bold").size(7.8);
+  for (const it of items) {
+    const [col, weak] = TONE[it.tone] || TONE.azul, tw = p.width(p.clean(it.text)) + 7;
+    if (cx + tw > x + w) { cx = x; cy += h + 2.2; }
+    p.rrect(cx, cy, tw, h, 2, weak);
+    p.line(it.text, cx + 3.5, cy + 5.1, { size: 7.8, weight: "bold", color: col });
+    cx += tw + 2.6;
+  }
+  return cy + h - y;
+}
+
+function comparison(f, compact) {
+  const p = f.p, m = f.m, M = PAGE.m, comp = m.comparison;
+  if (!comp) {
+    f.h2("Lo que vimos de su negocio en Google");
+    const b = m.business, txt = [b.reviews ? b.reviews + " reseñas" : "todavía sin reseñas", b.rating ? "calificación " + b.rating.toFixed(1) : "", b.website ? "con web propia" : "sin web propia"].filter(Boolean).join(", ") + ".";
+    f.y += p.para("Su negocio aparece con " + txt + " Cuando tengamos más negocios de su rubro escaneados en su zona, le mostramos su puesto exacto frente a la competencia.", M, f.y, p.cw, { size: 9.6, color: C.ink });
+    f.gap(2);
+    return;
+  }
+  f.h2(comp.title, 40);
+  if (!compact) f.y += p.para(comp.note, M, f.y, p.cw, { size: 8.6, color: C.mut }) + 2;
+  const hasRadar = !!comp.radar && !compact;
+  const R = 19.5, radarW = hasRadar ? R * 2 + 12 : 0, leftW = p.cw - radarW - (hasRadar ? 6 : 0);
+  const rowH = compact ? 9 : 10.5, barsH = comp.bars.length * rowH;
+  // altura de las fichas (se envuelven en la columna izquierda)
+  p.font("body", "bold").size(7.8);
+  const chipRows = (() => { let cx = 0, rows = 1; for (const it of comp.chips) { const tw = p.width(p.clean(it.text)) + 7; if (cx + tw > leftW) { cx = 0; rows++; } cx += tw + 2.6; } return rows; })();
+  const leftH = barsH + 10 + (compact ? 0 : chipRows * 9.6 + 1);
+  const blockH = Math.max(leftH, hasRadar ? R * 2 + 15 : 0);
+  f.ensure(blockH + 3);
+  const y0 = f.y;
+  bars(p, M, y0, leftW, comp, rowH);
+  const [gcol] = TONE[comp.rank.grade];
+  p.line(comp.rank.label, M, y0 + barsH + 6.5, { kind: "display", size: 12, color: gcol });
+  if (!compact) chips(p, M, y0 + barsH + 11, leftW, comp.chips);
+  if (hasRadar) radar(p, M + leftW + 6 + radarW / 2 - 6, y0 + R + 1, R, comp.radar);
+  f.y = y0 + blockH + 3;
+}
+
+function gains(f) {
+  const p = f.p, m = f.m, M = PAGE.m, gapW = 4, bw = (p.cw - 2 * gapW) / 3;
+  const items = [["TIEMPO", m.gains.time, "azul", "clock"], ["DINERO", m.gains.money, "verde", "coin"], ["TRANQUILIDAD", m.gains.calm, "ambar", "smile"]];
+  const th = Math.max(...items.map((it) => p.measure(it[1], bw - 8, 8.4, "body", "normal", 1.28)));
+  const h = 19 + th + 2.5;
+  f.h2("Lo que gana cada mes", h);
+  items.forEach((it, i) => {
+    const x = M + i * (bw + gapW), [col, weak] = TONE[it[2]];
+    p.rrect(x, f.y, bw, h, 3, weak); p.rrect(x, f.y, bw, 2, 1, col);
+    icon(p, it[3], x + bw / 2, f.y + 8, 3.3, col);
+    p.line(it[0], x + bw / 2, f.y + 15.2, { kind: "display", size: 9, color: col, align: "center" });
+    p.para(it[1], x + 4, f.y + 17, bw - 8, { size: 8.4, lh: 1.28 });
+  });
+  f.y += h + 1.2;
+  f.y += p.para(m.gains.note, M, f.y, p.cw, { size: 7, color: C.mut, lh: 1.15 }) + 1.5;
+}
+
+function icon(p, kind, x, y, r, col) {
+  const d = p.doc;
+  p.stroke(col, 0.55);
+  if (kind === "clock") { d.circle(x, y, r, "S"); d.line(x, y, x, y - r * 0.55); d.line(x, y, x + r * 0.45, y + r * 0.22); }
+  else if (kind === "coin") { d.circle(x, y, r, "S"); p.line("$", x, y + r * 0.45, { size: r * 2.9, weight: "bold", color: col, align: "center" }); }
+  else { d.circle(x, y, r, "S"); p.fill(col); d.circle(x - r * 0.34, y - r * 0.22, 0.32, "F"); d.circle(x + r * 0.34, y - r * 0.22, 0.32, "F"); d.line(x - r * 0.52, y + r * 0.14, x - r * 0.22, y + r * 0.44); d.line(x - r * 0.22, y + r * 0.44, x + r * 0.22, y + r * 0.44); d.line(x + r * 0.22, y + r * 0.44, x + r * 0.52, y + r * 0.14); }
+}
+
+function includes(f) {
+  const p = f.p, m = f.m, M = PAGE.m, gapW = 6, bw = (p.cw - gapW) / 2;
+  const half = Math.ceil(m.includes.length / 2), cols = [m.includes.slice(0, half), m.includes.slice(half)];
+  const hs = cols.map((c) => c.reduce((a, t) => a + p.measure(t, bw - 8, 9, "body", "normal", 1.25) + 2, 0));
+  f.h2("Qué incluye su sistema", Math.max(...hs));
+  cols.forEach((c, ci) => {
+    let yy = f.y; const x = M + ci * (bw + gapW);
+    for (const t of c) { p.check(x, yy + 1.9, 2.6, C.verde); const h = p.para(t, x + 6.5, yy, bw - 8, { size: 9, lh: 1.25 }); yy += h + 2; }
+  });
+  f.y += Math.max(...hs) + 2.5;
+}
+
+function beforeAfter(f) {
+  const p = f.p, m = f.m, M = PAGE.m, gapW = 5, bw = (p.cw - gapW) / 2;
+  const rows = m.beforeAfter.map((r) => ({ r, hL: p.measure(r.today, bw - 13, 8.8, "body", "normal", 1.3), hR: p.measure(r.withSystem, bw - 13, 8.8, "body", "normal", 1.3) }));
+  const total = 11 + rows.reduce((a, x) => a + 3.4 + Math.max(x.hL, x.hR) + 2, 0);
+  f.h2("Cómo trabaja hoy y cómo quedaría con el sistema", total);
+  p.rrect(M, f.y, bw, total, 3, C.rojoW); p.rrect(M + bw + gapW, f.y, bw, total, 3, C.verdeW);
+  p.rrect(M, f.y, bw, 2, 1, C.rojo); p.rrect(M + bw + gapW, f.y, bw, 2, 1, C.verde);
+  p.line("HOY, A MANO", M + 5, f.y + 8.4, { kind: "display", size: 9.5, color: C.rojo });
+  p.line("CON EL SISTEMA", M + bw + gapW + 5, f.y + 8.4, { kind: "display", size: 9.5, color: C.verde });
+  let yy = f.y + 11;
+  for (const x of rows) {
+    p.line(x.r.topic.toUpperCase(), M + 9, yy + 2.4, { size: 6.4, weight: "bold", color: C.mut, charSpace: 0.3 });
+    p.line(x.r.topic.toUpperCase(), M + bw + gapW + 9, yy + 2.4, { size: 6.4, weight: "bold", color: C.mut, charSpace: 0.3 });
+    yy += 3.4;
+    p.cross(M + 4.6, yy + 2.2, 2.4, C.rojo); p.check(M + bw + gapW + 4.4, yy + 2.2, 2.5, C.verde);
+    p.para(x.r.today, M + 9, yy, bw - 13, { size: 8.8, lh: 1.3 });
+    p.para(x.r.withSystem, M + bw + gapW + 9, yy, bw - 13, { size: 8.8, lh: 1.3 });
+    yy += Math.max(x.hL, x.hR) + 2;
+  }
+  f.y += total + 3;
+}
+
+function plan(f) {
+  const p = f.p, m = f.m, M = PAGE.m, gapW = 4, bw = (p.cw - 2 * gapW) / 3;
+  const th = Math.max(...m.plan.map((s) => p.measure(s.body, bw - 8, 8.4, "body", "normal", 1.3)));
+  const h = 13.5 + th + 2;
+  f.h2("Cómo funciona, en tres pasos", h);
+  m.plan.forEach((s, i) => {
+    const x = M + i * (bw + gapW);
+    p.rrect(x, f.y, bw, h, 3, C.bg, C.line, 0.3);
+    p.circle(x + 7, f.y + 7, 4, C.navy);
+    p.line(String(s.n), x + 7, f.y + 8.4, { kind: "display", size: 9, color: C.white, align: "center" });
+    p.para(s.title, x + 13, f.y + 3.6, bw - 16, { size: 9, weight: "bold", color: C.navy, lh: 1.15 });
+    p.para(s.body, x + 4, f.y + 13.5, bw - 8, { size: 8.4, lh: 1.3, color: C.ink });
+  });
+  f.y += h + 3;
+}
+
+function cta(f, compact) {
+  const p = f.p, m = f.m, M = PAGE.m, c = m.cta, qrSize = c.qr ? 32 : 0, txtW = p.cw - (c.qr ? qrSize + 22 : 12);
+  const h1 = p.measure(c.body, txtW, 9.8, "body", "normal", 1.35), h2 = p.measure(c.steps, txtW, 7.8, "body", "normal", 1.3);
+  const h3 = c.contactLine ? p.measure(c.contactLine, txtW, 9.4, "body", "bold", 1.3) : 0;
+  const h4 = c.demo ? 6 + p.measure(c.demo, txtW, 7.2, "body", "normal", 1.2) : 0;
+  const alto = 13 + h1 + 2.5 + h2 + 2.5 + (h3 ? h3 + 1.5 : 0) + h4 + 6;
+  const h = Math.max(alto, c.qr ? qrSize + 17 : 26);
+  f.ensure(h + 2);
+  p.rrect(M, f.y, p.cw, h, 3.5, C.navy); p.rrect(M, f.y, p.cw, 2.4, 1.2, C.sky);
+  let yy = f.y + 12.5;
+  p.line(c.headline, M + 7, yy, { kind: "display", size: compact ? 13.5 : 15, color: C.white });
+  yy += 5;
+  yy += p.para(c.body, M + 7, yy, txtW, { size: 9.8, color: C.white, lh: 1.35 }) + 2.5;
+  yy += p.para(c.steps, M + 7, yy, txtW, { size: 7.8, color: [186, 212, 236], lh: 1.3 }) + 2.5;
+  if (c.contactLine) yy += p.para(c.contactLine, M + 7, yy, txtW, { size: 9.4, weight: "bold", color: C.white, lh: 1.3 }) + 1.5;
+  if (c.demo) {
+    p.font("body", "bold").size(9.6).color(C.white);
+    try { p.doc.textWithLink(c.demoLabel, M + 7, yy + 3.2, { url: c.demo }); } catch (e) { p.doc.text(c.demoLabel, M + 7, yy + 3.2); }
+    const lw = p.width(c.demoLabel);
+    p.hline(M + 7, M + 7 + lw, yy + 4.2, C.sky, 0.4);
+    p.para(c.demo, M + 7, yy + 5.2, txtW, { size: 7.2, color: [186, 212, 236], lh: 1.2 });
+  }
+  if (c.qr && f.o.qr) {
+    const qx = M + p.cw - qrSize - 8, qy = f.y + (h - qrSize - 6) / 2;
+    if (f.o.qr(c.qr.url, qx, qy, qrSize)) {
+      try { p.doc.link(qx - 2.5, qy - 2.5, qrSize + 5, qrSize + 5, { url: c.qr.url }); } catch (e) { /* sin enlace */ }
+      p.para(c.qr.label, qx - 4, qy + qrSize + 4.5, qrSize + 8, { size: 6.8, weight: "bold", color: C.white, align: "center", lh: 1.15 });
+    }
+  }
+  f.y += h + 3;
+}
+
+function insightsBlock(f, max) {
+  let items = f.m.insights.slice(0, max);
+  if (!items.length) return;
+  const hs = items.map((t) => f.p.measure(t, f.p.cw - 7, 9.6, "body", "normal") + 2);
+  const avail = f.p.bottom - f.y - 15;
+  // Los insights vienen por prioridad: si no caben todos en esta página, se dejan los que sí (mínimo 1).
+  let n = 0, acc = 0;
+  while (n < items.length && acc + hs[n] <= avail) { acc += hs[n]; n++; }
+  if (n === 0) { n = 1; acc = hs[0]; }
+  items = items.slice(0, n);
+  f.h2("Por qué ahora", Math.min(acc, 60));
+  f.bullets(items, "ambar");
+  f.gap(0.5);
+}
+
+/** Altura estimada de los bloques de la segunda página con la escala actual. */
+function secondPageHeight(f) {
+  const p = f.p, m = f.m, bw3 = (p.cw - 8) / 3, bw2 = (p.cw - 6) / 2, bwT = (p.cw - 5) / 2;
+  const gainsTxt = Math.max(...[m.gains.time, m.gains.money, m.gains.calm].map((t) => p.measure(t, bw3 - 8, 8.4, "body", "normal", 1.28)));
+  const gainsH = 19 + gainsTxt + 2.5 + 1.2 + p.measure(m.gains.note, p.cw, 7, "body", "normal", 1.15) + 1.5;
+  const half = Math.ceil(m.includes.length / 2);
+  const incH = Math.max(...[m.includes.slice(0, half), m.includes.slice(half)].map((c) => c.reduce((a, t) => a + p.measure(t, bw2 - 8, 9, "body", "normal", 1.25) + 2, 0))) + 2.5;
+  const tabH = 11 + m.beforeAfter.reduce((a, r) => a + 3.4 + Math.max(p.measure(r.today, bwT - 13, 8.8, "body", "normal", 1.3), p.measure(r.withSystem, bwT - 13, 8.8, "body", "normal", 1.3)) + 2, 0) + 3;
+  const planH = 13.5 + Math.max(...m.plan.map((s) => p.measure(s.body, bw3 - 8, 8.4, "body", "normal", 1.3))) + 2 + 3;
+  const c = m.cta, qrSize = c.qr ? 32 : 0, txtW = p.cw - (c.qr ? qrSize + 22 : 12);
+  const ctaH = Math.max(13 + p.measure(c.body, txtW, 9.8, "body", "normal", 1.35) + 2.5 + p.measure(c.steps, txtW, 7.8, "body", "normal", 1.3) + 2.5 + (c.contactLine ? p.measure(c.contactLine, txtW, 9.4, "body", "bold", 1.3) + 1.5 : 0) + (c.demo ? 6 + p.measure(c.demo, txtW, 7.2, "body", "normal", 1.2) : 0) + 6, c.qr ? qrSize + 17 : 26) + 3;
+  const headings = 4 * (14.5 + 4);
+  return headings + gainsH + incH + tabH + planH + ctaH;
+}
+
+/**
+ * Dibuja una propuesta completa (2 páginas) o de una página en el `doc` dado.
+ * @param {object} doc jsPDF
+ * @param {object} model de buildProposal()
+ * @param {{fonts?:{display:string,body:string}, mode?:"full"|"one", qr?:(url,x,y,size)=>boolean, images?:{photo?:{data:string,format:string}}}} opts
+ */
+function renderProposal(doc, model, opts = {}) {
+  const pen = new Pen(doc, opts.fonts);
+  const f = new Flow(pen, model, opts);
+  const one = opts.mode === "one";
+  const hh = one ? 64 : 72;
+  header(pen, model, opts, hh, one);
+  f.y = hh + 8;
+  promise(f, one);
+  kpis(f);
+  comparison(f, one);
+  if (one) {
+    insightsBlock(f, 2);
+    cta(f, true);
+  } else {
+    insightsBlock(f, 3);
+    if (f.y > 175) { doc.addPage(); pen.page++; f.y = PAGE.m + 4; }
+    // Si la segunda página no cabe con la escala normal, se aprieta el interlineado (hasta 12 %)
+    const avail = pen.bottom - f.y;
+    for (const scale of [1, 0.95, 0.9, 0.88]) { pen.lhScale = scale; if (secondPageHeight(f) <= avail) break; }
+    gains(f);
+    includes(f);
+    beforeAfter(f);
+    plan(f);
+    cta(f, false);
+  }
+  footers(pen, model);
+  const dense = pen.lhScale < 1;
+  pen.lhScale = 1;
+  return { pages: pen.page, dense };
+}
+
+module.exports = { renderProposal, Pen, Flow, C, TONE, PAGE };
+
+};
+defs["proposal-html"]=function(module,exports,require){
+"use strict";
+/**
+ * Renderizador HTML de la propuesta (para imprimir / "Guardar como PDF" cuando no carga jsPDF,
+ * y para las pruebas visuales). Consume el MISMO modelo que el PDF, así nunca dicen cosas distintas.
+ */
+const Logo = require("./logo");
+
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const TONE = { azul: ["#1D4ED8", "#E5ECFC"], ambar: ["#B7791F", "#FAF1E1"], verde: ["#0E9F6E", "#E0F6EE"], rojo: ["#D92D20", "#FDE8E6"], gris: ["#5C7183", "#ECF0F5"], navy: ["#0B3C68", "#E8F0F9"] };
+
+function radarSvg(rad) {
+  if (!rad) return "";
+  const R = 60, s = R / rad.radiusKm, cx = 70, cy = 70;
+  const dots = rad.points.filter((p) => !p.me && Math.hypot(p.x, p.y) <= rad.radiusKm).map((p) => `<circle cx="${(cx + p.x * s).toFixed(1)}" cy="${(cy + p.y * s).toFixed(1)}" r="${(2.4 + 4.5 * Math.sqrt(p.reviews / rad.top)).toFixed(1)}" fill="#5C7183"/>`).join("");
+  return `<svg class="radar" viewBox="0 0 140 150" width="140" height="150" role="img" aria-label="Competidores a ${rad.radiusKm} km"><circle cx="${cx}" cy="${cy}" r="${R}" fill="#F4F7FB" stroke="#D7E2EE"/><circle cx="${cx}" cy="${cy}" r="${R / 2}" fill="none" stroke="#D7E2EE"/><line x1="${cx - R}" y1="${cy}" x2="${cx + R}" y2="${cy}" stroke="#D7E2EE"/><line x1="${cx}" y1="${cy - R}" x2="${cx}" y2="${cy + R}" stroke="#D7E2EE"/>${dots}<circle cx="${cx}" cy="${cy}" r="8" fill="#fff"/><circle cx="${cx}" cy="${cy}" r="6" fill="#1D4ED8"/><text x="${cx + R / 2 + 2}" y="${cy - 3}" font-size="7" fill="#5C7183">${rad.radiusKm / 2} km</text><text x="${cx + R - 16}" y="${cy - 3}" font-size="7" fill="#5C7183">${rad.radiusKm} km</text><text x="${cx}" y="142" text-anchor="middle" font-size="8" font-weight="700" fill="#1D4ED8">USTED</text></svg>`;
+}
+
+function article(m, o) {
+  const b = m.business, c = m.comparison, k = m.cover.kpis;
+  const chip = (it) => `<span class="ch" style="color:${TONE[it.tone][0]};background:${TONE[it.tone][1]}">${esc(it.text)}</span>`;
+  const bar = (x) => `<div class="brow"><span class="blab${x.strong ? " strong" : ""}">${esc(x.label)}</span><span class="btrack"><i style="width:${Math.max(1.5, 100 * Math.min(1, x.value / c.max)).toFixed(1)}%;background:${TONE[x.tone][0]}"></i></span><b style="color:${TONE[x.tone][0]}">${esc(x.text)}</b></div>`;
+  const photo = b.thumb && o.photos !== false ? `<img class="photo" src="${esc(b.thumb)}" alt="" onerror="this.remove()">` : "";
+  const qr = m.cta.qr && o.qrSvg ? o.qrSvg(m.cta.qr.url) : "";
+  return `<article>
+  <header><div class="hlogo">${Logo.isotypeSvg({ size: 34, variant: "onDark" })}<div><b>SKY <i>TECH</i></b><span>SISTEMAS DE GESTIÓN PARA NEGOCIOS</span></div></div>
+    <div class="hrow"><div><div class="k">${esc(m.cover.kicker)}</div><h1>${esc(m.cover.title)}</h1><div class="sub">${esc(m.cover.subtitle)}</div></div>${photo}</div></header>
+  <div class="promise"><b>${esc(m.cover.promise.headline)}</b><p>${esc(m.cover.promise.body)}</p></div>
+  <div class="kpis">${k.map((x) => `<div class="kpi" style="background:${TONE[x.tone][1]};border-top-color:${TONE[x.tone][0]}"><b style="color:${TONE[x.tone][0]}">${esc(x.value)}</b><span>${esc(x.label)}</span></div>`).join("")}</div>
+  ${c ? `<h2>${esc(c.title)}</h2><p class="mut">${esc(c.note)}</p>
+  <div class="cmp"><div class="bars">${c.bars.map(bar).join("")}<p class="rank" style="color:${TONE[c.rank.grade][0]}">${esc(c.rank.label)}</p></div>${radarSvg(c.radar)}</div>
+  <div class="chips">${c.chips.map(chip).join("")}</div>` : `<h2>Lo que vimos de su negocio en Google</h2><p>Su negocio aparece con ${b.reviews ? b.reviews + " reseñas" : "todavía sin reseñas"}${b.rating ? ", calificación " + b.rating.toFixed(1) : ""}, ${b.website ? "con" : "sin"} web propia. Cuando tengamos más negocios de su rubro escaneados en su zona, le mostramos su puesto exacto frente a la competencia.</p>`}
+  ${m.insights.length ? `<h2>Por qué ahora</h2><ul class="why">${m.insights.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}
+  ${o.mode === "one" ? "" : `<h2>Lo que gana cada mes</h2>
+  <div class="gain"><div class="g" style="background:${TONE.azul[1]};border-top-color:${TONE.azul[0]}"><b style="color:${TONE.azul[0]}">TIEMPO</b><span>${esc(m.gains.time)}</span></div><div class="g" style="background:${TONE.verde[1]};border-top-color:${TONE.verde[0]}"><b style="color:${TONE.verde[0]}">DINERO</b><span>${esc(m.gains.money)}</span></div><div class="g" style="background:${TONE.ambar[1]};border-top-color:${TONE.ambar[0]}"><b style="color:${TONE.ambar[0]}">TRANQUILIDAD</b><span>${esc(m.gains.calm)}</span></div></div>
+  <p class="mut tiny">${esc(m.gains.note)}</p>
+  <h2>Qué incluye su sistema</h2><ul class="check">${m.includes.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
+  <h2>Cómo trabaja hoy y cómo quedaría con el sistema</h2>
+  <div class="bacols"><div class="bahead red">HOY, A MANO</div><div class="bahead green">CON EL SISTEMA</div>${m.beforeAfter.map((r) => `<div class="ba"><div class="hoy"><small>${esc(r.topic)}</small><s>✕</s>${esc(r.today)}</div><div class="sis"><small>${esc(r.topic)}</small><s>✓</s>${esc(r.withSystem)}</div></div>`).join("")}</div>
+  <h2>Cómo funciona, en tres pasos</h2><div class="plan">${m.plan.map((s) => `<div class="step"><i>${s.n}</i><b>${esc(s.title)}</b><span>${esc(s.body)}</span></div>`).join("")}</div>`}
+  <div class="cta"><div class="ctatxt"><b>${esc(m.cta.headline)}</b><p>${esc(m.cta.body)}</p><p class="pasos">${esc(m.cta.steps)}</p>${m.cta.contactLine ? `<p class="firma">${esc(m.cta.contactLine)}</p>` : ""}${m.cta.demo ? `<p><a class="lnk" href="${esc(m.cta.demo)}">${esc(m.cta.demoLabel)}</a><br><span class="tiny">${esc(m.cta.demo)}</span></p>` : ""}</div>${qr ? `<div class="qr"><a href="${esc(m.cta.qr.url)}">${qr}</a><span>${esc(m.cta.qr.label)}</span></div>` : ""}</div>
+  <footer>${Logo.isotypeSvg({ size: 14 })}<span>Sky Tech · Propuesta ${esc(m.meta.folio)} · válida hasta ${esc(m.meta.validUntil)}</span></footer>
+</article>`;
+}
+
+const CSS = `
+*{box-sizing:border-box}body{font:13px/1.5 'IBM Plex Sans',-apple-system,Segoe UI,Roboto,sans-serif;color:#11253A;margin:0;background:#EEF3F8}
+h1,h2,.kpi b,.promise b,.cta b,.rank,.step b,.bahead{font-family:Sora,'IBM Plex Sans',-apple-system,Segoe UI,sans-serif}
+article{max-width:780px;margin:0 auto 24px;background:#fff;padding-bottom:18px}article+article{page-break-before:always}
+header{background:#0B3C68;color:#fff;padding:18px 26px 22px;border-bottom:4px solid #1FA2FF;position:relative;overflow:hidden}
+.hlogo{display:flex;align-items:center;gap:9px;margin-bottom:16px}.hlogo svg{display:block;border-radius:8px}
+.hlogo b{font-size:15px;letter-spacing:1px;font-weight:800}.hlogo b i{font-style:normal;color:#1FA2FF}.hlogo span{font-size:8.5px;letter-spacing:1.4px;color:#9FC4E4;display:block}
+.hrow{display:flex;justify-content:space-between;align-items:flex-end;gap:18px}
+header .k{font-size:10px;letter-spacing:1.6px;color:#9FC4E4;font-weight:700}header h1{margin:4px 0 4px;font-size:27px;line-height:1.15}header .sub{font-size:12px;color:#BED4EC}
+.photo{width:120px;height:120px;object-fit:cover;border-radius:10px;border:3px solid #fff;flex:none}
+.promise{margin:18px 26px 12px;background:#E8F0F9;border-left:4px solid #0B3C68;border-radius:0 10px 10px 0;padding:12px 16px}
+.promise b{font-size:17px;color:#0B3C68;display:block;margin-bottom:4px}.promise p{margin:0;font-size:13.5px}
+.kpis{display:flex;gap:10px;margin:0 26px 14px}.kpi{flex:1;border-radius:9px;border-top:4px solid;padding:10px 12px}.kpi b{font-size:22px;display:block}.kpi span{font-size:11px;color:#5C7183}
+h2{color:#0B3C68;margin:18px 26px 8px;font-size:15px;padding:0 0 6px 10px;border-left:4px solid #1FA2FF;border-bottom:1px solid #D7E2EE}
+p{margin:0 26px 8px}.mut{color:#5C7183}.tiny{font-size:11px}
+.cmp{display:flex;gap:16px;margin:8px 26px;align-items:flex-start}.bars{flex:1}
+.brow{display:flex;align-items:center;gap:8px;margin:6px 0}.blab{width:132px;flex:none;font-size:12px;color:#6a758c}.blab.strong{color:#20233a;font-weight:700}
+.btrack{flex:1;height:9px;background:#e4e7f2;border-radius:5px;overflow:hidden}.btrack i{display:block;height:100%;border-radius:5px}
+.brow b{width:44px;text-align:right;font-size:12px}.rank{font-size:16px;font-weight:700;margin:10px 0 0}
+.radar{flex:none}
+.chips{margin:4px 26px 8px;display:flex;flex-wrap:wrap;gap:6px}.ch{font-size:11.5px;font-weight:700;border-radius:6px;padding:4px 9px}
+ul.why{margin:0 26px 8px;padding-left:18px}ul.why li{margin:5px 0;font-size:12.5px}
+.gain{display:flex;gap:10px;margin:8px 26px}.g{flex:1;border-radius:9px;padding:13px;border-top:4px solid}.g b{display:block;text-align:center;font-size:12.5px;margin-bottom:6px}.g span{font-size:12px}
+ul.check{list-style:none;margin:0 26px 10px;padding:0;columns:2;column-gap:22px}ul.check li{break-inside:avoid;padding-left:20px;position:relative;margin:4px 0;font-size:12.5px}ul.check li:before{content:"✓";position:absolute;left:0;color:#0E9F6E;font-weight:700}
+.bacols{margin:8px 26px;display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.bahead{font-weight:700;font-size:12.5px;padding:8px 12px;border-radius:9px 9px 0 0}
+.bahead.red{background:#FDE8E6;color:#D92D20;border-top:4px solid #D92D20}.bahead.green{background:#E0F6EE;color:#0E9F6E;border-top:4px solid #0E9F6E}
+.ba{display:contents}.ba .hoy,.ba .sis{font-size:12px;padding:7px 12px}.ba .hoy{background:#FDE8E6}.ba .sis{background:#E0F6EE}
+.ba:last-child .hoy,.ba:last-child .sis{border-radius:0 0 9px 9px}
+.ba small{display:block;font-size:9.5px;letter-spacing:.6px;color:#5C7183;font-weight:700}.ba s{text-decoration:none;font-weight:700;margin-right:6px}.ba .hoy s{color:#D92D20}.ba .sis s{color:#0E9F6E}
+.plan{display:flex;gap:10px;margin:8px 26px}.step{flex:1;background:#F4F7FB;border:1px solid #D7E2EE;border-radius:9px;padding:12px}.step i{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#0B3C68;color:#fff;font-style:normal;font-weight:700;margin-bottom:6px}.step b{display:block;color:#0B3C68;font-size:12.5px}.step span{font-size:12px}
+.cta{background:#0B3C68;color:#fff;margin:16px 26px 0;padding:16px 18px;border-radius:11px;border-top:5px solid #1FA2FF;display:flex;gap:16px;align-items:center}
+.ctatxt{flex:1}.cta b{font-size:18px;display:block;margin-bottom:6px}.cta p{margin:0 0 6px;font-size:12.5px}.cta .pasos{font-size:11px;color:#BAD4EC}.cta .firma{font-weight:700;font-size:13px}.cta .lnk{color:#fff;font-weight:700}
+.qr{flex:none;width:118px;text-align:center}.qr svg{width:112px;height:112px;background:#fff;padding:5px;border-radius:7px;display:block}.qr span{font-size:10.5px;font-weight:700;display:block;margin-top:5px}
+footer{display:flex;align-items:center;gap:8px;margin:14px 26px 0;padding-top:8px;border-top:1px solid #D7E2EE;font-size:10.5px;color:#5C7183}footer svg{border-radius:4px}
+@media(max-width:620px){.kpis,.gain,.cta,.plan,.cmp{flex-direction:column}.bacols{grid-template-columns:1fr}ul.check{columns:1}.hrow{flex-direction:column;align-items:flex-start}}
+@media print{body{background:#fff}article{margin:0}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}`;
+
+/**
+ * @param {object[]} models de buildProposal()
+ * @param {{qrSvg?:(url:string)=>string, mode?:"full"|"one", autoprint?:boolean, photos?:boolean, fontsHref?:string}} o
+ */
+function renderProposalHtml(models, o = {}) {
+  const fonts = o.fontsHref === undefined ? '<link href="https://fonts.googleapis.com/css2?family=Sora:wght@700&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">' : (o.fontsHref ? `<link href="${esc(o.fontsHref)}" rel="stylesheet">` : "");
+  const print = o.autoprint ? "<script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script>" : "";
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Propuesta</title>${fonts}<style>${CSS}</style></head><body>${models.map((m) => article(m, o)).join("")}${print}</body></html>`;
+}
+
+module.exports = { renderProposalHtml, radarSvg, CSS };
+
+};
+defs["pdf-fonts"]=function(module,exports,require){
+"use strict";
+/**
+ * Carga las fuentes de marca en jsPDF (Sora Bold, IBM Plex Sans Regular/SemiBold) desde
+ * /public/fonts cuando el panel corre con servidor. Sin servidor (doble clic) o sin red, el PDF
+ * usa Helvetica y no falla. Solo navegador; en Node no hace nada.
+ */
+const FILES = [
+  { file: "Sora-Bold.ttf", name: "Sora", style: "bold" },
+  { file: "IBMPlexSans-Regular.ttf", name: "IBMPlexSans", style: "normal" },
+  { file: "IBMPlexSans-SemiBold.ttf", name: "IBMPlexSans", style: "bold" },
+];
+let state = { status: "idle", promise: null, fonts: null };
+
+function toBase64(buf) {
+  const bytes = new Uint8Array(buf); let s = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
+/** Devuelve {display, body} con los nombres a usar en jsPDF (o Helvetica si no se pudieron cargar). */
+function load(base = "public/fonts/") {
+  if (state.promise) return state.promise;
+  const fallback = { display: "helvetica", body: "helvetica" };
+  if (typeof window === "undefined" || typeof fetch !== "function" || !(window.jspdf && window.jspdf.jsPDF)) { state = { status: "fallback", promise: Promise.resolve(fallback), fonts: fallback }; return state.promise; }
+  if (window.location && window.location.protocol === "file:") { state = { status: "fallback", promise: Promise.resolve(fallback), fonts: fallback }; return state.promise; }
+  state.status = "loading";
+  state.promise = Promise.all(FILES.map((f) => fetch(base + f.file, { cache: "force-cache" }).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.status)))).then((b) => Object.assign({ b64: toBase64(b) }, f))))
+    .then((loaded) => {
+      const API = window.jspdf.jsPDF.API;
+      API.events.push(["addFonts", function () { for (const f of loaded) { this.addFileToVFS(f.file, f.b64); this.addFont(f.file, f.name, f.style); } }]);
+      state.fonts = { display: "Sora", body: "IBMPlexSans" }; state.status = "ready";
+      return state.fonts;
+    })
+    .catch(() => { state.fonts = fallback; state.status = "fallback"; return fallback; });
+  return state.promise;
+}
+
+module.exports = { load, FILES, status: () => state.status };
+
+};
 return {require:req,has:function(n){return !!defs[n];}};})();
 </script>
 <!-- @bundle:end -->
 <script>
 const SkyTax=SkyLib.require("taxonomy"),SkyIns=SkyLib.require("insights");
+window.addEventListener("load",()=>{try{SkyLib.require("pdf-fonts").load();}catch(e){}});
 "use strict";
 const $=s=>document.querySelector(s);
 const store={get:(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1182,42 +1979,10 @@ function analyzeLead(l){return l?SkyIns.analyze(l,statsIndex()):{ok:false,insigh
 function statsFor(l){if(!l||!LEADS||LEADS.length<SkyIns.MIN_PEERS)return null;const r=analyzeLead(l);return r.ok?r.stats:null;}
 function insightsFor(l,S){if(!S)return[];return analyzeLead(l).insights.map(x=>x.text);}
 function anchorFor(l){return analyzeLead(l).anchor||"";}
-// ---- Comparativa real por rubro: cómo trabaja hoy vs con el sistema ----
-const BENCH_GEN=[["Ventas","Cuaderno o Excel; el cierre de caja sale al tanteo","Cada venta registrada; cierre de caja exacto en 1 clic"],["Inventario","Se cuenta a mano y se entera cuando ya faltó","Stock al día, con aviso antes de quedarse sin producto"],["Fiados y cobros","Se apuntan en papel y algunos se olvidan","Quién debe, cuánto y desde cuándo, con recordatorio por WhatsApp"],["Clientes","No sabe quién volvió ni qué compró","Historial por cliente y mensaje de recompra automático"],["Números del mes","Los saca a fin de mes, si le alcanza el tiempo","Reporte listo: lo que más deja, por día y por hora"]];
-const BENCH={
- farmacia:[["Vencimientos","Se descubren en el estante, ya vencidos","Alerta 60 días antes: alcanza a rotarlo o devolverlo"],["Stock","Se pide lo que se ve que falta","Aviso de stock bajo por producto y laboratorio"],["Ventas","Boleta a mano, caja al tanteo","Venta rápida por código y cierre de caja exacto"],["Clientes crónicos","Se acuerdan (o no) de volver","Recordatorio de recompra por WhatsApp en su fecha"]],
- taller_celulares:[["Órdenes","Papelito con el equipo; se pierden","Ticket con número, equipo, falla y fecha prometida"],["Avisos","El cliente llama a preguntar si ya está","Aviso automático por WhatsApp cuando queda listo"],["Repuestos","No sabe cuántas pantallas le quedan","Inventario de repuestos con costo y aviso de stock"],["Garantías","Depende de la memoria","Historial por equipo e IMEI, con garantía y fecha"]],
- restaurante:[["Pedidos","Se anotan en papel y se cruzan","Pedido por mesa o por WhatsApp, con su estado"],["Carta","Se reimprime cada vez que cambia un precio","Carta digital con QR: cambia el precio y listo"],["Insumos","Se compra por costumbre","Consumo real por plato y aviso de insumo bajo"],["Caja","Se cuadra de noche y a veces no cuadra","Cierre por turno, con propinas y delivery aparte"]],
- dental:[["Citas","Agenda de papel; faltan pacientes","Agenda con recordatorio por WhatsApp el día antes"],["Fichas","Historias en folder, difíciles de ubicar","Ficha digital con tratamientos y radiografías"],["Tratamientos","Se olvida la siguiente fase","Aviso de control y de tratamiento pendiente"],["Pagos","Se apuntan aparte","Plan de pagos por paciente y saldo al día"]],
- gimnasio:[["Membresías","Se anota en cuaderno quién pagó","Vencimiento por socio y aviso antes de que caiga"],["Asistencia","Nadie la registra","Control de ingreso y quién dejó de venir"],["Cobros","Hay que perseguir al socio","Recordatorio de pago automático por WhatsApp"],["Planes","Todos pagan casi lo mismo","Planes y promos por tipo de socio, con su reporte"]],
- bodega:[["Ventas","Todo de memoria y calculadora","POS por código o por nombre, con vuelto exacto"],["Fiados","Cuaderno de fiados que nadie cuadra","Lista de deudores con saldo y recordatorio"],["Stock","Se pide lo que se ve vacío","Aviso de stock bajo de lo que más rota"],["Ganancia","No sabe qué producto deja más","Margen por producto: qué conviene tener"]],
- ferreteria:[["Cotizaciones","A mano, y se demoran","Cotización en minutos con precios al día"],["Stock","Miles de códigos, se busca a ojo","Búsqueda por código o nombre, con stock real"],["Proveedores","Se pide por costumbre","Historial de compras y costo por proveedor"],["Obras","Se pierde el hilo del cliente","Cuenta por cliente u obra, con su saldo"]],
- hotel:[["Reservas","Cuaderno o WhatsApp suelto","Calendario de habitaciones, sin sobreventa"],["Confirmaciones","Se llama uno por uno","Confirmación y recordatorio automático por WhatsApp"],["Ocupación","No conoce su ocupación real","Ocupación por día, mes y temporada"],["Consumos","Se apuntan aparte","Consumo cargado a la habitación, en una sola cuenta"]],
- belleza:[["Reservas","Por chat; se cruzan las horas","Reserva online por profesional, sin cruces"],["Ausencias","Se pierde la hora y el ingreso","Recordatorio automático: bajan las faltas"],["Fichas","No sabe qué color o corte llevó","Historial por cliente, con foto y producto usado"],["Promos","Se avisa a quien uno se acuerda","Campaña por WhatsApp a quien no vuelve hace X días"]],
- veterinaria:[["Citas","Agenda de papel","Agenda con recordatorio por WhatsApp"],["Vacunas","El dueño se olvida de la siguiente","Carnet digital y aviso de la próxima dosis"],["Historial","Un folder por mascota","Ficha con peso, tratamientos y alergias"],["Farmacia","Se acaba el medicamento clave","Stock con alerta y control de vencimientos"]],
- inmobiliaria:[["Cartera","Propiedades en Excel y en la cabeza","Cartera con fotos, estado y precio actualizado"],["Visitas","Se agendan por chat","Agenda de visitas con recordatorio a ambas partes"],["Seguimiento","Se enfría el interesado","Embudo por cliente: quién vio qué y cuándo"],["Comisiones","Se calculan a mano","Comisión por operación y por asesor"]],
- contable:[["Clientes","Carpetas y correos sueltos","Panel por cliente, con documentos y estado"],["Vencimientos","Se revisan a mano en el cronograma","Alerta de vencimiento por cliente y por tributo"],["Cobros","Se factura tarde","Facturación recurrente con recordatorio"],["Documentos","El cliente los manda por WhatsApp","El propio cliente los carga en su acceso"]],
- juridico:[["Expedientes","Carpetas físicas y notas sueltas","Expediente digital con toda su actuación"],["Plazos","Se llevan en la agenda personal","Alerta de plazo por expediente"],["Clientes","Llaman a preguntar cómo va","Acceso para que vean el avance ellos mismos"],["Honorarios","Se cobran cuando uno se acuerda","Estado de cuenta por caso, con recordatorio"]]
-};
-const benchOf=v=>(v&&BENCH[v])||BENCH_GEN;
-// ---- Lo que gana cada mes, por rubro (tiempo / dinero / tranquilidad) ----
-const BEN_GEN={t:"4 a 6 horas al mes que hoy se van en cuadrar caja, contar y buscar anotaciones.",d:"Lo que se escapa sin que se note: fiados olvidados, errores de conteo y productos que se acabaron.",e:"Cerrar el día sabiendo que cuadró, sin revisar cuadernos ni confiar en la memoria."};
-const BEN={
- farmacia:{t:"5 a 8 horas al mes contando stock y revisando fechas una por una.",d:"Lo que hoy se tira en vencidos y lo que se pierde cuando el cliente no encuentra su medicamento.",e:"Nunca más descubrir un vencido en la mano del cliente: el sistema avisa 60 días antes."},
- taller_celulares:{t:"4 a 6 horas al mes buscando equipos, papelitos y contestando si ya está listo.",d:"Ninguna reparación queda sin cobrar y ningún repuesto se pierde entre cajones.",e:"El cliente recibe el aviso solo cuando su equipo está listo; usted deja de dar explicaciones."},
- restaurante:{t:"6 a 10 horas al mes anotando pedidos, reimprimiendo cartas y cuadrando la caja de noche.",d:"Deja de comprar insumo que no rota y cobra lo que hoy se pierde en pedidos mal anotados.",e:"Servicio sin pedidos cruzados y cierre de caja en un clic, no a medianoche."},
- dental:{t:"4 a 6 horas al mes llamando para confirmar citas y buscando historias en el folder.",d:"Los tratamientos pendientes dejan de olvidarse: cada fase queda agendada y cobrada.",e:"Agenda llena y sin ausencias, con el recordatorio saliendo solo el dia antes."},
- gimnasio:{t:"4 a 6 horas al mes revisando quién pagó y persiguiendo al socio.",d:"Ninguna membresía vence sin aviso: se cobra a tiempo y no se pierde el mes.",e:"Se acaba el papel de cobrador: el recordatorio lo manda el sistema, no usted."},
- bodega:{t:"5 a 8 horas al mes cuadrando caja de memoria y revisando el cuaderno de fiados.",d:"Recupera los fiados que hoy se olvidan y sabe qué producto le deja de verdad.",e:"Saber cuánto vendió y cuánto le deben, sin depender de la memoria."},
- ferreteria:{t:"5 a 8 horas al mes buscando precios y armando cotizaciones a mano.",d:"Cotiza en minutos y no pierde la venta por demorar ni por vender bajo costo.",e:"Miles de códigos bajo control, con el stock real a la vista."},
- hotel:{t:"4 a 7 horas al mes confirmando reservas una por una.",d:"Se acaba la sobreventa y los consumos que nadie cargó a la habitación.",e:"Ver la ocupación de un vistazo, sin cuaderno ni chats sueltos."},
- belleza:{t:"4 a 6 horas al mes coordinando horas por chat.",d:"Bajan las faltas: cada hora perdida es una hora que ya no se cobra.",e:"Agenda ordenada por profesional, sin cruces ni horas dobles."},
- veterinaria:{t:"3 a 5 horas al mes llamando para recordar vacunas y buscando fichas.",d:"Las dosis siguientes vuelven solas: el recordatorio trae al cliente de nuevo.",e:"Historial completo de cada mascota a la mano, sin folders."},
- inmobiliaria:{t:"5 a 8 horas al mes actualizando listas y persiguiendo interesados.",d:"Ningún interesado se enfría sin seguimiento, y la comisión queda clara por operación.",e:"Toda la cartera y cada visita en un solo lugar."},
- contable:{t:"6 a 10 horas al mes persiguiendo documentos y revisando vencimientos.",d:"Se factura a tiempo y no se pagan multas por un vencimiento que se pasó.",e:"Cada cliente con su estado a la vista, sin correos sueltos."},
- juridico:{t:"5 a 8 horas al mes revisando plazos y respondiendo cómo va el caso.",d:"Los honorarios quedan con estado de cuenta por caso, y se cobran cuando toca.",e:"Ningún plazo se pasa: el sistema avisa antes."}
-};
-const benefOf=v=>(v&&BEN[v])||BEN_GEN;
+// ---- Textos por rubro: viven en src/ui/proposal-model.js (compartidos con el PDF v2 y la impresión) ----
+const SkyProp=SkyLib.require("proposal-model"),SkyPdf=SkyLib.require("proposal-pdf"),SkyHtml=SkyLib.require("proposal-html"),SkyFonts=SkyLib.require("pdf-fonts");
+const benchOf=v=>SkyProp.benchOf(v).map(r=>[r.topic,r.today,r.withSystem]);
+const benefOf=v=>{const b=SkyProp.benefOf(v);return{t:b.t,d:b.d,e:b.e};};
 // QR vectorial dentro del PDF (libreria incrustada, sin internet)
 function drawQR(doc,url,x,y,size){
   if(typeof qrcode!=="function")return false;
@@ -1249,7 +2014,7 @@ function qrContacto(biz){
   if(mail)return{url:"mailto:"+mail+"?subject="+encodeURIComponent("Quiero probar el sistema — "+(biz||""))+"&body="+encodeURIComponent(txt),label:"Escanee y escríbame"};
   return null;
 }
-function drawProposal(doc,l){
+function drawProposalV1(doc,l){
   const c=classify(l),S=statsFor(l),INS=insightsFor(l,S),B=benefOf(c.vertical);
   const sender=(($("#myName")&&$("#myName").value)||store.get("bc3k_name","")||"").trim();
   const contact=(($("#cfgContact")&&$("#cfgContact").value)||store.get("bc3k_contact","")||"").trim();
@@ -1493,127 +2258,34 @@ function drawProposal(doc,l){
     y+=h+3;})();
   foot();
 }
-function pdfName(l){return "Propuesta - "+((l.title||"negocio").trim()).replace(/[\\/:*?"<>|]+/g,"").slice(0,60)+".pdf";}
-function proposalPDF(l){const lib=window.jspdf&&window.jspdf.jsPDF;if(!lib){openProposalPrint([l]);return;}const doc=new lib({unit:"mm",format:"a4"});drawProposal(doc,l);doc.save(pdfName(l));toast("PDF descargado ✓");}
-function bulkProposalsPDF(list){if(!list||!list.length){toast("No hay leads para exportar");return;}const lib=window.jspdf&&window.jspdf.jsPDF;if(!lib){openProposalPrint(list);return;}const doc=new lib({unit:"mm",format:"a4"});list.forEach((l,i)=>{if(i>0)doc.addPage();drawProposal(doc,l);});doc.save("Propuestas ("+list.length+").pdf");toast(list.length+" propuestas en un PDF ✓");}
+function pdfName(l,mode){return "Propuesta"+(mode==="one"?" (1 pág)":"")+" - "+((l.title||"negocio").trim()).replace(/[\\/:*?"<>|]+/g,"").slice(0,60)+".pdf";}
+const usePdfV1=()=>!!store.get("bc3k_pdf_v1",false);
+function proposalCtx(){return{sender:(($("#myName")&&$("#myName").value)||store.get("bc3k_name","")||"").trim(),contact:(($("#cfgContact")&&$("#cfgContact").value)||store.get("bc3k_contact","")||"").trim(),demo:(store.get("bc3k_demo_sist","")||"").trim(),now:new Date(),locale:"es-PE"};}
+function proposalModel(l){return SkyProp.buildProposal(l,Object.assign({analysis:analyzeLead(l)},proposalCtx()));}
+// Foto del negocio para la portada: pasa por el servidor (/api/img) para evitar CORS; sin servidor o sin red, se omite.
+const PHOTO_CACHE=new Map();
+async function loadPhoto(l){const u=l&&l.thumb;if(!u||!SERVER||location.protocol==="file:")return null;if(PHOTO_CACHE.has(u))return PHOTO_CACHE.get(u);
+  const p=(async()=>{try{const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),7000);const r=await fetch("/api/img?u="+encodeURIComponent(u),{signal:ctrl.signal});clearTimeout(t);if(!r.ok)return null;const b=await r.blob();if(!/^image\/(jpeg|png|webp)/.test(b.type))return null;
+    const data=await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(b);});
+    if(/webp/.test(b.type)){const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=data;});const c=document.createElement("canvas");c.width=img.naturalWidth;c.height=img.naturalHeight;c.getContext("2d").drawImage(img,0,0);return{data:c.toDataURL("image/jpeg",.86),format:"JPEG"};}
+    return{data,format:/png/.test(b.type)?"PNG":"JPEG"};}catch(e){return null;}})();
+  PHOTO_CACHE.set(u,p);return p;}
+async function renderProposalDoc(list,mode){const lib=window.jspdf&&window.jspdf.jsPDF;const fonts=await SkyFonts.load();const doc=new lib({unit:"mm",format:"a4"});
+  for(let i=0;i<list.length;i++){if(i>0)doc.addPage();const l=list[i];const photo=await loadPhoto(l);SkyPdf.renderProposal(doc,proposalModel(l),{fonts,mode:mode||"full",qr:(u,x,y,s)=>drawQR(doc,u,x,y,s),images:{photo}});}
+  return doc;}
+async function proposalPDF(l,mode){if(usePdfV1()){const lib=window.jspdf&&window.jspdf.jsPDF;if(!lib){openProposalPrint([l]);return;}const doc=new lib({unit:"mm",format:"a4"});drawProposalV1(doc,l);doc.save(pdfName(l));toast("PDF descargado ✓");return;}
+  if(!(window.jspdf&&window.jspdf.jsPDF)){openProposalPrint([l],mode);return;}
+  toast("Generando propuesta…");try{const doc=await renderProposalDoc([l],mode);doc.save(pdfName(l,mode));toast("PDF descargado ✓");}catch(e){console.error(e);toast("No pude generar el PDF: "+(e&&e.message));}}
+async function bulkProposalsPDF(list,mode){if(!list||!list.length){toast("No hay leads para exportar");return;}const lib=window.jspdf&&window.jspdf.jsPDF;if(!lib){openProposalPrint(list,mode);return;}
+  if(usePdfV1()){const doc=new lib({unit:"mm",format:"a4"});list.forEach((l,i)=>{if(i>0)doc.addPage();drawProposalV1(doc,l);});doc.save("Propuestas ("+list.length+").pdf");toast(list.length+" propuestas en un PDF ✓");return;}
+  toast("Generando "+list.length+" propuestas…");try{const doc=await renderProposalDoc(list,mode);doc.save("Propuestas ("+list.length+").pdf");toast(list.length+" propuestas en un PDF ✓");}catch(e){console.error(e);toast("No pude generar el PDF: "+(e&&e.message));}}
 const SkyLogo=SkyLib.require("logo");const LOGO_SVG=SkyLogo.isotypeSvg({size:30,variant:"onDark"});
 function qrSVG(url,cell){
   if(typeof qrcode!=="function")return "";
   try{const q=qrcode(0,"M");q.addData(url);q.make();return q.createSvgTag({cellSize:cell||4,margin:0,scalable:true});}catch(e){return "";}
 }
-function proposalHTMLDoc(list){
-  const sender=(($("#myName")&&$("#myName").value)||store.get("bc3k_name","")||"").trim();
-  const contact=(($("#cfgContact")&&$("#cfgContact").value)||store.get("bc3k_contact","")||"").trim();
-  const dt=new Date().toLocaleDateString("es-PE",{day:"2-digit",month:"long",year:"numeric"});
-  const demo=(store.get("bc3k_demo_sist","")||"").trim();
-  const qr=demo?qrSVG(demo,4):"";
-  const li=a=>a.map(x=>`<li>${esc(x)}</li>`).join("");
-  const body=list.map(l=>{
-    const c=classify(l),S=statsFor(l),INS=insightsFor(l,S),B=benefOf(c.vertical);
-    const biz=esc(l.title||"tu negocio"),rubro=normCat(l.category)||l.category||"tu rubro";
-    const P=sysProposal(l.title||"tu negocio",rubro,c.vertical);
-    const max=S?Math.max(S.top,S.mine,S.avgRev,1):1;
-    const bar=(lab,val,cls)=>`<div class="brow"><span class="blab">${esc(lab)}</span><span class="btrack"><i class="${cls}" style="width:${Math.max(1.5,100*Math.min(1,val/max)).toFixed(1)}%"></i></span><b class="${cls}">${Math.round(val)}</b></div>`;
-    const pos=S?(S.n>1?(S.n-S.rank)/(S.n-1):1):0;
-    const grado=pos>=.66?"ok":(pos>=.33?"amb":"bad");
-    const casillas=S?(S.n<=26
-      ? `<div class="puestos">${Array.from({length:S.n},(_,i)=>`<i class="${i+1===S.rank?"mio":""}"></i>`).join("")}</div>
-         <p class="mut tiny extremos"><span>1.º, el que más recomiendan</span><span>último</span></p>`
-      : `<div class="gauge"><i class="${grado}" style="width:${(100*(S.rank-1)/(S.n-1)).toFixed(1)}%"></i></div>
-         <p class="mut tiny extremos"><span>1.º de ${S.n}</span><span>último</span></p>`):"";
-    const stats=S?`<h2>Cuántos clientes lo recomiendan, comparado con su competencia</h2>
-      <p class="mut">Reseñas en Google de ${S.n} negocios de ${esc(S.scope)}. Más reseñas = más gente entrando = más que controlar.</p>
-      <div class="bars">${bar("USTED",S.mine,"me")}${bar("Promedio de su zona",Math.round(S.avgRev),"avg")}${bar(S.rank===1?"(usted es el primero)":"El primero de su zona",S.top,"top")}</div>
-      <p class="sub2">Su puesto entre los ${S.n} negocios de su rubro en su zona:</p>
-      ${casillas}
-      <p class="rank ${grado}">Puesto ${S.rank} de ${S.n}</p>
-      <div class="chips"><span class="ch acc">${S.pctNoWeb}% de su competencia aún sin sistema</span><span class="ch amb">${S.myR?("Calificación "+S.myR.toFixed(1)+" vs "+S.avgR.toFixed(1)+" de su zona"):"Sin calificación en Google"}</span><span class="ch ok">${S.pctTel}% con WhatsApp para pedidos</span></div>
-      <ul>${li(INS.slice(0,3))}</ul>`:"";
-    const rows=benchOf(c.vertical).map(r=>`<div class="ba"><div class="k">${esc(r[0])}</div><div class="hoy"><s>✕</s>${esc(r[1])}</div><div class="sis"><s>✓</s>${esc(r[2])}</div></div>`).join("");
-    const inc=(SYS_LINE[c.vertical]?["Hecho para su rubro: "+SYS_LINE[c.vertical]+"."]:[]).concat(P.incluye);
-    const porque=S&&INS.length>3?`<div class="why"><b>POR QUÉ AHORA</b>${INS.slice(3).map(t=>`<p>${esc(t)}</p>`).join("")}</div>`:"";
-    return `<article>
-      <header><div class="hlogo">${LOGO_SVG}<div><b>SKY <i>TECH</i></b><span>SISTEMAS DE GESTIÓN PARA NEGOCIOS</span></div></div><div class="k">PROPUESTA PARA</div><h1>${biz}</h1><div class="sub">${esc([rubro,l.address||"",dt].filter(Boolean).join(" · "))}</div></header>
-      <div class="promesas">
-        <div class="pr amb"><b>☺ MENOS ESTRÉS</b><span>Todo lo que hoy lleva en la cabeza y en el cuaderno, lo lleva el sistema por usted.</span></div>
-        <div class="pr ok"><b>$ MÁS DINERO</b><span>Lo que hoy se escapa sin que se note (fiados, faltantes, vencidos) deja de escaparse.</span></div>
-      </div>
-      ${stats}
-      <h2>Lo que gana cada mes</h2>
-      <div class="gain"><div class="g acc"><b>TIEMPO</b><span>${esc(B.t)}</span></div><div class="g ok"><b>DINERO</b><span>${esc(B.d)}</span></div><div class="g amb"><b>TRANQUILIDAD</b><span>${esc(B.e)}</span></div></div>
-      <p class="mut tiny">Las horas son una estimación conservadora para un negocio de su tamaño; las ajustamos con sus números en la reunión.</p>
-      <h2>Qué incluye</h2><ul class="check">${li(inc)}</ul>
-      <h2>Cómo trabaja hoy y cómo quedaría con el sistema</h2>
-      <div class="bacols"><div class="bahead red">HOY, A MANO</div><div class="bahead green">CON EL SISTEMA</div>${rows}</div>
-      ${porque}
-      <div class="cta">
-        <div class="ctatxt">
-          <b>Pruébelo sin compromiso</b>
-          <p>Acceso 100% libre y gratuito. Lo usa en su negocio y solo nos comparte su feedback sincero para ayudarnos a entender mejor sus necesidades del día a día.</p>
-          <p class="pasos">Cómo funciona: 1) acceso libre inmediato (100% gratis) · 2) lo prueba con sus datos reales · 3) nos da su feedback para mejorarlo.</p>
-          <p class="firma">${esc([sender,contact].filter(Boolean).join(" · "))}</p>
-          ${demo?`<p><a class="lnk" href="${esc(demo)}">Abrir la demo ahora</a><br><span class="tiny">${esc(demo)}</span></p>`:""}
-        </div>
-        ${qr?`<div class="qr"><a href="${esc(demo)}">${qr}</a><span>Escanee con su celular</span></div>`:""}
-      </div>
-    </article>`;}).join("");
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Propuesta</title><style>
-*{box-sizing:border-box}body{font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#11253A;margin:0;background:#EEF3F8}
-article{max-width:780px;margin:0 auto 24px;background:#fff;padding-bottom:26px}article+article{page-break-before:always}
-header{background:#0B3C68;color:#fff;padding:16px 26px;border-bottom:4px solid #1FA2FF}
-.hlogo{display:flex;align-items:center;gap:9px;margin-bottom:10px}
-.hlogo svg{display:block}.hlogo b{font-size:15px;letter-spacing:.5px;font-weight:400}.hlogo b i{font-style:normal;font-weight:800;color:#1FA2FF}
-.hlogo span{font-size:9px;letter-spacing:1px;color:#9FC4E4;display:block}header .k{font-size:10.5px;letter-spacing:1.2px;opacity:.85}header h1{margin:3px 0 3px;font-size:25px}header .sub{font-size:12px;opacity:.9}
-h2{color:#0B3C68;margin:18px 26px 8px;font-size:15px;padding:0 0 6px 10px;border-left:4px solid #0B3C68;border-bottom:1px solid #D7E2EE}
-p{margin:0 26px 8px}.mut{color:#5C7183}.tiny{font-size:11px}
-ul,ol{margin:0 26px 10px;padding-left:20px}li{margin:4px 0}
-ul.check{list-style:none;padding-left:0;columns:2;column-gap:22px}ul.check li{break-inside:avoid;padding-left:20px;position:relative}
-ul.check li:before{content:"✓";position:absolute;left:0;color:#0E9F6E;font-weight:700}
-.promesas{display:flex;gap:10px;margin:14px 26px}
-.pr{flex:1;border-radius:9px;padding:11px 13px}.pr b{display:block;font-size:12.5px;margin-bottom:4px}.pr span{font-size:12px}
-.pr.amb{background:#FAF1E1;color:#B7791F}.pr.amb span{color:#20233a}
-.pr.ok{background:#E0F6EE;color:#0E9F6E}.pr.ok span{color:#20233a}
-.bars{margin:8px 26px}.brow{display:flex;align-items:center;gap:8px;margin:6px 0}
-.blab{width:132px;flex:none;font-size:12px;color:#6a758c}.brow:first-child .blab{color:#20233a;font-weight:700}
-.btrack{flex:1;height:9px;background:#e4e7f2;border-radius:5px;overflow:hidden}.btrack i{display:block;height:100%;border-radius:5px}
-.btrack i.me{background:#1D4ED8}.btrack i.avg{background:#5C7183}.btrack i.top{background:#D92D20}
-.brow b{background:none}.brow b.me{color:#1D4ED8}.brow b.avg{color:#5C7183}.brow b.top{color:#D92D20}
-.brow b{width:38px;text-align:right;font-size:12px}
-.sub2{font-weight:700;font-size:12.5px;margin:10px 26px 6px}
-.puestos{display:flex;gap:4px;margin:0 26px 4px;flex-wrap:wrap}
-.puestos i{width:20px;height:23px;border-radius:3px;background:#DDE5F0;display:block}
-.puestos i.mio{background:#1D4ED8;box-shadow:0 0 0 2px #fff,0 0 0 4px #1D4ED8}
-.extremos{display:flex;justify-content:space-between;margin:2px 26px 6px}
-.gauge{height:9px;background:#e4e7f2;border-radius:5px;margin:10px 26px 5px;overflow:hidden}
-.gauge i{display:block;height:100%;border-radius:5px}.gauge i.ok{background:#0E9F6E}.gauge i.amb{background:#B7791F}.gauge i.bad{background:#D92D20}
-.rank{font-weight:700;margin:0 26px 10px}.rank.ok{color:#0E9F6E}.rank.amb{color:#B7791F}.rank.bad{color:#D92D20}
-.chips{margin:0 26px 8px;display:flex;flex-wrap:wrap;gap:6px}
-.ch{font-size:11.5px;font-weight:700;border-radius:6px;padding:4px 9px}
-.ch.acc{background:#E5ECFC;color:#1D4ED8}.ch.amb{background:#FAF1E1;color:#B7791F}.ch.ok{background:#E0F6EE;color:#0E9F6E}
-.gain{display:flex;gap:10px;margin:8px 26px}
-.g{flex:1;border-radius:9px;padding:13px}.g b{display:block;text-align:center;font-size:13px;margin-bottom:6px}.g span{font-size:12px;color:#20233a}
-.g{border-top:4px solid}.g.acc{background:#E5ECFC;border-color:#1D4ED8}.g.acc b{color:#1D4ED8}.g.ok{background:#E0F6EE;border-color:#0E9F6E}.g.ok b{color:#0E9F6E}.g.amb{background:#FAF1E1;border-color:#B7791F}.g.amb b{color:#B7791F}
-.bacols{margin:8px 26px;display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
-.bahead{font-weight:700;font-size:12.5px;padding:8px 12px;border-radius:9px 9px 0 0}
-.bahead.red{background:#FDE8E6;color:#D92D20;border-top:4px solid #D92D20}.bahead.green{background:#E0F6EE;color:#0E9F6E;border-top:4px solid #0E9F6E}
-.ba{display:contents}.ba .k{display:none}
-.ba .hoy,.ba .sis{font-size:12px;padding:7px 12px}
-.ba .hoy{background:#FDE8E6}.ba .sis{background:#E0F6EE}
-.ba:last-child .hoy{border-radius:0 0 9px 9px}.ba:last-child .sis{border-radius:0 0 9px 9px}
-.ba s{text-decoration:none;font-weight:700;margin-right:6px}.ba .hoy s{color:#D92D20}.ba .sis s{color:#0E9F6E}
-.why{background:#FAF1E1;border-left:4px solid #B7791F;border-radius:0 9px 9px 0;margin:12px 26px;padding:11px 14px}
-.why b{color:#B7791F;font-size:11.5px;letter-spacing:.6px}.why p{margin:6px 0 0;font-size:12px}
-.cta{background:#0B3C68;color:#fff;margin:16px 26px 0;padding:16px 18px;border-radius:11px;border-top:5px solid #1FA2FF;display:flex;gap:16px;align-items:center}
-.ctatxt{flex:1}.cta b{font-size:18px;display:block;margin-bottom:6px}.cta p{margin:0 0 6px;font-size:12.5px}
-.cta .pasos{font-size:11px;opacity:.92}.cta .firma{font-weight:700;font-size:13px}
-.cta .lnk{color:#fff;font-weight:700}.cta .pasos{color:#BAD4EC}.qr{flex:none;width:118px;text-align:center}
-.qr svg{width:112px;height:112px;background:#fff;padding:5px;border-radius:7px;display:block}
-.qr span{font-size:10.5px;font-weight:700;display:block;margin-top:5px}
-@media(max-width:620px){.promesas,.gain,.cta{flex-direction:column}.bacols{grid-template-columns:1fr}ul.check{columns:1}}
-@media print{body{background:#fff}article{margin:0}header,.cta,.pr,.g,.ch,.why,.bahead,.ba .hoy,.ba .sis,.btrack i,.gauge i,h2{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
-</style></head><body>${body}<script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script></body></html>`;
-}
-function openProposalPrint(list){const w=window.open("","_blank");if(!w){toast("Permite ventanas emergentes para generar el PDF");return;}w.document.write(proposalHTMLDoc(list));w.document.close();toast('Se abrió la propuesta: elige "Guardar como PDF"');}
+function proposalHTMLDoc(list,mode){return SkyHtml.renderProposalHtml(list.map(proposalModel),{qrSvg:u=>qrSVG(u,4),mode:mode||"full",autoprint:true});}
+function openProposalPrint(list,mode){const w=window.open("","_blank");if(!w){toast("Permite ventanas emergentes para generar el PDF");return;}w.document.write(proposalHTMLDoc(list,mode));w.document.close();toast('Se abrió la propuesta: elige "Guardar como PDF"');}
 const RUBRO_GROUPS=[
   {name:"Comida y bebida",icon:"🍽️",items:["restaurante","pollería","chifa","cevichería","cafetería","juguería","panadería","pizzería"]},
   {name:"Salud",icon:"💊",items:["farmacia","botica","clínica dental","consultorio médico","veterinaria","óptica"]},
@@ -2094,7 +2766,7 @@ function setProg(done,total,found,run,pau){
 }
 function detectServer(){fetch("/api/status").then(r=>r.ok?r.json():Promise.reject()).then(()=>{SERVER=true;setMode(true);
   fetch("/api/leads").then(r=>r.json()).then(d=>{(d.leads||[]).forEach(l=>{if(l._meta)meta[idOf(l)]=l._meta;});loadAll(d.leads||[]);if(d.cells&&d.cells.length)drawServerCells(d.cells);if(d.history)renderHistory(d.history);onStatus(d.status||{});});
-  fetch("/api/config").then(r=>r.json()).then(c=>{$("#cfgChat").value=c.telegramChat||"";$("#cfgProxies").value=c.proxies||"";$("#cfgWebhook").value=c.webhookUrl||"";$("#cfgNotify").checked=!!c.notify;$("#cfgSafe").checked=c.safeMode!==false;if(c.conc!=null)$("#cfgConc").value=c.conc;if(c.workers!=null)$("#cfgWorkers").value=c.workers;if(c.inactivity!=null)$("#cfgInact").value=c.inactivity;if(c.pauseMin!=null)$("#cfgPmin").value=c.pauseMin;if(c.pauseMax!=null)$("#cfgPmax").value=c.pauseMax;$("#cfgExclude").value=c.exclude||"";if(c.maxLeads!=null)$("#cfgMaxLeads").value=c.maxLeads;$("#cfgRetry").checked=c.retryFailed!==false;if(c.hasToken)$("#cfgToken").placeholder="(token guardado)";}).catch(()=>{});
+  fetch("/api/config").then(r=>r.json()).then(c=>{$("#cfgChat").value=c.telegramChat||"";$("#cfgProxies").value=c.proxies||"";$("#cfgWebhook").value=c.webhookUrl||"";$("#cfgNotify").checked=!!c.notify;$("#cfgSafe").checked=c.safeMode!==false;if(c.conc!=null)$("#cfgConc").value=c.conc;if($("#cfgPdfV1"))$("#cfgPdfV1").checked=!!store.get("bc3k_pdf_v1",false);if(c.workers!=null)$("#cfgWorkers").value=c.workers;if(c.inactivity!=null)$("#cfgInact").value=c.inactivity;if(c.pauseMin!=null)$("#cfgPmin").value=c.pauseMin;if(c.pauseMax!=null)$("#cfgPmax").value=c.pauseMax;$("#cfgExclude").value=c.exclude||"";if(c.maxLeads!=null)$("#cfgMaxLeads").value=c.maxLeads;$("#cfgRetry").checked=c.retryFailed!==false;if(c.hasToken)$("#cfgToken").placeholder="(token guardado)";}).catch(()=>{});
   connectSSE();}).catch(()=>{SERVER=false;setMode(false);meta=store.get("bc3k_meta",{});render();});}
 
 // ---- Escaneo ----
@@ -2112,7 +2784,7 @@ function estimate(){if(!map){$("#estTxt").textContent="";return;}
   $("#estTxt").textContent=`≈ ${n} celdas`+(adj?` · celda auto-ajustada a ${km} km`:"")+` · tiempo aprox. ${min<60?min+" min":(Math.round(min/6)/10)+" h"} (depende de proxies/conexión)`;}
 
 // ---- Config ----
-function saveCfg(){const b={telegramChat:$("#cfgChat").value.trim(),proxies:$("#cfgProxies").value.trim(),webhookUrl:$("#cfgWebhook").value.trim(),notify:$("#cfgNotify").checked,safeMode:$("#cfgSafe").checked,conc:+$("#cfgConc").value||1,workers:Math.max(1,Math.min(4,+$("#cfgWorkers").value||1)),inactivity:+$("#cfgInact").value||20,pauseMin:+$("#cfgPmin").value||0,pauseMax:+$("#cfgPmax").value||0,exclude:$("#cfgExclude").value,maxLeads:+$("#cfgMaxLeads").value||0,retryFailed:$("#cfgRetry").checked};const tok=$("#cfgToken").value.trim();if(tok)b.telegramToken=tok;fetch("/api/config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}).then(()=>toast("Ajustes guardados ✓")).catch(()=>toast("No se pudo guardar"));}
+function saveCfg(){const b={telegramChat:$("#cfgChat").value.trim(),proxies:$("#cfgProxies").value.trim(),webhookUrl:$("#cfgWebhook").value.trim(),notify:$("#cfgNotify").checked,safeMode:$("#cfgSafe").checked,conc:(store.set("bc3k_pdf_v1",!!($("#cfgPdfV1")&&$("#cfgPdfV1").checked)),+$("#cfgConc").value||1),workers:Math.max(1,Math.min(4,+$("#cfgWorkers").value||1)),inactivity:+$("#cfgInact").value||20,pauseMin:+$("#cfgPmin").value||0,pauseMax:+$("#cfgPmax").value||0,exclude:$("#cfgExclude").value,maxLeads:+$("#cfgMaxLeads").value||0,retryFailed:$("#cfgRetry").checked};const tok=$("#cfgToken").value.trim();if(tok)b.telegramToken=tok;fetch("/api/config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}).then(()=>toast("Ajustes guardados ✓")).catch(()=>toast("No se pudo guardar"));}
 function testTg(){fetch("/api/test-telegram",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({telegramToken:$("#cfgToken").value.trim(),telegramChat:$("#cfgChat").value.trim()})}).then(r=>r.json()).then(j=>{toast(j.status===200?"✅ Mensaje enviado a Telegram":"❌ "+((j.body||j.error||"").slice(0,60)));}).catch(()=>toast("Error de conexión"));}
 
 // ---- Herramientas ----
@@ -2190,7 +2862,8 @@ $("#profNorm").onclick=()=>{$("#cfgPmin").value=3;$("#cfgPmax").value=8;$("#cfgW
 $("#profTurbo").onclick=()=>{$("#cfgPmin").value=1;$("#cfgPmax").value=3;$("#cfgWorkers").value=2;saveCfg();toast("Perfil Turbo: 2 celdas a la vez (más rápido, más riesgo)");};
 $("#proxFetch").onclick=()=>{if(!confirm("Traer proxies públicas GRATIS y probar cuáles funcionan.\n\nOjo: son de terceros, poco confiables y pueden ver tu tráfico. Para volumen serio usa residenciales de pago.\n\n¿Continuar?"))return;const b=$("#proxFetch");b.disabled=true;b.textContent="Buscando…";toast("Buscando proxies vivas… puede tardar ~30s");fetch("/api/proxies/fetch",{method:"POST"}).then(r=>r.json()).then(j=>{$("#cfgProxies").value=j.proxies||"";toast(j.working?(j.working+" proxies vivas de "+j.total+" · guardadas y listas para el escaneo"):("0 vivas de "+j.total+" — reintenta o usa proxies de pago"));}).catch(()=>toast("No se pudo (¿sin internet o servidor?)")).finally(()=>{b.disabled=false;b.textContent="🌐 Proxies gratis";});};
 $("#viewBtn").onclick=()=>setView(!kanbanOn);
-$("#mService").onchange=buildMsg;$("#mFollow").onchange=buildMsg;$("#mClose").onclick=closeModal;$("#mPdf").onclick=()=>{if(current)proposalPDF(current);};$("#modalBg").onclick=e=>{if(e.target===$("#modalBg"))closeModal();};
+$("#mService").onchange=buildMsg;$("#mFollow").onchange=buildMsg;$("#mClose").onclick=closeModal;$("#mPdf1").onclick=()=>{if(current)proposalPDF(current,"one");};
+$("#mPdf").onclick=()=>{if(current)proposalPDF(current);};$("#modalBg").onclick=e=>{if(e.target===$("#modalBg"))closeModal();};
 $("#mCopy").onclick=()=>{if(current)setMeta(idOf(current),{lastContact:Date.now(),state:getMeta(idOf(current)).state==="nuevo"?"contactado":getMeta(idOf(current)).state});saveModal();copyTxt($("#mText").value,"Mensaje copiado ✓");};
 $("#mWa").onclick=()=>{const n=waN(current.phone,current.country);if(!n){toast("Sin teléfono");return;}setMeta(idOf(current),{lastContact:Date.now(),state:"contactado"});saveModal();window.open(`https://wa.me/${n}?text=${encodeURIComponent($("#mText").value)}`,"_blank");};
 $("#mMail").onclick=()=>{const e=current.emails[0];if(!e){toast("Sin correo");return;}setMeta(idOf(current),{lastContact:Date.now()});saveModal();window.open(`mailto:${e}?subject=${encodeURIComponent("Propuesta para "+current.title)}&body=${encodeURIComponent($("#mText").value)}`);};

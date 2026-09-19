@@ -80,9 +80,10 @@ function hexToRgb(hex) { const h = hex.replace("#", ""); return [parseInt(h.slic
  * Dibuja el isotipo en jsPDF con las MISMAS primitivas (mm). `variant` como en el SVG.
  * @param {object} doc jsPDF
  */
-function drawIsotypePdf(doc, x, y, size, { variant = "color", mono } = {}) {
+function drawIsotypePdf(doc, x, y, size, { variant = "color", mono, noBg = false } = {}) {
   const p = palette(variant, mono), k = size / 48;
   for (const s of SHAPES) {
+    if (noBg && s.role === "bg") continue;
     const fill = hexToRgb(p[s.role]);
     doc.setFillColor(fill[0], fill[1], fill[2]);
     if (s.type === "rrect") doc.roundedRect(x + s.x * k, y + s.y * k, s.w * k, s.h * k, s.r * k, s.r * k, "F");
